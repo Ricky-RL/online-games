@@ -64,8 +64,33 @@ export function useMiniGolfGame(gameId: string): UseMiniGolfGameReturn {
   useEffect(() => {
     fetchGame();
     const interval = setInterval(fetchGame, POLL_INTERVAL_MS);
-    return () => clearInterval(interval);
-  }, [fetchGame]);
+
+    // Realtime subscription for instant cross-device updates
+    const channel = supabase
+      .channel(`mini-golf-${gameId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'games',
+          filter: `id=eq.${gameId}`,
+        },
+        (payload: { new: Record<string, unknown> }) => {
+          const fresh = payload.new as unknown as MiniGolfGame;
+          const prev = gameRef.current;
+          if (prev && fresh.board.version <= prev.board.version) return;
+          gameRef.current = fresh;
+          setGame(fresh);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      clearInterval(interval);
+      supabase.removeChannel(channel);
+    };
+  }, [fetchGame, gameId]);
 
   const takeShot = useCallback(async (shot: Shot) => {
     const current = gameRef.current;
@@ -82,13 +107,14 @@ export function useMiniGolfGame(gameId: string): UseMiniGolfGameReturn {
     gameRef.current = optimistic;
     setGame(optimistic);
 
-    const { error: updateError } = await supabase
+    const { data: updatedRows, error: updateError } = await supabase
       .from('games')
       .update({ board, updated_at: new Date().toISOString() })
       .eq('id', gameId)
-      .eq('board->>version', current.board.version);
+      .eq('board->>version', current.board.version)
+      .select();
 
-    if (updateError) {
+    if (updateError || !updatedRows || updatedRows.length === 0) {
       await fetchGame();
     }
   }, [gameId, fetchGame]);
@@ -178,7 +204,7 @@ export function useMiniGolfGame(gameId: string): UseMiniGolfGameReturn {
     gameRef.current = optimistic;
     setGame(optimistic);
 
-    const { error: updateError } = await supabase
+    const { data: updatedRows, error: updateError } = await supabase
       .from('games')
       .update({
         board,
@@ -187,9 +213,10 @@ export function useMiniGolfGame(gameId: string): UseMiniGolfGameReturn {
         updated_at: new Date().toISOString(),
       })
       .eq('id', gameId)
-      .eq('board->>version', current.board.version);
+      .eq('board->>version', current.board.version)
+      .select();
 
-    if (updateError) {
+    if (updateError || !updatedRows || updatedRows.length === 0) {
       await fetchGame();
     }
   }, [gameId, fetchGame, getPlayerNumber]);
@@ -228,7 +255,7 @@ export function useMiniGolfGame(gameId: string): UseMiniGolfGameReturn {
     gameRef.current = optimistic;
     setGame(optimistic);
 
-    const { error: updateError } = await supabase
+    const { data: updatedRows, error: updateError } = await supabase
       .from('games')
       .update({
         board,
@@ -236,9 +263,10 @@ export function useMiniGolfGame(gameId: string): UseMiniGolfGameReturn {
         updated_at: new Date().toISOString(),
       })
       .eq('id', gameId)
-      .eq('board->>version', current.board.version);
+      .eq('board->>version', current.board.version)
+      .select();
 
-    if (updateError) {
+    if (updateError || !updatedRows || updatedRows.length === 0) {
       await fetchGame();
     }
   }, [gameId, fetchGame, getPlayerNumber]);
