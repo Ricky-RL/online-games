@@ -4,6 +4,8 @@ import { use, useMemo, useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useGame } from '@/hooks/useGame';
 import { useGameSounds } from '@/hooks/useSound';
+import { useNotifications } from '@/hooks/useNotifications';
+import { NotificationControls } from '@/components/NotificationControls';
 import { getGameStatus } from '@/lib/game-logic';
 import { checkWin } from '@/lib/game-logic';
 import { GameBoard } from '@/components/Board';
@@ -77,6 +79,13 @@ export default function GamePage({ params }: { params: Promise<{ gameId: string 
     if (!game || !myPlayerNumber) return null;
     return myPlayerNumber === 1 ? game.player2_name : game.player1_name;
   }, [game, myPlayerNumber]);
+
+  const { permissionState, requestPermission, isMuted, toggleMute } = useNotifications({
+    gameId,
+    isMyTurn,
+    opponentName,
+    gameType: 'connect-four',
+  });
 
   const handleMakeMove = useCallback(
     async (column: number) => {
@@ -197,11 +206,19 @@ export default function GamePage({ params }: { params: Promise<{ gameId: string 
   return (
     <>
       <div className="flex-1 flex flex-col items-center justify-center gap-6 p-4">
-        <TurnIndicator
-          currentPlayer={game.current_turn}
-          isMyTurn={isMyTurn}
-          playerName={opponentName}
-        />
+        <div className="flex items-center gap-4">
+          <TurnIndicator
+            currentPlayer={game.current_turn}
+            isMyTurn={isMyTurn}
+            playerName={opponentName}
+          />
+          <NotificationControls
+            permissionState={permissionState}
+            requestPermission={requestPermission}
+            isMuted={isMuted}
+            toggleMute={toggleMute}
+          />
+        </div>
 
         <GameBoard
           board={game.board}
