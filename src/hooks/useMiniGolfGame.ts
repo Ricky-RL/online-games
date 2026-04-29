@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
 import { MiniGolfGame, MiniGolfBoard, GamePhase, Shot } from '@/lib/mini-golf/types';
-import { playerIndex, recordScore, isHoleComplete, isGameComplete, getWinner } from '@/lib/mini-golf/logic';
+import { playerIndex, recordScore, isGameComplete, getWinner } from '@/lib/mini-golf/logic';
 import { recordMatchResult } from '@/lib/match-results';
 import { Player } from '@/lib/types';
 
@@ -31,11 +31,12 @@ export function useMiniGolfGame(gameId: string): UseMiniGolfGameReturn {
 
   const getPlayerNumber = useCallback((): Player | null => {
     const name = sessionStorage.getItem('player-name') || localStorage.getItem('player-name');
-    if (!game) return null;
-    if (name === game.player1_name) return 1;
-    if (name === game.player2_name) return 2;
+    const current = gameRef.current;
+    if (!current) return null;
+    if (name === current.player1_name) return 1;
+    if (name === current.player2_name) return 2;
     return null;
-  }, [game]);
+  }, []);
 
   const fetchGame = useCallback(async () => {
     const { data, error: fetchError } = await supabase
@@ -100,12 +101,14 @@ export function useMiniGolfGame(gameId: string): UseMiniGolfGameReturn {
 
     const newBoard = recordScore(current.board, current.board.currentHole, player, strokes);
 
-    const holeComplete = isHoleComplete(newBoard, newBoard.currentHole);
-    const gameComplete = holeComplete && isGameComplete(newBoard);
+    const gameComplete = isGameComplete(newBoard);
+    const playerIdx = playerIndex(player);
+    const allMyHolesDone = newBoard.scores.every(h => h[playerIdx] !== null);
 
     let phase: GamePhase = 'aiming';
     let currentTurn = current.current_turn;
     let winner = current.winner;
+    let nextHole = current.board.currentHole;
 
     if (gameComplete && !matchRecorded.current) {
       phase = 'finished';
@@ -150,16 +153,18 @@ export function useMiniGolfGame(gameId: string): UseMiniGolfGameReturn {
     } else if (gameComplete) {
       phase = 'finished';
       winner = getWinner(newBoard);
-    } else if (holeComplete) {
-      phase = 'scoreboard';
-    } else {
+    } else if (allMyHolesDone) {
       currentTurn = player === 1 ? 2 : 1;
+    } else {
+      nextHole = current.board.currentHole + 1;
     }
 
     const board: MiniGolfBoard = {
       ...newBoard,
+      currentHole: nextHole,
       currentStroke: 0,
       lastShot: null,
+      ready: [false, false],
       phase,
       version: current.board.version + 1,
     };

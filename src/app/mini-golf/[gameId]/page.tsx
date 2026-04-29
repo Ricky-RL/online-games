@@ -2,13 +2,12 @@
 
 import { use, useState, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useMiniGolfGame } from '@/hooks/useMiniGolfGame';
 import { useGameSounds } from '@/hooks/useSound';
 import { useNotifications } from '@/hooks/useNotifications';
 import { MiniGolfCanvas } from '@/components/mini-golf/Canvas';
 import { StrokeCounter } from '@/components/mini-golf/StrokeCounter';
-import { Scoreboard } from '@/components/mini-golf/Scoreboard';
 import { EndGameScreen } from '@/components/mini-golf/EndGameScreen';
 import { TurnIndicator } from '@/components/TurnIndicator';
 import { SettingsButton } from '@/components/SettingsButton';
@@ -16,13 +15,12 @@ import { NotificationControls } from '@/components/NotificationControls';
 import { EndGameDialog } from '@/components/EndGameDialog';
 import { LEVELS } from '@/lib/mini-golf/levels';
 import { Shot, GameStats, PENALTY_SCORE } from '@/lib/mini-golf/types';
-import { playerIndex } from '@/lib/mini-golf/logic';
 import { Player } from '@/lib/types';
 
 export default function MiniGolfGamePage({ params }: { params: Promise<{ gameId: string }> }) {
   const { gameId } = use(params);
   const router = useRouter();
-  const { game, loading, error, deleted, takeShot, recordHoleResult, setReady, forfeit, resetGame } = useMiniGolfGame(gameId);
+  const { game, loading, error, deleted, takeShot, recordHoleResult, forfeit, resetGame } = useMiniGolfGame(gameId);
   const { play } = useGameSounds();
   const [showForfeitDialog, setShowForfeitDialog] = useState(false);
   const [stats, setStats] = useState<GameStats>({ holesInOne: [], mostBounces: { hole: 0, count: 0 }, closestCall: { hole: 0, speed: 0 } });
@@ -126,24 +124,6 @@ export default function MiniGolfGamePage({ params }: { params: Promise<{ gameId:
           stats={stats}
           onPlayAgain={handlePlayAgain}
           onHome={handleHome}
-        />
-      </div>
-    );
-  }
-
-  if (board.phase === 'scoreboard') {
-    const myIdx = playerIndex(myPlayer);
-    const oppIdx = playerIndex(myPlayer === 1 ? 2 : 1);
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center p-4">
-        <Scoreboard
-          board={board}
-          player1Name={game.player1_name || 'Player 1'}
-          player2Name={game.player2_name || 'Player 2'}
-          myPlayer={myPlayer}
-          myReady={board.ready[myIdx]}
-          opponentReady={board.ready[oppIdx]}
-          onReady={setReady}
         />
       </div>
     );
