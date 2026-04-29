@@ -42,8 +42,8 @@ export default function MonopolyGamePage({ params }: { params: Promise<{ gameId:
   }
 
   const { board } = game;
-  const player1Name = game.player1_name ?? 'Player 1';
-  const player2Name = game.player2_name ?? 'Player 2';
+  const player1Name = game.player1_name ?? 'Waiting...';
+  const player2Name = game.player2_name ?? 'Waiting...';
 
   return (
     <div className="min-h-screen p-4 sm:p-6">
@@ -131,13 +131,15 @@ export default function MonopolyGamePage({ params }: { params: Promise<{ gameId:
                     onDone={endMyTurn}
                   />
                 )}
-                <motion.button
-                  onClick={endMyTurn}
-                  className="w-full px-6 py-3 rounded-xl bg-surface border border-border text-text-primary font-medium hover:bg-background transition-colors cursor-pointer"
-                  whileTap={{ scale: 0.95 }}
-                >
-                  End Turn
-                </motion.button>
+                {buildableProperties.length === 0 && (
+                  <motion.button
+                    onClick={endMyTurn}
+                    className="w-full px-6 py-3 rounded-xl bg-surface border border-border text-text-primary font-medium hover:bg-background transition-colors cursor-pointer"
+                    whileTap={{ scale: 0.95 }}
+                  >
+                    {board.lastRoll && board.lastRoll.dice[0] === board.lastRoll.dice[1] ? 'Roll Again (Doubles!)' : 'End Turn'}
+                  </motion.button>
+                )}
               </div>
             )}
 

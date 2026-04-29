@@ -29,8 +29,12 @@ export function PropertyCard({ board, player, onBuy, onPass }: PropertyCardProps
           <span className="font-semibold">${space.price}</span>
         </div>
         <div className="flex justify-between">
-          <span className="text-text-secondary">Base Rent</span>
-          <span>${space.rent[0]}</span>
+          <span className="text-text-secondary">
+            {space.type === 'utility' ? 'Rent' : space.type === 'railroad' ? 'Base Rent' : 'Base Rent'}
+          </span>
+          <span>
+            {space.type === 'utility' ? `${space.rent[0]}x dice roll` : `$${space.rent[0]}`}
+          </span>
         </div>
         <div className="flex justify-between">
           <span className="text-text-secondary">Your Cash</span>

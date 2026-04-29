@@ -180,4 +180,11 @@ describe('calculateNetWorth', () => {
     expect(p1).toBe(STARTING_CASH + 60 + 2 * HOUSE_VALUE); // cash + property price + 2 houses
     expect(p2).toBe(STARTING_CASH + 400); // cash + Shaughnessy price
   });
+
+  test('hotel counts as 4 houses + hotel value', () => {
+    let board = createInitialBoard();
+    board = { ...board, properties: { 1: { owner: 1, houses: 5 } } };
+    const [p1] = calculateNetWorth(board);
+    expect(p1).toBe(STARTING_CASH + 60 + 4 * HOUSE_VALUE + HOTEL_VALUE); // cash + price + 4 houses + hotel
+  });
 });

@@ -331,7 +331,7 @@ export function calculateNetWorth(board: MonopolyBoard): [number, number] {
     if (prop.houses > 0 && prop.houses <= 4) {
       worth[idx] += prop.houses * HOUSE_VALUE;
     } else if (prop.houses === 5) {
-      worth[idx] += HOTEL_VALUE; // 4 houses + hotel upgrade = $250
+      worth[idx] += 4 * HOUSE_VALUE + HOTEL_VALUE;
     }
   }
 
