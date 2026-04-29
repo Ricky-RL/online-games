@@ -114,17 +114,6 @@ export default function MiniGolfGamePage({ params }: { params: Promise<{ gameId:
   const { board } = game;
   const currentLevel = LEVELS[board.levels[board.currentHole]];
 
-  if (board.phase === 'waiting') {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-center">
-          <div className="w-8 h-8 border-2 border-board border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-          <p className="text-text-secondary">Waiting for opponent...</p>
-        </motion.div>
-      </div>
-    );
-  }
-
   if (board.phase === 'finished') {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center p-4">

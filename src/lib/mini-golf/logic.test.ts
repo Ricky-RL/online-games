@@ -22,10 +22,10 @@ describe('createInitialBoard', () => {
     expect(board.levels[2]).toBeLessThanOrEqual(14);
   });
 
-  it('initializes with null scores and phase waiting', () => {
+  it('initializes with null scores and phase aiming', () => {
     const board = createInitialBoard([0], [5], [10]);
     expect(board.scores).toEqual([[null, null], [null, null], [null, null]]);
-    expect(board.phase).toBe('waiting');
+    expect(board.phase).toBe('aiming');
     expect(board.currentHole).toBe(0);
     expect(board.currentStroke).toBe(0);
     expect(board.version).toBe(1);

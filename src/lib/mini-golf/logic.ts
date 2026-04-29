@@ -18,7 +18,7 @@ export function createInitialBoard(
     currentStroke: 0,
     lastShot: null,
     ready: [false, false],
-    phase: 'waiting',
+    phase: 'aiming',
     version: 1,
   };
 }
