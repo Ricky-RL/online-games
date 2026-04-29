@@ -109,6 +109,18 @@ function TicTacToeIcon() {
   );
 }
 
+function WhiteboardIcon() {
+  return (
+    <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
+      <rect x="3" y="5" width="22" height="18" rx="2" stroke="#FFBE0B" strokeWidth="2" fill="none" />
+      <rect x="7" y="9" width="6" height="6" rx="1" fill="#FFEB3B" opacity="0.8" />
+      <rect x="15" y="12" width="6" height="6" rx="1" fill="#80D8FF" opacity="0.8" />
+      <rect x="10" y="15" width="6" height="5" rx="1" fill="#FF8A80" opacity="0.7" />
+    </svg>
+  );
+}
+
+
 function PlayerSelector({ onSelect }: { onSelect: (name: PlayerName) => void }) {
   return (
     <motion.div
@@ -321,6 +333,14 @@ function GameSelection({ playerName, onChangePlayer }: { playerName: PlayerName;
             icon={<TicTacToeIcon />}
             delay={0.35}
             onClick={() => router.push('/tic-tac-toe')}
+          />
+          <ClickableGameCard
+            title="Whiteboard"
+            description="Shared sticky notes and doodles. Think together, draw together."
+            color="#FFBE0B"
+            icon={<WhiteboardIcon />}
+            delay={0.45}
+            onClick={() => router.push('/whiteboard')}
           />
         </div>
       </div>
