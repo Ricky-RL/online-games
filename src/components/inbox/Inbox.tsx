@@ -3,6 +3,7 @@
 import { motion } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import { useInbox } from '@/hooks/useInbox';
+import { supabase } from '@/lib/supabase';
 import type { InboxGame } from '@/lib/inbox-types';
 import { InboxGamesSection } from './InboxGamesSection';
 import { InboxWhiteboardSection } from './InboxWhiteboardSection';
@@ -25,16 +26,33 @@ export function Inbox({ playerName }: InboxProps) {
   const isEmpty = games.length === 0 && whiteboardActivity.length === 0;
   const isLoading = gamesLoading || whiteboardLoading;
 
-  const handleGameClick = (game: InboxGame) => {
+  const handleGameClick = async (game: InboxGame) => {
     markGamesRead();
     const iAmInGame = game.player1_name === playerName || game.player2_name === playerName;
 
     if (!iAmInGame) {
-      // Player hasn't joined yet — route through the lobby which handles joining
-      const lobbyPath = game.game_type === 'connect-four'
-        ? '/'
-        : `/${game.game_type}`;
-      router.push(lobbyPath);
+      // Player hasn't joined yet — join the game directly, then navigate to it
+      if (game.game_type === 'connect-four' || game.game_type === 'battleship') {
+        // These games don't have a separate lobby page; join via supabase directly
+        const isPlayer1Slot = game.player1_name === null;
+        const myId = playerName === 'Ricky'
+          ? '00000000-0000-0000-0000-000000000001'
+          : '00000000-0000-0000-0000-000000000002';
+
+        const updateField = isPlayer1Slot
+          ? { player1_id: myId, player1_name: playerName }
+          : { player2_id: myId, player2_name: playerName };
+
+        await supabase
+          .from('games')
+          .update({ ...updateField, updated_at: new Date().toISOString() })
+          .eq('id', game.id);
+
+        router.push(`/${game.game_type}/${game.id}`);
+      } else {
+        // Tic-tac-toe and checkers have lobby pages that handle joining
+        router.push(`/${game.game_type}`);
+      }
       return;
     }
 

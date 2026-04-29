@@ -103,15 +103,26 @@ export function useInbox(): UseInboxReturn {
       isUnread: new Date(item.created_at) > new Date(whiteboardLastReadAt),
     }));
 
-    const unreadGames = enrichedGames.filter(
+    // Combine games and whiteboard activity, sort by date, limit to 3 most recent
+    const combined: Array<{ type: 'game'; item: InboxGame; date: string } | { type: 'whiteboard'; item: WhiteboardActivityItem; date: string }> = [
+      ...enrichedGames.map((g) => ({ type: 'game' as const, item: g, date: g.updated_at })),
+      ...enrichedActivity.map((a) => ({ type: 'whiteboard' as const, item: a, date: a.created_at })),
+    ];
+    combined.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    const top3 = combined.slice(0, 3);
+
+    const limitedGames = top3.filter((x) => x.type === 'game').map((x) => x.item) as InboxGame[];
+    const limitedActivity = top3.filter((x) => x.type === 'whiteboard').map((x) => x.item) as WhiteboardActivityItem[];
+
+    const unreadGames = limitedGames.filter(
       (game) => new Date(game.updated_at) > new Date(gamesLastReadAt) && game.isMyTurn
     ).length;
 
-    const unreadWhiteboard = enrichedActivity.filter((item) => item.isUnread).length;
+    const unreadWhiteboard = limitedActivity.filter((item) => item.isUnread).length;
 
     return {
-      games: enrichedGames,
-      activity: enrichedActivity,
+      games: limitedGames,
+      activity: limitedActivity,
       unreadGames,
       unreadWhiteboard,
     };
