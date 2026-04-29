@@ -1,36 +1,90 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Connect Four
+
+A real-time multiplayer Connect Four game with satisfying micro-interactions — spring physics piece drops, sounds, and confetti celebrations. Built for two players to share a link and play from separate devices.
+
+## How It Works
+
+1. One player clicks "New Game" and shares the URL
+2. The other player opens the link on their device
+3. Play Connect Four in real-time — moves sync instantly via Supabase Realtime
+
+No accounts, no sign-up. Player identity is a random UUID in localStorage.
+
+## Tech Stack
+
+- **Next.js** (App Router) — framework
+- **Supabase** — Postgres database + Realtime subscriptions for live sync
+- **Framer Motion** — spring physics for piece drop animations
+- **canvas-confetti** — win celebrations
+- **Tailwind CSS** — styling
 
 ## Getting Started
 
-First, run the development server:
+### Prerequisites
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+- Node.js 18+
+- A [Supabase](https://supabase.com) project (free tier works)
+
+### Setup
+
+1. Clone the repo and install dependencies:
+
+   ```bash
+   npm install
+   ```
+
+2. Create a `.env.local` file with your Supabase credentials:
+
+   ```
+   NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
+   NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
+   ```
+
+3. Run the migration in your Supabase SQL editor:
+
+   ```sql
+   -- See supabase/migrations/001_create_games.sql
+   ```
+
+4. Enable Realtime on the `games` table in Supabase Dashboard.
+
+5. Start the dev server:
+
+   ```bash
+   npm run dev
+   ```
+
+   Open [http://localhost:3000](http://localhost:3000).
+
+## Scripts
+
+| Command | Description |
+|---------|-------------|
+| `npm run dev` | Start development server |
+| `npm run build` | Production build |
+| `npm run start` | Start production server |
+| `npm run lint` | Run ESLint |
+| `npm test` | Run tests in watch mode |
+| `npm run test:run` | Run tests once |
+
+## Project Structure
+
+```
+src/
+  app/
+    connect-four/[gameId]/page.tsx   # Game page (dynamic route per game)
+    page.tsx                          # Landing page
+  components/                         # Board, Cell, Piece, UI components
+  hooks/                              # useGame (Supabase sync), useSound
+  lib/
+    game-logic.ts                     # Win detection, move validation
+    supabase.ts                       # Supabase client
+    types.ts                          # TypeScript types
+    player-id.ts                      # localStorage player identity
+supabase/
+  migrations/                         # Database schema
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Deployment
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
-
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Deploy to Vercel — connect the repo and set the environment variables (`NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`).
