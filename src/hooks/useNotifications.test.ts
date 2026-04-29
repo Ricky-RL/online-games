@@ -152,4 +152,58 @@ describe('useNotifications', () => {
       expect(mockPlay).not.toHaveBeenCalled();
     });
   });
+
+  describe('browser notification', () => {
+    let mockNotification: ReturnType<typeof vi.fn>;
+
+    beforeEach(() => {
+      mockNotification = vi.fn();
+      vi.stubGlobal('Notification', Object.assign(mockNotification, {
+        permission: 'granted',
+        requestPermission: vi.fn().mockResolvedValue('granted'),
+      }));
+    });
+
+    it('shows browser notification when turn transitions, tab hidden, permission granted', () => {
+      const { rerender } = renderHook(
+        (props) => useNotifications(props),
+        {
+          initialProps: { gameId: 'game-1', isMyTurn: false, opponentName: 'Alice', gameType: 'connect-four' as const },
+        }
+      );
+      rerender({ gameId: 'game-1', isMyTurn: true, opponentName: 'Alice', gameType: 'connect-four' as const });
+      expect(mockNotification).toHaveBeenCalledWith(
+        'Alice played — it\'s your turn!',
+        expect.objectContaining({ body: 'Connect Four' })
+      );
+    });
+
+    it('does not show notification when muted', () => {
+      localStorage.setItem('notifications-muted', 'true');
+      const { rerender } = renderHook(
+        (props) => useNotifications(props),
+        {
+          initialProps: { gameId: 'game-1', isMyTurn: false, opponentName: 'Alice', gameType: 'connect-four' as const },
+        }
+      );
+      rerender({ gameId: 'game-1', isMyTurn: true, opponentName: 'Alice', gameType: 'connect-four' as const });
+      expect(mockNotification).not.toHaveBeenCalled();
+      localStorage.removeItem('notifications-muted');
+    });
+
+    it('does not show notification when permission is not granted', () => {
+      vi.stubGlobal('Notification', Object.assign(vi.fn(), {
+        permission: 'default',
+        requestPermission: vi.fn().mockResolvedValue('default'),
+      }));
+      const { rerender } = renderHook(
+        (props) => useNotifications(props),
+        {
+          initialProps: { gameId: 'game-1', isMyTurn: false, opponentName: 'Alice', gameType: 'connect-four' as const },
+        }
+      );
+      rerender({ gameId: 'game-1', isMyTurn: true, opponentName: 'Alice', gameType: 'connect-four' as const });
+      expect(Notification).not.toHaveBeenCalled();
+    });
+  });
 });

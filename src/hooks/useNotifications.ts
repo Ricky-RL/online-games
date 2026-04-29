@@ -94,7 +94,20 @@ export function useNotifications({
         playResult.catch(() => {});
       }
     }
-  }, [isMyTurn, isMuted, startFlashing, stopFlashing]);
+
+    // Browser notification
+    if (!isMuted && 'Notification' in window && Notification.permission === 'granted') {
+      const title = opponentName
+        ? `${opponentName} played — it's your turn!`
+        : "It's your turn!";
+      const body = gameType === 'connect-four' ? 'Connect Four' : 'Tic-Tac-Toe';
+      const notification = new Notification(title, { body });
+      notification.onclick = () => {
+        window.focus();
+        notification.close();
+      };
+    }
+  }, [isMyTurn, isMuted, opponentName, gameType, startFlashing, stopFlashing]);
 
   // Stop flashing when tab becomes visible
   useEffect(() => {
