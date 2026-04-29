@@ -4,23 +4,29 @@ import { useEffect } from 'react';
 import { motion } from 'framer-motion';
 import confetti from 'canvas-confetti';
 import type { Player } from '@/lib/types';
+import { useColors } from '@/contexts/PlayerColorsContext';
+import { confettiColors } from '@/lib/colors';
 
 interface WinCelebrationProps {
   winner: Player;
   winnerName: string | null;
   isMe: boolean;
   onPlayAgain: () => void;
-  actionLabel?: string;
+  onHome: () => void;
 }
 
-export function WinCelebration({ winner, winnerName, isMe, onPlayAgain, actionLabel = 'Play Again' }: WinCelebrationProps) {
+export function WinCelebration({ winner, winnerName, isMe, onPlayAgain, onHome }: WinCelebrationProps) {
+  const { player1Color, player2Color } = useColors();
+
   useEffect(() => {
+    const winnerColor = winner === 1 ? player1Color : player2Color;
+
     // Fire confetti on mount
     confetti({
       particleCount: 100,
       spread: 70,
       origin: { x: 0.5, y: 0.5 },
-      colors: winner === 1 ? ['#E63946', '#FF6B6B', '#FF9999'] : ['#FFBE0B', '#FFD93D', '#FFF3B0'],
+      colors: confettiColors(winnerColor),
     });
 
     // Fire a second burst after a short delay
@@ -33,7 +39,7 @@ export function WinCelebration({ winner, winnerName, isMe, onPlayAgain, actionLa
     }, 300);
 
     return () => clearTimeout(timer);
-  }, [winner]);
+  }, [winner, player1Color, player2Color]);
 
   const message = isMe ? 'You won!' : `${winnerName ?? 'Opponent'} wins!`;
   const color = winner === 1 ? 'text-player1' : 'text-player2';
@@ -53,12 +59,20 @@ export function WinCelebration({ winner, winnerName, isMe, onPlayAgain, actionLa
         {message}
       </motion.h2>
 
-      <button
-        onClick={onPlayAgain}
-        className="px-6 py-3 text-base font-medium rounded-xl bg-board text-white hover:bg-board-surface transition-colors shadow-lg cursor-pointer"
-      >
-        {actionLabel}
-      </button>
+      <div className="flex items-center gap-3">
+        <button
+          onClick={onHome}
+          className="px-6 py-3 text-base font-medium rounded-xl border border-border bg-surface text-text-secondary hover:text-text-primary hover:border-text-secondary/30 shadow-sm hover:shadow transition-all cursor-pointer"
+        >
+          Home
+        </button>
+        <button
+          onClick={onPlayAgain}
+          className="px-6 py-3 text-base font-medium rounded-xl bg-board text-white hover:bg-board-surface transition-colors shadow-lg cursor-pointer"
+        >
+          Play Again
+        </button>
+      </div>
     </motion.div>
   );
 }

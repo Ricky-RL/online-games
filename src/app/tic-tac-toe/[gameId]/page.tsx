@@ -131,7 +131,7 @@ export default function TicTacToeGamePage({ params }: { params: Promise<{ gameId
           winnerName={winnerName}
           isMe={isMe}
           onPlayAgain={handleReset}
-          actionLabel="Home"
+          onHome={handleReset}
         />
         <TicTacToeGameBoard
           board={game.board}

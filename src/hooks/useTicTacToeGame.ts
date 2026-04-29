@@ -244,16 +244,37 @@ export function useTicTacToeGame(gameId: string): UseTicTacToeGameReturn {
   );
 
   const resetGame = useCallback(async () => {
-    const { error: updateError } = await supabase
+    const { error: resetError } = await supabase
       .from('games')
-      .update({ game_type: 'ended', updated_at: new Date().toISOString() })
+      .update({
+        board: [[null, null, null], [null, null, null], [null, null, null]],
+        current_turn: 1,
+        winner: null,
+        player1_name: null,
+        player2_name: null,
+        player1_id: null,
+        player2_id: null,
+        updated_at: new Date().toISOString(),
+      })
       .eq('id', gameId);
 
-    if (!updateError) {
-      updateGame(null);
-      setDeleted(true);
+    if (resetError) {
+      console.error('Error resetting game:', resetError);
+      setError(resetError.message);
+      return;
     }
-  }, [gameId, updateGame]);
+
+    const { error: deleteError } = await supabase
+      .from('games')
+      .delete()
+      .eq('id', gameId);
+
+    if (deleteError) {
+      console.error('Error deleting game:', deleteError);
+    }
+
+    setDeleted(true);
+  }, [gameId]);
 
   return { game, loading, error, lastMove, deleted, makeMove, resetGame };
 }

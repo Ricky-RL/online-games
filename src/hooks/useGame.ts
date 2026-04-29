@@ -52,22 +52,14 @@ export function useGame(gameId: string): UseGameReturn {
 
     if (fetchError) {
       if (fetchError.code === 'PGRST116') {
-        updateGame(null);
         setDeleted(true);
         return null;
       }
       setError(fetchError.message);
       return null;
     }
-
-    if (data.game_type === 'ended') {
-      updateGame(null);
-      setDeleted(true);
-      return null;
-    }
-
     return data as Game;
-  }, [gameId, updateGame]);
+  }, [gameId]);
 
   // Initial fetch
   useEffect(() => {
@@ -101,6 +93,11 @@ export function useGame(gameId: string): UseGameReturn {
             optimisticBoard.current = null;
             return fresh;
           }
+          // If the board was fully reset (game ended), accept the fresh state.
+          if (totalMoves(fresh.board) === 0) {
+            optimisticBoard.current = null;
+            return fresh;
+          }
           if (totalMoves(fresh.board) < totalMoves(prev.board)) {
             return {
               ...prev,
@@ -115,8 +112,11 @@ export function useGame(gameId: string): UseGameReturn {
 
         if (JSON.stringify(fresh) === JSON.stringify(prev)) return prev;
 
-        // Guard against out-of-order poll responses regressing state
-        if (totalMoves(fresh.board) < totalMoves(prev.board)) {
+        // If the board was completely reset (e.g. game ended), accept it.
+        // Only guard against partial regressions from out-of-order polls.
+        const freshMoves = totalMoves(fresh.board);
+        const prevMoves = totalMoves(prev.board);
+        if (freshMoves < prevMoves && freshMoves > 0) {
           return prev;
         }
 
@@ -218,16 +218,41 @@ export function useGame(gameId: string): UseGameReturn {
   );
 
   const resetGame = useCallback(async () => {
-    const { error: updateError } = await supabase
+    // First, reset the board and clear player names so the game won't be
+    // matched by findMyGame even if the subsequent delete is delayed.
+    const { error: resetError } = await supabase
       .from('games')
-      .update({ game_type: 'ended', updated_at: new Date().toISOString() })
+      .update({
+        board: [[], [], [], [], [], [], []],
+        current_turn: 1,
+        winner: null,
+        player1_name: null,
+        player2_name: null,
+        player1_id: null,
+        player2_id: null,
+        updated_at: new Date().toISOString(),
+      })
       .eq('id', gameId);
 
-    if (!updateError) {
-      updateGame(null);
-      setDeleted(true);
+    if (resetError) {
+      console.error('Error resetting game:', resetError);
+      setError(resetError.message);
+      return;
     }
-  }, [gameId, updateGame]);
+
+    // Then delete the row entirely.
+    const { error: deleteError } = await supabase
+      .from('games')
+      .delete()
+      .eq('id', gameId);
+
+    if (deleteError) {
+      console.error('Error deleting game:', deleteError);
+      // Non-fatal: the game is already cleared, so proceed with redirect.
+    }
+
+    setDeleted(true);
+  }, [gameId]);
 
   return { game, loading, error, lastMove, deleted, makeMove, resetGame };
 }

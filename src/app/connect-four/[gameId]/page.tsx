@@ -31,7 +31,9 @@ export default function GamePage({ params }: { params: Promise<{ gameId: string 
   }, []);
 
   useEffect(() => {
-    if (deleted) router.push('/');
+    if (deleted) {
+      router.push('/');
+    }
   }, [deleted, router]);
 
   const gameStatus = useMemo(() => {
@@ -86,8 +88,7 @@ export default function GamePage({ params }: { params: Promise<{ gameId: string 
 
   const handleReset = useCallback(async () => {
     await resetGame();
-    router.push('/');
-  }, [resetGame, router]);
+  }, [resetGame]);
 
   const handleEndGameClick = useCallback(() => {
     setShowEndDialog(true);
@@ -132,6 +133,7 @@ export default function GamePage({ params }: { params: Promise<{ gameId: string 
             winnerName={winnerName}
             isMe={isMe}
             onPlayAgain={handleEndGameClick}
+            onHome={() => router.push('/')}
           />
           <GameBoard
             board={game.board}
@@ -168,12 +170,20 @@ export default function GamePage({ params }: { params: Promise<{ gameId: string 
               disabled={true}
             />
           </div>
-          <button
-            onClick={handleEndGameClick}
-            className="px-6 py-3 text-base font-medium rounded-xl bg-board text-white hover:bg-board-surface transition-colors cursor-pointer"
-          >
-            Play Again
-          </button>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => router.push('/')}
+              className="px-6 py-3 text-base font-medium rounded-xl border border-border bg-surface text-text-secondary hover:text-text-primary hover:border-text-secondary/30 shadow-sm hover:shadow transition-all cursor-pointer"
+            >
+              Home
+            </button>
+            <button
+              onClick={handleEndGameClick}
+              className="px-6 py-3 text-base font-medium rounded-xl bg-board text-white hover:bg-board-surface transition-colors cursor-pointer"
+            >
+              Play Again
+            </button>
+          </div>
         </div>
         <EndGameDialog
           open={showEndDialog}
