@@ -33,6 +33,13 @@ export default function WordSearchGamePage({ params }: { params: Promise<{ gameI
     setFoundWords((prev) => prev.includes(word) ? prev : [...prev, word]);
   }, [timerStarted]);
 
+  const handleFirstInteraction = useCallback(() => {
+    if (!timerStarted) {
+      setTimerStarted(true);
+      startTimeRef.current = Date.now();
+    }
+  }, [timerStarted]);
+
   const handleSubmit = useCallback(async () => {
     if (submitted || !startTimeRef.current) return;
     setSubmitted(true);
@@ -148,6 +155,7 @@ export default function WordSearchGamePage({ params }: { params: Promise<{ gameI
         words={board.words}
         foundWords={foundWords}
         onWordFound={handleWordFound}
+        onFirstInteraction={handleFirstInteraction}
         disabled={submitted}
       />
 
@@ -166,7 +174,7 @@ export default function WordSearchGamePage({ params }: { params: Promise<{ gameI
       </motion.button>
 
       {!timerStarted && (
-        <p className="text-xs text-text-secondary">Tap a letter to start the timer</p>
+        <p className="text-xs text-text-secondary">Drag across letters to start</p>
       )}
     </div>
   );

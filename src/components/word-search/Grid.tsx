@@ -10,10 +10,11 @@ interface GridProps {
   words: WordPlacement[];
   foundWords: string[];
   onWordFound: (word: string) => void;
+  onFirstInteraction?: () => void;
   disabled?: boolean;
 }
 
-export function Grid({ grid, words, foundWords, onWordFound, disabled }: GridProps) {
+export function Grid({ grid, words, foundWords, onWordFound, onFirstInteraction, disabled }: GridProps) {
   const [selecting, setSelecting] = useState(false);
   const [startCell, setStartCell] = useState<[number, number] | null>(null);
   const [currentCell, setCurrentCell] = useState<[number, number] | null>(null);
@@ -55,6 +56,7 @@ export function Grid({ grid, words, foundWords, onWordFound, disabled }: GridPro
 
   const handlePointerDown = (row: number, col: number) => {
     if (disabled) return;
+    if (onFirstInteraction) onFirstInteraction();
     setSelecting(true);
     setStartCell([row, col]);
     setCurrentCell([row, col]);
