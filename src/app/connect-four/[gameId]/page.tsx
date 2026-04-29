@@ -31,7 +31,9 @@ export default function GamePage({ params }: { params: Promise<{ gameId: string 
   }, []);
 
   useEffect(() => {
-    if (deleted) router.push('/connect-four');
+    if (deleted) {
+      router.push('/');
+    }
   }, [deleted, router]);
 
   const gameStatus = useMemo(() => {
@@ -86,8 +88,7 @@ export default function GamePage({ params }: { params: Promise<{ gameId: string 
 
   const handleReset = useCallback(async () => {
     await resetGame();
-    router.push('/connect-four');
-  }, [resetGame, router]);
+  }, [resetGame]);
 
   const handleEndGameClick = useCallback(() => {
     setShowEndDialog(true);

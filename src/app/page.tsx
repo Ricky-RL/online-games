@@ -1,22 +1,25 @@
 'use client';
 
-import { useRef, useState, useEffect } from 'react';
-import Link from 'next/link';
+import { useRef, useState, useEffect, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 import { motion, useInView, AnimatePresence } from 'framer-motion';
+import { supabase } from '@/lib/supabase';
+import { createEmptyBoard } from '@/lib/game-logic';
 
 type PlayerName = 'Ricky' | 'Lilian';
 
-interface GameCardProps {
+interface ClickableGameCardProps {
   title: string;
   description: string;
-  href: string;
   color: string;
   icon: React.ReactNode;
   delay?: number;
+  onClick: () => void;
+  loading?: boolean;
 }
 
-function GameCard({ title, description, href, color, icon, delay = 0 }: GameCardProps) {
-  const ref = useRef<HTMLAnchorElement>(null);
+function ClickableGameCard({ title, description, color, icon, delay = 0, onClick, loading }: ClickableGameCardProps) {
+  const ref = useRef<HTMLButtonElement>(null);
   const isInView = useInView(ref, { once: true, margin: '-50px' });
 
   return (
@@ -25,10 +28,11 @@ function GameCard({ title, description, href, color, icon, delay = 0 }: GameCard
       animate={isInView ? { opacity: 1, y: 0 } : { opacity: 0, y: 30 }}
       transition={{ duration: 0.6, delay, ease: [0.21, 0.47, 0.32, 0.98] }}
     >
-      <Link
+      <button
         ref={ref}
-        href={href}
-        className="group block relative overflow-hidden rounded-3xl border border-border bg-surface p-8 sm:p-10 transition-all duration-300 hover:shadow-xl hover:shadow-black/[0.03] hover:-translate-y-1 hover:border-transparent"
+        onClick={onClick}
+        disabled={loading}
+        className="group block relative overflow-hidden rounded-3xl border border-border bg-surface p-8 sm:p-10 transition-all duration-300 hover:shadow-xl hover:shadow-black/[0.03] hover:-translate-y-1 hover:border-transparent w-full text-left cursor-pointer disabled:opacity-70 disabled:cursor-wait"
       >
         {/* Subtle gradient overlay on hover */}
         <div
@@ -59,7 +63,7 @@ function GameCard({ title, description, href, color, icon, delay = 0 }: GameCard
 
           {/* Play indicator */}
           <div className="flex items-center gap-2 text-sm font-medium text-text-secondary group-hover:text-text-primary transition-colors">
-            <span>Play</span>
+            <span>{loading ? 'Connecting...' : 'Play'}</span>
             <svg
               className="w-4 h-4 transition-transform duration-300 group-hover:translate-x-1"
               fill="none"
@@ -71,7 +75,7 @@ function GameCard({ title, description, href, color, icon, delay = 0 }: GameCard
             </svg>
           </div>
         </div>
-      </Link>
+      </button>
     </motion.div>
   );
 }
@@ -144,7 +148,147 @@ function PlayerSelector({ onSelect }: { onSelect: (name: PlayerName) => void }) 
   );
 }
 
+const PLAYER_IDS: Record<PlayerName, string> = {
+  Ricky: '00000000-0000-0000-0000-000000000001',
+  Lilian: '00000000-0000-0000-0000-000000000002',
+};
+
 function GameSelection({ playerName, onChangePlayer }: { playerName: PlayerName; onChangePlayer: () => void }) {
+  const router = useRouter();
+  const [connecting, setConnecting] = useState(false);
+
+  const handlePlayConnectFour = useCallback(async () => {
+    setConnecting(true);
+
+    const isRicky = playerName === 'Ricky';
+    const myId = PLAYER_IDS[playerName];
+
+    async function findGames() {
+      const { data } = await supabase
+        .from('games')
+        .select('*')
+        .eq('game_type', 'connect-four')
+        .is('winner', null)
+        .order('created_at', { ascending: false })
+        .limit(10);
+      return data;
+    }
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    function findMyGame(games: any[] | null) {
+      if (!games) return { activeGame: null, joinableGame: null };
+
+      const activeGame = games.find((g) => {
+        if (isRicky) return g.player1_name === 'Ricky';
+        return g.player2_name === 'Lilian';
+      }) || null;
+
+      const joinableGame = games.find((g) => {
+        if (isRicky) {
+          return g.player1_name === null && g.player2_name === 'Lilian';
+        } else {
+          return g.player2_name === null && g.player1_name === 'Ricky';
+        }
+      }) || null;
+
+      return { activeGame, joinableGame };
+    }
+
+    async function joinGame(gameId: string) {
+      const updateField = isRicky
+        ? { player1_id: myId, player1_name: playerName }
+        : { player2_id: myId, player2_name: playerName };
+
+      const { error: joinError } = await supabase
+        .from('games')
+        .update({
+          ...updateField,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', gameId)
+        .select()
+        .single();
+
+      if (joinError) {
+        console.error('Error joining game:', joinError);
+        setConnecting(false);
+        return false;
+      }
+      return true;
+    }
+
+    // First attempt
+    const existingGames = await findGames();
+    let { activeGame, joinableGame } = findMyGame(existingGames);
+
+    if (activeGame) {
+      router.push(`/connect-four/${activeGame.id}`);
+      return;
+    }
+
+    if (joinableGame) {
+      if (await joinGame(joinableGame.id)) {
+        router.push(`/connect-four/${joinableGame.id}`);
+      }
+      return;
+    }
+
+    // Wait and retry to avoid race condition
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+
+    const retryGames = await findGames();
+    ({ activeGame, joinableGame } = findMyGame(retryGames));
+
+    if (activeGame) {
+      router.push(`/connect-four/${activeGame.id}`);
+      return;
+    }
+
+    if (joinableGame) {
+      if (await joinGame(joinableGame.id)) {
+        router.push(`/connect-four/${joinableGame.id}`);
+      }
+      return;
+    }
+
+    // No game found -- create one
+    const insertData = isRicky
+      ? {
+          game_type: 'connect-four',
+          board: createEmptyBoard(),
+          current_turn: 1 as const,
+          winner: null,
+          player1_id: myId,
+          player1_name: playerName,
+          player2_id: null,
+          player2_name: null,
+        }
+      : {
+          game_type: 'connect-four',
+          board: createEmptyBoard(),
+          current_turn: 1 as const,
+          winner: null,
+          player1_id: null,
+          player1_name: null,
+          player2_id: myId,
+          player2_name: playerName,
+        };
+
+    const { data, error } = await supabase
+      .from('games')
+      .insert(insertData)
+      .select('id')
+      .single();
+
+    if (error || !data) {
+      console.error('Error creating game:', error);
+      setConnecting(false);
+      return;
+    }
+
+    router.push(`/connect-four/${data.id}`);
+  }, [playerName, router]);
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -168,13 +312,14 @@ function GameSelection({ playerName, onChangePlayer }: { playerName: PlayerName;
       {/* Games grid */}
       <div className="max-w-3xl mx-auto">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-          <GameCard
+          <ClickableGameCard
             title="Connect Four"
             description="Drop pieces, connect four in a row. Classic strategy for two."
-            href="/connect-four"
             color="#E63946"
             icon={<ConnectFourIcon />}
             delay={0.2}
+            onClick={handlePlayConnectFour}
+            loading={connecting}
           />
           <ComingSoonCard delay={0.35} />
         </div>
