@@ -100,6 +100,19 @@ function SnakesAndLaddersMini() {
   );
 }
 
+function WordSearchMini() {
+  return (
+    <div className="w-8 h-8 rounded-lg bg-[#6B48FF]/10 flex items-center justify-center">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+        <rect x="1" y="1" width="14" height="14" rx="2" stroke="#6B48FF" strokeWidth="1.2" opacity="0.6" />
+        <text x="3" y="7" fontSize="4" fill="#6B48FF" opacity="0.8" fontFamily="monospace">AB</text>
+        <text x="3" y="12" fontSize="4" fill="#6B48FF" opacity="0.8" fontFamily="monospace">CD</text>
+        <line x1="3" y1="5" x2="10" y2="5" stroke="#6B48FF" strokeWidth="1.5" opacity="0.9" strokeLinecap="round" />
+      </svg>
+    </div>
+  );
+}
+
 function GameIcon({ gameType }: { gameType: InboxGameType }) {
   switch (gameType) {
     case 'connect-four': return <ConnectFourMini />;
@@ -109,6 +122,7 @@ function GameIcon({ gameType }: { gameType: InboxGameType }) {
     case 'mini-golf': return <MiniGolfMini />;
     case 'jenga': return <JengaMini />;
     case 'snakes-and-ladders': return <SnakesAndLaddersMini />;
+    case 'word-search': return <WordSearchMini />;
   }
 }
 
@@ -121,6 +135,7 @@ function gameLabel(gameType: InboxGameType): string {
     case 'mini-golf': return 'Mini Golf';
     case 'jenga': return 'Jenga';
     case 'snakes-and-ladders': return 'Snakes & Ladders';
+    case 'word-search': return 'Word Search';
   }
 }
 

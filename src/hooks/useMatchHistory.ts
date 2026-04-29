@@ -7,13 +7,13 @@ const POLL_INTERVAL_MS = 5000;
 
 export interface MatchResult {
   id: string;
-  game_type: 'connect-four' | 'tic-tac-toe' | 'wordle' | 'mini-golf' | 'jenga' | 'snakes-and-ladders';
+  game_type: 'connect-four' | 'tic-tac-toe' | 'wordle' | 'mini-golf' | 'jenga' | 'snakes-and-ladders' | 'word-search';
   winner_id: string | null;
   winner_name: string | null;
   loser_id: string | null;
   loser_name: string | null;
   is_draw: boolean;
-  metadata: { guessCount?: number; won?: boolean; totalMoves?: number } | null;
+  metadata: { guessCount?: number; won?: boolean; totalMoves?: number; theme?: string; p1Words?: number; p2Words?: number; p1Time?: number; p2Time?: number } | null;
   player1_id: string;
   player1_name: string;
   player2_id: string;
@@ -68,6 +68,17 @@ function computeStats(results: MatchResult[]): LeaderboardStats {
       if (r.metadata?.won) {
         wordle_won++;
         wordle_total_guesses += r.metadata.guessCount ?? 0;
+      }
+      continue;
+    }
+
+    if (r.game_type === 'word-search') {
+      if (r.is_draw) {
+        draws++;
+      } else if (r.winner_name?.toLowerCase() === 'ricky') {
+        ricky_wins++;
+      } else if (r.winner_name?.toLowerCase() === 'lilian') {
+        lilian_wins++;
       }
       continue;
     }

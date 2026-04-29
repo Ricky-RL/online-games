@@ -3,13 +3,13 @@ import { useState } from 'react';
 import { motion } from 'framer-motion';
 interface MatchResult {
   id: string;
-  game_type: 'connect-four' | 'tic-tac-toe' | 'wordle' | 'mini-golf' | 'jenga' | 'snakes-and-ladders';
+  game_type: 'connect-four' | 'tic-tac-toe' | 'wordle' | 'mini-golf' | 'jenga' | 'snakes-and-ladders' | 'word-search';
   winner_id: string | null;
   winner_name: string | null;
   loser_id: string | null;
   loser_name: string | null;
   is_draw: boolean;
-  metadata: { guessCount?: number; won?: boolean; totalMoves?: number } | null;
+  metadata: { guessCount?: number; won?: boolean; totalMoves?: number; theme?: string; p1Words?: number; p2Words?: number; p1Time?: number; p2Time?: number } | null;
   player1_id: string;
   player1_name: string;
   player2_id: string;
@@ -42,6 +42,7 @@ function gameIcon(gameType: MatchResult['game_type']): string {
     case 'mini-golf': return '⛳';
     case 'jenga': return '▮▮';
     case 'snakes-and-ladders': return '🎲';
+    case 'word-search': return '🔍';
   }
 }
 function gameLabel(gameType: MatchResult['game_type']): string {
@@ -52,6 +53,7 @@ function gameLabel(gameType: MatchResult['game_type']): string {
     case 'mini-golf': return 'Mini Golf';
     case 'jenga': return 'Jenga';
     case 'snakes-and-ladders': return 'Snakes & Ladders';
+    case 'word-search': return 'Word Search';
   }
 }
 function outcomeText(result: MatchResult): string {
@@ -61,6 +63,14 @@ function outcomeText(result: MatchResult): string {
       return `Solved in ${guesses} guess${guesses === 1 ? '' : 'es'}`;
     }
     return `Failed (${guesses} guesses)`;
+  }
+  if (result.game_type === 'word-search') {
+    if (result.is_draw) return 'Draw';
+    const meta = result.metadata;
+    if (meta?.p1Words !== undefined && meta?.p2Words !== undefined) {
+      return `${result.winner_name} won (${Math.max(meta.p1Words, meta.p2Words)} words)`;
+    }
+    return `${result.winner_name} won`;
   }
   if (result.is_draw) return 'Draw';
   return `${result.winner_name} won`;
