@@ -117,6 +117,22 @@ export function useWhiteboard(): UseWhiteboardReturn {
       const created = data as WhiteboardNote;
       setNotes((prev) => [...prev, created]);
       setError(null);
+
+      // Fire-and-forget: log activity after note is created (needs the ID)
+      const preview = params.contentType === 'drawing'
+        ? '[drawing]'
+        : (params.textContent ?? '').slice(0, 50) || null;
+      supabase
+        .from('whiteboard_activity')
+        .insert({
+          note_id: created.id,
+          action: 'created',
+          actor_name: myName,
+          note_preview: preview,
+          note_color: params.color,
+        })
+        .then(() => {});
+
       return created;
     },
     []
@@ -182,6 +198,24 @@ export function useWhiteboard(): UseWhiteboardReturn {
         setError(updateError.message);
       } else {
         setError(null);
+
+        // Fire-and-forget: log content update activity
+        const myName = getMyName();
+        if (myName) {
+          const preview = params.drawingData !== undefined
+            ? '[drawing]'
+            : (params.textContent ?? '').slice(0, 50) || null;
+          supabase
+            .from('whiteboard_activity')
+            .insert({
+              note_id: noteId,
+              action: 'updated',
+              actor_name: myName,
+              note_preview: preview,
+              note_color: null,
+            })
+            .then(() => {});
+        }
       }
     },
     []
@@ -229,8 +263,29 @@ export function useWhiteboard(): UseWhiteboardReturn {
 
   const deleteNote = useCallback(
     async (noteId: string): Promise<void> => {
+      // Capture note data before removing from state for activity logging
+      const noteToDelete = notes.find((n) => n.id === noteId);
+
       deletedIds.current.add(noteId);
       setNotes((prev) => prev.filter((n) => n.id !== noteId));
+
+      // Fire-and-forget: log delete activity alongside the delete
+      const myName = getMyName();
+      if (myName && noteToDelete) {
+        const preview = noteToDelete.content_type === 'drawing'
+          ? '[drawing]'
+          : noteToDelete.text_content.slice(0, 50) || null;
+        supabase
+          .from('whiteboard_activity')
+          .insert({
+            note_id: noteId,
+            action: 'deleted',
+            actor_name: myName,
+            note_preview: preview,
+            note_color: noteToDelete.color,
+          })
+          .then(() => {});
+      }
 
       const { error: deleteError } = await supabase
         .from('whiteboard_notes')
@@ -246,7 +301,7 @@ export function useWhiteboard(): UseWhiteboardReturn {
         setError(null);
       }
     },
-    [fetchNotes]
+    [fetchNotes, notes]
   );
 
   return {

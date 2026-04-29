@@ -3,14 +3,12 @@
 import { useRef, useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion, useInView, AnimatePresence } from 'framer-motion';
-import { supabase } from '@/lib/supabase';
-import { createEmptyBoard } from '@/lib/game-logic';
-import { generateAnswerIndex } from '@/lib/wordle-logic';
 import { SettingsButton } from '@/components/SettingsButton';
 import { Leaderboard } from '@/components/Leaderboard';
 import { MatchHistory } from '@/components/MatchHistory';
 import { ResetStatsDialog } from '@/components/ResetStatsDialog';
 import { useMatchHistory } from '@/hooks/useMatchHistory';
+import { Inbox } from '@/components/inbox';
 
 type PlayerName = 'Ricky' | 'Lilian';
 
@@ -32,7 +30,7 @@ function ClickableGameCard({ title, description, color, icon, delay = 0, onClick
     <motion.div
       initial={{ opacity: 0, y: 30 }}
       animate={isInView ? { opacity: 1, y: 0 } : { opacity: 0, y: 30 }}
-      transition={{ duration: 0.6, delay, ease: [0.21, 0.47, 0.32, 0.98] }}
+      transition={{ duration: 0.4, delay, ease: [0.21, 0.47, 0.32, 0.98] }}
     >
       <button
         ref={ref}
@@ -144,6 +142,29 @@ function WordleIcon() {
   );
 }
 
+function CheckersIcon() {
+  return (
+    <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
+      <circle cx="9" cy="9" r="4.5" fill="#A0724A" opacity="0.9" />
+      <circle cx="19" cy="9" r="4.5" fill="#E63946" opacity="0.9" />
+      <circle cx="9" cy="19" r="4.5" fill="#FFBE0B" opacity="0.9" />
+      <circle cx="19" cy="19" r="4.5" fill="#A0724A" opacity="0.9" />
+    </svg>
+  );
+}
+
+function BattleshipIcon() {
+  return (
+    <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
+      <path d="M4 18L6 22H22L24 18H4Z" fill="#E63946" opacity="0.8" />
+      <rect x="8" y="14" width="12" height="4" rx="1" fill="#FFBE0B" opacity="0.7" />
+      <rect x="13" y="8" width="2" height="6" fill="#FFBE0B" opacity="0.6" />
+      <path d="M15 8L20 10L15 12Z" fill="#E63946" opacity="0.7" />
+      <path d="M2 24Q7 22 14 24Q21 26 26 24" stroke="#80D8FF" strokeWidth="1.5" fill="none" opacity="0.5" />
+    </svg>
+  );
+}
+
 
 function PlayerSelector({ onSelect }: { onSelect: (name: PlayerName) => void }) {
   return (
@@ -151,7 +172,7 @@ function PlayerSelector({ onSelect }: { onSelect: (name: PlayerName) => void }) 
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -20 }}
-      transition={{ duration: 0.5, ease: [0.21, 0.47, 0.32, 0.98] }}
+      transition={{ duration: 0.35, ease: [0.21, 0.47, 0.32, 0.98] }}
       className="flex flex-col items-center gap-8 text-center"
     >
       <p className="text-lg sm:text-xl text-text-secondary leading-relaxed">
@@ -195,6 +216,11 @@ function GameSelection({ playerName, onChangePlayer }: { playerName: PlayerName;
 
   const handlePlayConnectFour = useCallback(async () => {
     setConnecting('connect-four');
+
+    const [{ supabase }, { createEmptyBoard }] = await Promise.all([
+      import('@/lib/supabase'),
+      import('@/lib/game-logic'),
+    ]);
 
     const isRicky = playerName === 'Ricky';
     const myId = PLAYER_IDS[playerName];
@@ -328,6 +354,11 @@ function GameSelection({ playerName, onChangePlayer }: { playerName: PlayerName;
   const handlePlayWordle = useCallback(async () => {
     setConnecting('wordle');
 
+    const [{ supabase }, { generateAnswerIndex }] = await Promise.all([
+      import('@/lib/supabase'),
+      import('@/lib/wordle-logic'),
+    ]);
+
     const isRicky = playerName === 'Ricky';
     const myId = PLAYER_IDS[playerName];
 
@@ -458,11 +489,173 @@ function GameSelection({ playerName, onChangePlayer }: { playerName: PlayerName;
     router.push(`/wordle/${data.id}`);
   }, [playerName, router]);
 
+  const handlePlayBattleship = useCallback(async () => {
+    setConnecting('battleship');
+
+    const [{ supabase }, { generateRandomPlacement }] = await Promise.all([
+      import('@/lib/supabase'),
+      import('@/lib/battleship-logic'),
+    ]);
+
+    const isRicky = playerName === 'Ricky';
+    const myId = PLAYER_IDS[playerName];
+
+    async function findGames() {
+      const { data } = await supabase
+        .from('games')
+        .select('*')
+        .eq('game_type', 'battleship')
+        .is('winner', null)
+        .order('created_at', { ascending: false })
+        .limit(10);
+      return data;
+    }
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    function findMyGame(games: any[] | null) {
+      if (!games) return { activeGame: null, joinableGame: null };
+
+      const activeGame = games.find((g) => {
+        if (isRicky) return g.player1_name === 'Ricky';
+        return g.player2_name === 'Lilian';
+      }) || null;
+
+      const joinableGame = games.find((g) => {
+        if (isRicky) {
+          return g.player1_name === null && g.player2_name === 'Lilian';
+        } else {
+          return g.player2_name === null && g.player1_name === 'Ricky';
+        }
+      }) || null;
+
+      return { activeGame, joinableGame };
+    }
+
+    async function joinGame(gameId: string) {
+      const { data: gameData } = await supabase
+        .from('games')
+        .select('board')
+        .eq('id', gameId)
+        .single();
+
+      if (!gameData) {
+        setConnecting(null);
+        return false;
+      }
+
+      const currentBoard = gameData.board as { player1Ships: unknown[]; player2Ships: unknown[]; player1Attacks: unknown[]; player2Attacks: unknown[]; phase: string };
+      const updatedBoard = {
+        ...currentBoard,
+        player1Ships: isRicky ? generateRandomPlacement() : currentBoard.player1Ships,
+        player2Ships: isRicky ? currentBoard.player2Ships : generateRandomPlacement(),
+        phase: 'playing',
+      };
+
+      const updateField = isRicky
+        ? { player1_id: myId, player1_name: playerName }
+        : { player2_id: myId, player2_name: playerName };
+
+      const { error: joinError } = await supabase
+        .from('games')
+        .update({
+          ...updateField,
+          board: updatedBoard,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', gameId)
+        .select()
+        .single();
+
+      if (joinError) {
+        console.error('Error joining game:', joinError);
+        setConnecting(null);
+        return false;
+      }
+      return true;
+    }
+
+    const existingGames = await findGames();
+    let { activeGame, joinableGame } = findMyGame(existingGames);
+
+    if (activeGame) {
+      router.push(`/battleship/${activeGame.id}`);
+      return;
+    }
+
+    if (joinableGame) {
+      if (await joinGame(joinableGame.id)) {
+        router.push(`/battleship/${joinableGame.id}`);
+      }
+      return;
+    }
+
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+
+    const retryGames = await findGames();
+    ({ activeGame, joinableGame } = findMyGame(retryGames));
+
+    if (activeGame) {
+      router.push(`/battleship/${activeGame.id}`);
+      return;
+    }
+
+    if (joinableGame) {
+      if (await joinGame(joinableGame.id)) {
+        router.push(`/battleship/${joinableGame.id}`);
+      }
+      return;
+    }
+
+    const board = {
+      player1Ships: isRicky ? generateRandomPlacement() : [],
+      player2Ships: isRicky ? [] : generateRandomPlacement(),
+      player1Attacks: [],
+      player2Attacks: [],
+      phase: 'setup',
+    };
+
+    const insertData = isRicky
+      ? {
+          game_type: 'battleship',
+          board,
+          current_turn: 1 as const,
+          winner: null,
+          player1_id: myId,
+          player1_name: playerName,
+          player2_id: null,
+          player2_name: null,
+        }
+      : {
+          game_type: 'battleship',
+          board,
+          current_turn: 1 as const,
+          winner: null,
+          player1_id: null,
+          player1_name: null,
+          player2_id: myId,
+          player2_name: playerName,
+        };
+
+    const { data, error } = await supabase
+      .from('games')
+      .insert(insertData)
+      .select('id')
+      .single();
+
+    if (error || !data) {
+      console.error('Error creating game:', error);
+      setConnecting(null);
+      return;
+    }
+
+    router.push(`/battleship/${data.id}`);
+  }, [playerName, router]);
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.6, delay: 0.1, ease: [0.21, 0.47, 0.32, 0.98] }}
+      transition={{ duration: 0.4, delay: 0.05, ease: [0.21, 0.47, 0.32, 0.98] }}
       className="w-full"
     >
       {/* Player greeting and switch */}
@@ -487,15 +680,18 @@ function GameSelection({ playerName, onChangePlayer }: { playerName: PlayerName;
         />
       )}
 
+      {/* Inbox */}
+      <Inbox playerName={playerName} />
+
       {/* Games grid */}
-      <div className="max-w-3xl mx-auto">
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+      <div className="max-w-5xl mx-auto">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
           <ClickableGameCard
             title="Connect Four"
             description="Drop pieces, connect four in a row. Classic strategy for two."
             color="#E63946"
             icon={<ConnectFourIcon />}
-            delay={0.2}
+            delay={0.1}
             onClick={handlePlayConnectFour}
             loading={connecting === 'connect-four'}
           />
@@ -513,16 +709,33 @@ function GameSelection({ playerName, onChangePlayer }: { playerName: PlayerName;
             description="X and O, three in a row. Quick rounds, pure fun."
             color="#FFBE0B"
             icon={<TicTacToeIcon />}
-            delay={0.35}
+            delay={0.15}
             onClick={() => router.push('/tic-tac-toe')}
+          />
+          <ClickableGameCard
+            title="Checkers"
+            description="Jump and capture across the board. Classic strategy for two."
+            color="#A0724A"
+            icon={<CheckersIcon />}
+            delay={0.2}
+            onClick={() => router.push('/checkers')}
           />
           <ClickableGameCard
             title="Whiteboard"
             description="Shared sticky notes and doodles. Think together, draw together."
             color="#FFBE0B"
             icon={<WhiteboardIcon />}
-            delay={0.45}
+            delay={0.25}
             onClick={() => router.push('/whiteboard')}
+          />
+          <ClickableGameCard
+            title="Battleship"
+            description="Hunt and sink the fleet. Fire shots, track hits, claim the sea."
+            color="#1D3557"
+            icon={<BattleshipIcon />}
+            delay={0.3}
+            onClick={handlePlayBattleship}
+            loading={connecting === 'battleship'}
           />
         </div>
       </div>
@@ -571,14 +784,14 @@ export default function Home() {
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8, ease: [0.21, 0.47, 0.32, 0.98] }}
+          transition={{ duration: 0.35, ease: [0.21, 0.47, 0.32, 0.98] }}
           className="flex flex-col items-center gap-6 text-center max-w-xl"
         >
           {/* Decorative dots */}
           <motion.div
             initial={{ opacity: 0, scale: 0.8 }}
             animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.6, delay: 0.2 }}
+            transition={{ duration: 0.4, delay: 0.1 }}
             className="flex items-center gap-2"
           >
             <div className="w-2.5 h-2.5 rounded-full bg-player1 opacity-70" />
@@ -618,7 +831,7 @@ export default function Home() {
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          transition={{ duration: 1, delay: 0.8 }}
+          transition={{ duration: 0.6, delay: 0.4 }}
           className="max-w-3xl mx-auto flex items-center justify-center"
         >
           <p className="text-xs text-text-secondary/40 tracking-wide">

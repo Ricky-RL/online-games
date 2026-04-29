@@ -42,3 +42,11 @@ body {
 @utility text-player2 {
   color: var(--color-player2);
 }
+
+@utility bg-checkers-dark {
+  background-color: #A0724A;
+}
+
+@utility bg-checkers-light {
+  background-color: #F5E6D3;
+}
