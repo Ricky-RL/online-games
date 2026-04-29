@@ -38,6 +38,15 @@ export function useNotifications({
   const flashInterval = useRef<ReturnType<typeof setInterval> | null>(null);
   const isFlashing = useRef(false);
   const baseTitleRef = useRef(typeof document !== 'undefined' ? document.title : '');
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+
+  // Preload audio
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const audio = new Audio('/sounds/turn.mp3');
+    audio.load();
+    audioRef.current = audio;
+  }, []);
 
   const stopFlashing = useCallback(() => {
     if (flashInterval.current) {
@@ -62,19 +71,30 @@ export function useNotifications({
     }, 1000);
   }, []);
 
-  // Title flash: start when turn transitions to me and tab is hidden
+  // Trigger notifications when turn transitions to me
   useEffect(() => {
     const becameMyTurn = isMyTurn && !prevIsMyTurn.current;
     prevIsMyTurn.current = isMyTurn;
 
-    if (becameMyTurn && document.hidden) {
-      startFlashing();
+    if (!becameMyTurn) {
+      if (!isMyTurn) stopFlashing();
+      return;
     }
 
-    if (!isMyTurn) {
-      stopFlashing();
+    if (!document.hidden) return;
+
+    // Title flash
+    startFlashing();
+
+    // Sound ping
+    if (!isMuted && audioRef.current) {
+      audioRef.current.currentTime = 0;
+      const playResult = audioRef.current.play();
+      if (playResult && typeof playResult.catch === 'function') {
+        playResult.catch(() => {});
+      }
     }
-  }, [isMyTurn, startFlashing, stopFlashing]);
+  }, [isMyTurn, isMuted, startFlashing, stopFlashing]);
 
   // Stop flashing when tab becomes visible
   useEffect(() => {
