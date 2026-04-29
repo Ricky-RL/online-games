@@ -11,6 +11,7 @@ interface LeaderboardStats {
     'connect-four': { ricky: number; lilian: number; draws: number };
     'tic-tac-toe': { ricky: number; lilian: number; draws: number };
     'mini-golf': { ricky: number; lilian: number; draws: number };
+    'jenga': { ricky: number; lilian: number; draws: number };
   };
   streaks: {
     ricky_current: number;

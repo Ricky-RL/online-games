@@ -6,6 +6,7 @@ import { motion } from 'framer-motion';
 interface MatchResult {
   id: string;
   game_type: 'connect-four' | 'tic-tac-toe' | 'wordle' | 'mini-golf';
+  game_type: 'connect-four' | 'tic-tac-toe' | 'wordle' | 'jenga';
   winner_id: string | null;
   winner_name: string | null;
   loser_id: string | null;
@@ -46,6 +47,7 @@ function gameIcon(gameType: MatchResult['game_type']): string {
     case 'tic-tac-toe': return '✕○';
     case 'wordle': return '▢▢';
     case 'mini-golf': return '⛳';
+    case 'jenga': return '▮▮';
   }
 }
 
@@ -55,6 +57,7 @@ function gameLabel(gameType: MatchResult['game_type']): string {
     case 'tic-tac-toe': return 'Tic-Tac-Toe';
     case 'wordle': return 'Wordle';
     case 'mini-golf': return 'Mini Golf';
+    case 'jenga': return 'Jenga';
   }
 }
 
