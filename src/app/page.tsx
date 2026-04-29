@@ -121,6 +121,17 @@ function WhiteboardIcon() {
 }
 
 
+function MiniGolfIcon() {
+  return (
+    <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
+      <circle cx="14" cy="21" r="4" fill="#06D6A0" opacity="0.9" />
+      <line x1="14" y1="17" x2="14" y2="4" stroke="#06D6A0" strokeWidth="2.5" strokeLinecap="round" opacity="0.9" />
+      <line x1="14" y1="4" x2="22" y2="8" stroke="#06D6A0" strokeWidth="2.5" strokeLinecap="round" opacity="0.9" />
+    </svg>
+  );
+}
+
+
 function PlayerSelector({ onSelect }: { onSelect: (name: PlayerName) => void }) {
   return (
     <motion.div
@@ -341,6 +352,14 @@ function GameSelection({ playerName, onChangePlayer }: { playerName: PlayerName;
             icon={<WhiteboardIcon />}
             delay={0.45}
             onClick={() => router.push('/whiteboard')}
+          />
+          <ClickableGameCard
+            title="Mini Golf"
+            description="3 holes, lowest score wins. Aim, shoot, and sink it."
+            color="#06D6A0"
+            icon={<MiniGolfIcon />}
+            delay={0.55}
+            onClick={() => router.push('/mini-golf')}
           />
         </div>
       </div>
