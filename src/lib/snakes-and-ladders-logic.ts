@@ -65,3 +65,55 @@ export function generateBoard(): SnakesAndLaddersState {
     lastRoll: null,
   };
 }
+
+export function rollDice(): number {
+  return Math.floor(Math.random() * 6) + 1;
+}
+
+export function makeMove(
+  state: SnakesAndLaddersState,
+  player: Player,
+  roll: number
+): SnakesAndLaddersState {
+  let newPosition = state.players[player] + roll;
+
+  // Bounce back if overshooting 100
+  if (newPosition > 100) {
+    newPosition = 200 - newPosition;
+  }
+
+  // Apply snake or ladder
+  if (state.snakes[newPosition] !== undefined) {
+    newPosition = state.snakes[newPosition];
+  } else if (state.ladders[newPosition] !== undefined) {
+    newPosition = state.ladders[newPosition];
+  }
+
+  return {
+    ...state,
+    players: {
+      ...state.players,
+      [player]: newPosition,
+    },
+    lastRoll: { player, value: roll },
+  };
+}
+
+export function checkWin(state: SnakesAndLaddersState): Player | null {
+  if (state.players[1] === 100) return 1;
+  if (state.players[2] === 100) return 2;
+  return null;
+}
+
+export function getSquareEntity(
+  state: SnakesAndLaddersState,
+  square: number
+): { type: 'snake' | 'ladder'; destination: number } | null {
+  if (state.snakes[square] !== undefined) {
+    return { type: 'snake', destination: state.snakes[square] };
+  }
+  if (state.ladders[square] !== undefined) {
+    return { type: 'ladder', destination: state.ladders[square] };
+  }
+  return null;
+}
