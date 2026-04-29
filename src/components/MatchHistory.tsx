@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { motion } from 'framer-motion';
 interface MatchResult {
   id: string;
-  game_type: 'connect-four' | 'tic-tac-toe' | 'wordle' | 'mini-golf' | 'jenga' | 'snakes-and-ladders' | 'word-search';
+  game_type: 'connect-four' | 'tic-tac-toe' | 'wordle' | 'mini-golf' | 'jenga' | 'snakes-and-ladders' | 'word-search' | 'monopoly';
   winner_id: string | null;
   winner_name: string | null;
   loser_id: string | null;
@@ -43,6 +43,7 @@ function gameIcon(gameType: MatchResult['game_type']): string {
     case 'jenga': return '▮▮';
     case 'snakes-and-ladders': return '🎲';
     case 'word-search': return '🔍';
+    case 'monopoly': return '🏠';
   }
 }
 function gameLabel(gameType: MatchResult['game_type']): string {
@@ -54,6 +55,7 @@ function gameLabel(gameType: MatchResult['game_type']): string {
     case 'jenga': return 'Jenga';
     case 'snakes-and-ladders': return 'Snakes & Ladders';
     case 'word-search': return 'Word Search';
+    case 'monopoly': return 'Monopoly';
   }
 }
 function outcomeText(result: MatchResult): string {

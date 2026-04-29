@@ -113,6 +113,16 @@ function WordSearchMini() {
   );
 }
 
+function MonopolyMini() {
+  return (
+    <div className="w-8 h-8 rounded-lg bg-[#008000]/10 flex items-center justify-center">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#008000" strokeWidth="2">
+        <path d="M3 21h18M5 21V7l7-4 7 4v14M9 21v-6h6v6" />
+      </svg>
+    </div>
+  );
+}
+
 function GameIcon({ gameType }: { gameType: InboxGameType }) {
   switch (gameType) {
     case 'connect-four': return <ConnectFourMini />;
@@ -123,6 +133,7 @@ function GameIcon({ gameType }: { gameType: InboxGameType }) {
     case 'jenga': return <JengaMini />;
     case 'snakes-and-ladders': return <SnakesAndLaddersMini />;
     case 'word-search': return <WordSearchMini />;
+    case 'monopoly': return <MonopolyMini />;
   }
 }
 
@@ -136,6 +147,7 @@ function gameLabel(gameType: InboxGameType): string {
     case 'jenga': return 'Jenga';
     case 'snakes-and-ladders': return 'Snakes & Ladders';
     case 'word-search': return 'Word Search';
+    case 'monopoly': return 'Monopoly';
   }
 }
 
