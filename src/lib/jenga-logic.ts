@@ -92,3 +92,27 @@ export function pullBlock(
     move_history: [...state.move_history, move],
   };
 }
+
+export function getPlayableBlocks(state: JengaGameState): [number, number][] {
+  const playable: [number, number][] = [];
+  const topRowIdx = state.tower.length - 1;
+  for (let row = 0; row < state.tower.length; row++) {
+    if (row === topRowIdx) continue;
+    for (let col = 0; col < BLOCKS_PER_ROW; col++) {
+      if (state.tower[row][col].exists) {
+        playable.push([row, col]);
+      }
+    }
+  }
+  return playable;
+}
+
+export function getJengaGameStatus(game: {
+  winner: number | null;
+  player1_name: string | null;
+  player2_name: string | null;
+}): 'waiting' | 'playing' | 'won' {
+  if (game.winner !== null) return 'won';
+  if (!game.player1_name || !game.player2_name) return 'waiting';
+  return 'playing';
+}

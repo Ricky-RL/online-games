@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { createInitialTower, calculateBlockRisk, pullBlock } from './jenga-logic';
+import { createInitialTower, calculateBlockRisk, pullBlock, getPlayableBlocks, getJengaGameStatus } from './jenga-logic';
 
 describe('createInitialTower', () => {
   it('creates 18 rows of 3 blocks each', () => {
@@ -141,5 +141,45 @@ describe('pullBlock', () => {
     const state = createInitialTower();
     const result = pullBlock(state, 17, 1, 1, 0.99);
     expect(result.move_history[result.move_history.length - 1].toppled).toBe(false);
+  });
+});
+
+describe('getPlayableBlocks', () => {
+  it('returns all blocks except top row on initial tower', () => {
+    const state = createInitialTower();
+    const playable = getPlayableBlocks(state);
+    expect(playable.length).toBe(51);
+  });
+
+  it('does not include non-existent blocks', () => {
+    const state = createInitialTower();
+    state.tower[5][1].exists = false;
+    const playable = getPlayableBlocks(state);
+    const has5_1 = playable.some(([r, c]) => r === 5 && c === 1);
+    expect(has5_1).toBe(false);
+  });
+
+  it('does not include blocks from the topmost row', () => {
+    const state = createInitialTower();
+    const playable = getPlayableBlocks(state);
+    const hasTopRow = playable.some(([r]) => r === 17);
+    expect(hasTopRow).toBe(false);
+  });
+});
+
+describe('getJengaGameStatus', () => {
+  it('returns waiting when player2 has not joined', () => {
+    const status = getJengaGameStatus({ winner: null, player1_name: 'Ricky', player2_name: null });
+    expect(status).toBe('waiting');
+  });
+
+  it('returns playing when both players joined and no winner', () => {
+    const status = getJengaGameStatus({ winner: null, player1_name: 'Ricky', player2_name: 'Lilian' });
+    expect(status).toBe('playing');
+  });
+
+  it('returns won when there is a winner', () => {
+    const status = getJengaGameStatus({ winner: 1, player1_name: 'Ricky', player2_name: 'Lilian' });
+    expect(status).toBe('won');
   });
 });
