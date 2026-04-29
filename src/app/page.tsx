@@ -165,6 +165,21 @@ function BattleshipIcon() {
   );
 }
 
+function SnakesAndLaddersIcon() {
+  return (
+    <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
+      {/* Ladder */}
+      <line x1="6" y1="24" x2="12" y2="4" stroke="#538D4E" strokeWidth="2" strokeLinecap="round" />
+      <line x1="10" y1="24" x2="16" y2="4" stroke="#538D4E" strokeWidth="2" strokeLinecap="round" />
+      <line x1="7" y1="20" x2="11" y2="20" stroke="#538D4E" strokeWidth="1.5" />
+      <line x1="8" y1="15" x2="12" y2="15" stroke="#538D4E" strokeWidth="1.5" />
+      <line x1="9.5" y1="10" x2="13.5" y2="10" stroke="#538D4E" strokeWidth="1.5" />
+      {/* Snake */}
+      <path d="M18 6C20 5 23 6 22 9C21 12 17 11 18 14C19 17 22 16 23 18C24 20 22 23 20 22" stroke="#E63946" strokeWidth="2" strokeLinecap="round" fill="none" />
+    </svg>
+  );
+}
+
 
 function PlayerSelector({ onSelect }: { onSelect: (name: PlayerName) => void }) {
   return (
@@ -631,6 +646,141 @@ function GameSelection({ playerName, onChangePlayer }: { playerName: PlayerName;
     router.push(`/battleship/${data.id}`);
   }, [playerName, router]);
 
+  const handlePlaySnakesAndLadders = useCallback(async () => {
+    setConnecting('snakes-and-ladders');
+
+    const [{ supabase }, { generateBoard }] = await Promise.all([
+      import('@/lib/supabase'),
+      import('@/lib/snakes-and-ladders-logic'),
+    ]);
+
+    const isRicky = playerName === 'Ricky';
+    const myId = PLAYER_IDS[playerName];
+
+    async function findGames() {
+      const { data } = await supabase
+        .from('games')
+        .select('*')
+        .eq('game_type', 'snakes-and-ladders')
+        .is('winner', null)
+        .order('created_at', { ascending: false })
+        .limit(10);
+      return data;
+    }
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    function findMyGame(games: any[] | null) {
+      if (!games) return { activeGame: null, joinableGame: null };
+
+      const activeGame = games.find((g) => {
+        if (isRicky) return g.player1_name === 'Ricky';
+        return g.player2_name === 'Lilian';
+      }) || null;
+
+      const joinableGame = games.find((g) => {
+        if (isRicky) {
+          return g.player1_name === null && g.player2_name === 'Lilian';
+        } else {
+          return g.player2_name === null && g.player1_name === 'Ricky';
+        }
+      }) || null;
+
+      return { activeGame, joinableGame };
+    }
+
+    async function joinGame(gameId: string) {
+      const updateField = isRicky
+        ? { player1_id: myId, player1_name: playerName }
+        : { player2_id: myId, player2_name: playerName };
+
+      const { error: joinError } = await supabase
+        .from('games')
+        .update({
+          ...updateField,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', gameId)
+        .select()
+        .single();
+
+      if (joinError) {
+        console.error('Error joining game:', joinError);
+        setConnecting(null);
+        return false;
+      }
+      return true;
+    }
+
+    const existingGames = await findGames();
+    let { activeGame, joinableGame } = findMyGame(existingGames);
+
+    if (activeGame) {
+      router.push(`/snakes-and-ladders/${activeGame.id}`);
+      return;
+    }
+
+    if (joinableGame) {
+      if (await joinGame(joinableGame.id)) {
+        router.push(`/snakes-and-ladders/${joinableGame.id}`);
+      }
+      return;
+    }
+
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+
+    const retryGames = await findGames();
+    ({ activeGame, joinableGame } = findMyGame(retryGames));
+
+    if (activeGame) {
+      router.push(`/snakes-and-ladders/${activeGame.id}`);
+      return;
+    }
+
+    if (joinableGame) {
+      if (await joinGame(joinableGame.id)) {
+        router.push(`/snakes-and-ladders/${joinableGame.id}`);
+      }
+      return;
+    }
+
+    const board = generateBoard();
+    const insertData = isRicky
+      ? {
+          game_type: 'snakes-and-ladders',
+          board,
+          current_turn: 1 as const,
+          winner: null,
+          player1_id: myId,
+          player1_name: playerName,
+          player2_id: null,
+          player2_name: null,
+        }
+      : {
+          game_type: 'snakes-and-ladders',
+          board,
+          current_turn: 1 as const,
+          winner: null,
+          player1_id: null,
+          player1_name: null,
+          player2_id: myId,
+          player2_name: playerName,
+        };
+
+    const { data, error } = await supabase
+      .from('games')
+      .insert(insertData)
+      .select('id')
+      .single();
+
+    if (error || !data) {
+      console.error('Error creating game:', error);
+      setConnecting(null);
+      return;
+    }
+
+    router.push(`/snakes-and-ladders/${data.id}`);
+  }, [playerName, router]);
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -716,6 +866,15 @@ function GameSelection({ playerName, onChangePlayer }: { playerName: PlayerName;
             delay={0.3}
             onClick={handlePlayBattleship}
             loading={connecting === 'battleship'}
+          />
+          <ClickableGameCard
+            title="Snakes & Ladders"
+            description="Roll the dice, climb ladders, dodge snakes. Race to square 100."
+            color="#538D4E"
+            icon={<SnakesAndLaddersIcon />}
+            delay={0.35}
+            onClick={handlePlaySnakesAndLadders}
+            loading={connecting === 'snakes-and-ladders'}
           />
         </div>
       </div>
