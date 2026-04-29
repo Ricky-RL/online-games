@@ -247,6 +247,7 @@ export function useTicTacToeGame(gameId: string): UseTicTacToeGameReturn {
     const { error: resetError } = await supabase
       .from('games')
       .update({
+        game_type: 'ended',
         board: [[null, null, null], [null, null, null], [null, null, null]],
         current_turn: 1,
         winner: null,

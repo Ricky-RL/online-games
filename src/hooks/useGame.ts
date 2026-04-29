@@ -58,6 +58,12 @@ export function useGame(gameId: string): UseGameReturn {
       setError(fetchError.message);
       return null;
     }
+
+    if (data.game_type === 'ended') {
+      setDeleted(true);
+      return null;
+    }
+
     return data as Game;
   }, [gameId]);
 
@@ -223,6 +229,7 @@ export function useGame(gameId: string): UseGameReturn {
     const { error: resetError } = await supabase
       .from('games')
       .update({
+        game_type: 'ended',
         board: [[], [], [], [], [], [], []],
         current_turn: 1,
         winner: null,
