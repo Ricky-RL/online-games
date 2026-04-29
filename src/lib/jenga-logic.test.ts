@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { createInitialTower, calculateBlockRisk } from './jenga-logic';
+import { createInitialTower, calculateBlockRisk, pullBlock } from './jenga-logic';
 
 describe('createInitialTower', () => {
   it('creates 18 rows of 3 blocks each', () => {
@@ -75,5 +75,71 @@ describe('calculateBlockRisk', () => {
         expect(risk).toBeLessThanOrEqual(100);
       }
     }
+  });
+});
+
+describe('pullBlock', () => {
+  it('marks the pulled block as not existing', () => {
+    const state = createInitialTower();
+    const result = pullBlock(state, 10, 1, 1, 0.99);
+    expect(result.tower[10][1].exists).toBe(false);
+  });
+
+  it('adds the block to a new top row when top row is full', () => {
+    const state = createInitialTower();
+    const result = pullBlock(state, 10, 1, 1, 0.99);
+    expect(result.tower.length).toBe(19);
+    const topRow = result.tower[18];
+    const existingBlocks = topRow.filter(b => b.exists);
+    expect(existingBlocks.length).toBe(1);
+  });
+
+  it('fills existing top row if it has space', () => {
+    const state = createInitialTower();
+    const after1 = pullBlock(state, 10, 0, 1, 0.99);
+    expect(after1.tower.length).toBe(19);
+    const after2 = pullBlock(after1, 10, 2, 2, 0.99);
+    expect(after2.tower.length).toBe(19);
+    const topRow = after2.tower[18];
+    const existingBlocks = topRow.filter(b => b.exists);
+    expect(existingBlocks.length).toBe(2);
+  });
+
+  it('creates a new row when top row has 3 blocks', () => {
+    const state = createInitialTower();
+    const after1 = pullBlock(state, 15, 0, 1, 0.99);
+    const after2 = pullBlock(after1, 15, 1, 2, 0.99);
+    const after3 = pullBlock(after2, 15, 2, 1, 0.99);
+    const after4 = pullBlock(after3, 14, 0, 2, 0.99);
+    expect(after4.tower.length).toBe(20);
+  });
+
+  it('increases wobble_score after a pull', () => {
+    const state = createInitialTower();
+    const result = pullBlock(state, 10, 1, 1, 0.99);
+    expect(result.wobble_score).toBeGreaterThan(0);
+  });
+
+  it('records the move in move_history', () => {
+    const state = createInitialTower();
+    const result = pullBlock(state, 10, 1, 1, 0.99);
+    expect(result.move_history.length).toBe(1);
+    expect(result.move_history[0].row).toBe(10);
+    expect(result.move_history[0].col).toBe(1);
+    expect(result.move_history[0].player).toBe(1);
+    expect(result.move_history[0].toppled).toBe(false);
+  });
+
+  it('topples when random value is below effective risk', () => {
+    const state = createInitialTower();
+    state.wobble_score = 95;
+    const result = pullBlock(state, 0, 0, 1, 0.01);
+    expect(result.move_history[result.move_history.length - 1].toppled).toBe(true);
+  });
+
+  it('does not topple when random value is above effective risk', () => {
+    const state = createInitialTower();
+    const result = pullBlock(state, 17, 1, 1, 0.99);
+    expect(result.move_history[result.move_history.length - 1].toppled).toBe(false);
   });
 });

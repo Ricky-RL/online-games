@@ -36,3 +36,59 @@ export function calculateBlockRisk(state: JengaGameState, row: number, col: numb
 
   return Math.min(100, Math.round(positionRisk + edgeBonus + gapBonus));
 }
+
+export function pullBlock(
+  state: JengaGameState,
+  row: number,
+  col: number,
+  player: Player,
+  randomValue: number,
+): JengaGameState {
+  const tower = state.tower.map(r => r.map(b => ({ ...b })));
+
+  // Remove the block from its position
+  tower[row][col].exists = false;
+
+  // Calculate risk and check topple
+  const blockRisk = calculateBlockRisk(state, row, col);
+  const effectiveRisk = Math.min(95, blockRisk + state.wobble_score);
+  const toppled = randomValue * 100 < effectiveRisk;
+
+  // Increase wobble (riskier pulls add more wobble)
+  const wobbleIncrease = 2 + (blockRisk / 30) * 3;
+  const newWobble = Math.min(100, state.wobble_score + wobbleIncrease);
+
+  // Place block on top (if not toppled)
+  if (!toppled) {
+    const topRow = tower[tower.length - 1];
+    const existingCount = topRow.filter(b => b.exists).length;
+    if (existingCount < BLOCKS_PER_ROW) {
+      // Fill next empty slot in top row
+      const emptyIdx = topRow.findIndex(b => !b.exists);
+      topRow[emptyIdx] = { id: `${tower.length - 1}-${emptyIdx}`, exists: true };
+    } else {
+      // Create new row with one block
+      const newRow: JengaBlock[] = [
+        { id: `${tower.length}-0`, exists: true },
+        { id: `${tower.length}-1`, exists: false },
+        { id: `${tower.length}-2`, exists: false },
+      ];
+      tower.push(newRow);
+    }
+  }
+
+  const move: JengaMove = {
+    player,
+    row,
+    col,
+    risk: effectiveRisk,
+    wobble_after: newWobble,
+    toppled,
+  };
+
+  return {
+    tower,
+    wobble_score: newWobble,
+    move_history: [...state.move_history, move],
+  };
+}
