@@ -2,46 +2,69 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
-import { makeMove as computeMove, checkWin } from '@/lib/game-logic';
-import type { Game, Player, Board } from '@/lib/types';
+import {
+  makeMove as computeMove,
+  checkWin,
+} from '@/lib/tic-tac-toe-logic';
+import type { Player, TicTacToeBoard } from '@/lib/types';
 
 const POLL_INTERVAL_MS = 1500;
+
+export interface TicTacToeGame {
+  id: string;
+  game_type: string;
+  board: TicTacToeBoard;
+  current_turn: Player;
+  winner: Player | null;
+  player1_id: string | null;
+  player2_id: string | null;
+  player1_name: string | null;
+  player2_name: string | null;
+  created_at: string;
+  updated_at: string;
+}
 
 function getMyName(): string | null {
   if (typeof window === 'undefined') return null;
   return sessionStorage.getItem('player-name') || localStorage.getItem('player-name');
 }
 
-function totalMoves(board: Board): number {
-  return board.reduce((sum, col) => sum + col.length, 0);
+function totalMoves(board: TicTacToeBoard): number {
+  return board.reduce(
+    (sum, row) => sum + row.filter((cell) => cell !== null).length,
+    0
+  );
 }
 
-interface UseGameReturn {
-  game: Game | null;
+interface UseTicTacToeGameReturn {
+  game: TicTacToeGame | null;
   loading: boolean;
   error: string | null;
-  lastMove: { col: number; row: number } | null;
+  lastMove: { row: number; col: number } | null;
   deleted: boolean;
-  makeMove: (column: number) => Promise<void>;
+  makeMove: (row: number, col: number) => Promise<void>;
   resetGame: () => Promise<void>;
 }
 
-export function useGame(gameId: string): UseGameReturn {
-  const [game, setGame] = useState<Game | null>(null);
+export function useTicTacToeGame(gameId: string): UseTicTacToeGameReturn {
+  const [game, setGame] = useState<TicTacToeGame | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [lastMove, setLastMove] = useState<{ col: number; row: number } | null>(null);
+  const [lastMove, setLastMove] = useState<{ row: number; col: number } | null>(null);
   const [deleted, setDeleted] = useState(false);
-  const optimisticBoard = useRef<Board | null>(null);
-  const gameRef = useRef<Game | null>(null);
+  const optimisticBoard = useRef<TicTacToeBoard | null>(null);
+  const gameRef = useRef<TicTacToeGame | null>(null);
 
-  const updateGame = useCallback((updater: Game | null | ((prev: Game | null) => Game | null)) => {
-    setGame((prev) => {
-      const next = typeof updater === 'function' ? updater(prev) : updater;
-      gameRef.current = next;
-      return next;
-    });
-  }, []);
+  const updateGame = useCallback(
+    (updater: TicTacToeGame | null | ((prev: TicTacToeGame | null) => TicTacToeGame | null)) => {
+      setGame((prev) => {
+        const next = typeof updater === 'function' ? updater(prev) : updater;
+        gameRef.current = next;
+        return next;
+      });
+    },
+    []
+  );
 
   const fetchGame = useCallback(async () => {
     const { data, error: fetchError } = await supabase
@@ -66,7 +89,7 @@ export function useGame(gameId: string): UseGameReturn {
       return null;
     }
 
-    return data as Game;
+    return data as TicTacToeGame;
   }, [gameId, updateGame]);
 
   // Initial fetch
@@ -82,7 +105,9 @@ export function useGame(gameId: string): UseGameReturn {
       setLoading(false);
     }
     init();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [fetchGame, updateGame]);
 
   // Poll for changes
@@ -120,11 +145,13 @@ export function useGame(gameId: string): UseGameReturn {
           return prev;
         }
 
+        // Detect the opponent's last move
         if (totalMoves(fresh.board) > totalMoves(prev.board)) {
-          for (let col = 0; col < 7; col++) {
-            if (fresh.board[col].length > prev.board[col].length) {
-              setLastMove({ col, row: fresh.board[col].length - 1 });
-              break;
+          for (let row = 0; row < 3; row++) {
+            for (let col = 0; col < 3; col++) {
+              if (prev.board[row][col] === null && fresh.board[row][col] !== null) {
+                setLastMove({ row, col });
+              }
             }
           }
         }
@@ -137,7 +164,7 @@ export function useGame(gameId: string): UseGameReturn {
   }, [gameId, fetchGame, updateGame, deleted]);
 
   const makeMove = useCallback(
-    async (column: number) => {
+    async (row: number, col: number) => {
       const currentGame = gameRef.current;
       if (!currentGame) return;
 
@@ -167,20 +194,19 @@ export function useGame(gameId: string): UseGameReturn {
         return;
       }
 
-      const newBoard = computeMove(currentGame.board, column, myPlayerNumber);
-      if (!newBoard) {
-        setError('Column is full');
+      let newBoard: TicTacToeBoard;
+      try {
+        newBoard = computeMove(currentGame.board, row, col, myPlayerNumber);
+      } catch {
+        setError('Cell is already occupied');
         return;
       }
 
-      const row = newBoard[column].length - 1;
-      const winPositions = checkWin(newBoard, column, row, myPlayerNumber);
-      const winner = winPositions ? myPlayerNumber : null;
-
+      const winner = checkWin(newBoard);
       const nextTurn: Player = myPlayerNumber === 1 ? 2 : 1;
 
       optimisticBoard.current = newBoard;
-      setLastMove({ col: column, row });
+      setLastMove({ row, col });
       updateGame((prev) =>
         prev
           ? {
@@ -210,7 +236,7 @@ export function useGame(gameId: string): UseGameReturn {
           .select('*')
           .eq('id', gameId)
           .single();
-        if (freshGame) updateGame(freshGame as Game);
+        if (freshGame) updateGame(freshGame as TicTacToeGame);
         setError(updateError.message);
       }
     },

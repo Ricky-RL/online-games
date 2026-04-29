@@ -10,9 +10,10 @@ interface WinCelebrationProps {
   winnerName: string | null;
   isMe: boolean;
   onPlayAgain: () => void;
+  actionLabel?: string;
 }
 
-export function WinCelebration({ winner, winnerName, isMe, onPlayAgain }: WinCelebrationProps) {
+export function WinCelebration({ winner, winnerName, isMe, onPlayAgain, actionLabel = 'Play Again' }: WinCelebrationProps) {
   useEffect(() => {
     // Fire confetti on mount
     confetti({
@@ -56,7 +57,7 @@ export function WinCelebration({ winner, winnerName, isMe, onPlayAgain }: WinCel
         onClick={onPlayAgain}
         className="px-6 py-3 text-base font-medium rounded-xl bg-board text-white hover:bg-board-surface transition-colors shadow-lg cursor-pointer"
       >
-        Play Again
+        {actionLabel}
       </button>
     </motion.div>
   );

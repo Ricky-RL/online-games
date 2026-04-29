@@ -87,28 +87,20 @@ function ConnectFourIcon() {
   );
 }
 
-function ComingSoonCard({ delay = 0 }: { delay?: number }) {
-  const ref = useRef<HTMLDivElement>(null);
-  const isInView = useInView(ref, { once: true, margin: '-50px' });
-
+function TicTacToeIcon() {
   return (
-    <motion.div
-      ref={ref}
-      initial={{ opacity: 0, y: 30 }}
-      animate={isInView ? { opacity: 1, y: 0 } : { opacity: 0, y: 30 }}
-      transition={{ duration: 0.6, delay, ease: [0.21, 0.47, 0.32, 0.98] }}
-      className="relative overflow-hidden rounded-3xl border border-dashed border-border/80 bg-surface/50 p-8 sm:p-10 flex flex-col items-center justify-center text-center gap-4 min-h-[220px]"
-    >
-      <div className="w-14 h-14 rounded-2xl bg-border/30 flex items-center justify-center">
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="text-text-secondary/40">
-          <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-        </svg>
-      </div>
-      <div className="space-y-1">
-        <p className="text-base font-medium text-text-secondary/60">More games coming</p>
-        <p className="text-sm text-text-secondary/40">Stay tuned</p>
-      </div>
-    </motion.div>
+    <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
+      {/* X mark */}
+      <line x1="4" y1="4" x2="11" y2="11" stroke="#E63946" strokeWidth="2.5" strokeLinecap="round" opacity="0.9" />
+      <line x1="11" y1="4" x2="4" y2="11" stroke="#E63946" strokeWidth="2.5" strokeLinecap="round" opacity="0.9" />
+      {/* O mark */}
+      <circle cx="21" cy="7.5" r="4" fill="none" stroke="#FFBE0B" strokeWidth="2.5" opacity="0.9" />
+      {/* X mark bottom */}
+      <line x1="4" y1="17" x2="11" y2="24" stroke="#E63946" strokeWidth="2.5" strokeLinecap="round" opacity="0.9" />
+      <line x1="11" y1="17" x2="4" y2="24" stroke="#E63946" strokeWidth="2.5" strokeLinecap="round" opacity="0.9" />
+      {/* O mark bottom */}
+      <circle cx="21" cy="20.5" r="4" fill="none" stroke="#FFBE0B" strokeWidth="2.5" opacity="0.9" />
+    </svg>
   );
 }
 
@@ -176,7 +168,14 @@ function GameSelection({ playerName, onChangePlayer }: { playerName: PlayerName;
             icon={<ConnectFourIcon />}
             delay={0.2}
           />
-          <ComingSoonCard delay={0.35} />
+          <GameCard
+            title="Tic Tac Toe"
+            description="X and O, three in a row. Quick rounds, pure fun."
+            href="/tic-tac-toe"
+            color="#FFBE0B"
+            icon={<TicTacToeIcon />}
+            delay={0.35}
+          />
         </div>
       </div>
     </motion.div>

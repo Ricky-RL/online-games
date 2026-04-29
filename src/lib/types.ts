@@ -3,6 +3,11 @@ export type Cell = Player | null;
 export type Column = Player[]; // bottom-to-top, max length 6
 export type Board = Column[]; // 7 columns
 
+// Tic Tac Toe types
+export type TicTacToeCell = Player | null;
+export type TicTacToeRow = [TicTacToeCell, TicTacToeCell, TicTacToeCell];
+export type TicTacToeBoard = [TicTacToeRow, TicTacToeRow, TicTacToeRow]; // 3x3 grid
+
 export interface Game {
   id: string;
   game_type: string;

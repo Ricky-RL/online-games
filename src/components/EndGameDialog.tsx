@@ -10,22 +10,35 @@ interface EndGameDialogProps {
 
 export function EndGameDialog({ open, onConfirm, onCancel }: EndGameDialogProps) {
   const dialogRef = useRef<HTMLDialogElement>(null);
+  const confirmedRef = useRef(false);
 
   useEffect(() => {
     const dialog = dialogRef.current;
     if (!dialog) return;
 
     if (open && !dialog.open) {
+      confirmedRef.current = false;
       dialog.showModal();
     } else if (!open && dialog.open) {
       dialog.close();
     }
   }, [open]);
 
+  const handleConfirm = () => {
+    confirmedRef.current = true;
+    onConfirm();
+  };
+
+  const handleDialogClose = () => {
+    if (!confirmedRef.current) {
+      onCancel();
+    }
+  };
+
   return (
     <dialog
       ref={dialogRef}
-      onClose={onCancel}
+      onClose={handleDialogClose}
       className="backdrop:bg-black/50 bg-transparent p-0 m-auto"
     >
       <div className="bg-surface border border-border rounded-2xl p-6 shadow-xl max-w-sm w-[calc(100vw-2rem)]">
@@ -43,7 +56,7 @@ export function EndGameDialog({ open, onConfirm, onCancel }: EndGameDialogProps)
             Cancel
           </button>
           <button
-            onClick={onConfirm}
+            onClick={handleConfirm}
             className="px-4 py-2 text-sm font-medium rounded-xl bg-player1 text-white hover:opacity-90 transition-all cursor-pointer"
           >
             End Game
