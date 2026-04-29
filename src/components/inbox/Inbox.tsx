@@ -27,9 +27,20 @@ export function Inbox({ playerName }: InboxProps) {
 
   const handleGameClick = (game: InboxGame) => {
     markGamesRead();
+    const iAmInGame = game.player1_name === playerName || game.player2_name === playerName;
+
+    if (!iAmInGame) {
+      // Player hasn't joined yet — route through the lobby which handles joining
+      const lobbyPath = game.game_type === 'connect-four'
+        ? '/'
+        : `/${game.game_type}`;
+      router.push(lobbyPath);
+      return;
+    }
+
     const path = game.game_type === 'connect-four'
       ? `/connect-four/${game.id}`
-      : `/tic-tac-toe/${game.id}`;
+      : `/${game.game_type}/${game.id}`;
     router.push(path);
   };
 

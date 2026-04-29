@@ -31,12 +31,14 @@ export function useInbox(): UseInboxReturn {
     const otherPlayer = getOtherPlayer(playerName);
 
     const [gamesResult, activityResult, readStateResult] = await Promise.all([
+      // Fetch games where I'm already a participant OR where the other player
+      // started a game and my slot is empty (waiting for me to join)
       supabase
         .from('games')
         .select('id, game_type, current_turn, player1_name, player2_name, updated_at')
-        .or(`player1_name.eq.${playerName},player2_name.eq.${playerName}`)
+        .in('game_type', ['connect-four', 'tic-tac-toe'])
+        .or(`player1_name.eq.${playerName},player2_name.eq.${playerName},and(player1_name.eq.${otherPlayer},player2_name.is.null),and(player2_name.eq.${otherPlayer},player1_name.is.null)`)
         .is('winner', null)
-        .neq('game_type', 'ended')
         .order('updated_at', { ascending: false }),
       supabase
         .from('whiteboard_activity')
@@ -59,10 +61,24 @@ export function useInbox(): UseInboxReturn {
     const whiteboardLastReadAt = readStates.find((r) => r.section === 'whiteboard')?.last_read_at ?? '1970-01-01T00:00:00Z';
 
     const enrichedGames: InboxGame[] = (gamesResult.data ?? []).map((game) => {
-      const isMyTurn =
-        (game.player1_name === playerName && game.current_turn === 1) ||
-        (game.player2_name === playerName && game.current_turn === 2);
-      const isWaitingForOpponent = game.player1_name === null || game.player2_name === null;
+      const iAmPlayer1 = game.player1_name === playerName;
+      const iAmPlayer2 = game.player2_name === playerName;
+      const iAmInGame = iAmPlayer1 || iAmPlayer2;
+
+      // Game is waiting for me to join (opponent created it, my slot is null)
+      const isWaitingForMe = !iAmInGame && (
+        (game.player1_name === otherPlayer && game.player2_name === null) ||
+        (game.player2_name === otherPlayer && game.player1_name === null)
+      );
+
+      // Game is waiting for opponent to join (I created it, their slot is null)
+      const isWaitingForOpponent = iAmInGame && (game.player1_name === null || game.player2_name === null);
+
+      // It's my turn if I'm in the game and current_turn points to my player number,
+      // OR if the game is waiting for me to join (I need to take action)
+      const isMyTurn = isWaitingForMe ||
+        (iAmPlayer1 && game.current_turn === 1) ||
+        (iAmPlayer2 && game.current_turn === 2);
 
       return {
         id: game.id,
