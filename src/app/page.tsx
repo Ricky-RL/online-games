@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { motion, useInView, AnimatePresence } from 'framer-motion';
 import { supabase } from '@/lib/supabase';
 import { createEmptyBoard } from '@/lib/game-logic';
+import { SettingsButton } from '@/components/SettingsButton';
 
 type PlayerName = 'Ricky' | 'Lilian';
 
@@ -353,6 +354,7 @@ export default function Home() {
 
   return (
     <div className="flex-1 flex flex-col min-h-screen">
+      <SettingsButton />
       {/* Hero section */}
       <header className="flex flex-col items-center justify-center px-6 pt-24 pb-16 sm:pt-32 sm:pb-20">
         <motion.div

@@ -2,6 +2,8 @@
 
 import { motion } from 'framer-motion';
 import type { Player } from '@/lib/types';
+import { useColors } from '@/contexts/PlayerColorsContext';
+import { hexToRgba } from '@/lib/colors';
 
 interface PieceProps {
   player: Player;
@@ -10,8 +12,9 @@ interface PieceProps {
 }
 
 export function Piece({ player, row, animate = false }: PieceProps) {
+  const { player1Color, player2Color } = useColors();
   const color = player === 1 ? 'bg-player1' : 'bg-player2';
-  const shadowColor = player === 1 ? 'rgba(230, 57, 70, 0.4)' : 'rgba(255, 190, 11, 0.4)';
+  const shadowColor = hexToRgba(player === 1 ? player1Color : player2Color, 0.4);
 
   // Drop distance: each cell is roughly 60px, piece starts from top of board
   const dropDistance = -(row + 1) * 64;

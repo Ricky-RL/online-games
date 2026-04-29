@@ -4,6 +4,8 @@ import { useEffect } from 'react';
 import { motion } from 'framer-motion';
 import confetti from 'canvas-confetti';
 import type { Player } from '@/lib/types';
+import { useColors } from '@/contexts/PlayerColorsContext';
+import { confettiColors } from '@/lib/colors';
 
 interface WinCelebrationProps {
   winner: Player;
@@ -14,13 +16,17 @@ interface WinCelebrationProps {
 }
 
 export function WinCelebration({ winner, winnerName, isMe, onPlayAgain, onHome }: WinCelebrationProps) {
+  const { player1Color, player2Color } = useColors();
+
   useEffect(() => {
+    const winnerColor = winner === 1 ? player1Color : player2Color;
+
     // Fire confetti on mount
     confetti({
       particleCount: 100,
       spread: 70,
       origin: { x: 0.5, y: 0.5 },
-      colors: winner === 1 ? ['#E63946', '#FF6B6B', '#FF9999'] : ['#FFBE0B', '#FFD93D', '#FFF3B0'],
+      colors: confettiColors(winnerColor),
     });
 
     // Fire a second burst after a short delay
@@ -33,7 +39,7 @@ export function WinCelebration({ winner, winnerName, isMe, onPlayAgain, onHome }
     }, 300);
 
     return () => clearTimeout(timer);
-  }, [winner]);
+  }, [winner, player1Color, player2Color]);
 
   const message = isMe ? 'You won!' : `${winnerName ?? 'Opponent'} wins!`;
   const color = winner === 1 ? 'text-player1' : 'text-player2';

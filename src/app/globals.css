@@ -6,15 +6,34 @@
   --color-border: #F0E6D9;
   --color-text-primary: #2D2A26;
   --color-text-secondary: #6B6560;
-  --color-player1: #E63946;
-  --color-player2: #FFBE0B;
   --color-board: #1D3557;
   --color-board-surface: #264573;
   --font-sans: 'Satoshi', system-ui, -apple-system, sans-serif;
+}
+
+:root {
+  --color-player1: #E63946;
+  --color-player2: #FFBE0B;
 }
 
 body {
   background-color: var(--color-background);
   color: var(--color-text-primary);
   font-family: var(--font-sans);
+}
+
+@utility bg-player1 {
+  background-color: var(--color-player1);
+}
+
+@utility bg-player2 {
+  background-color: var(--color-player2);
+}
+
+@utility text-player1 {
+  color: var(--color-player1);
+}
+
+@utility text-player2 {
+  color: var(--color-player2);
 }
