@@ -4,6 +4,7 @@ import { useRef, useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion, useInView, AnimatePresence } from 'framer-motion';
 import { SettingsButton } from '@/components/SettingsButton';
+import { Inbox } from '@/components/inbox';
 
 type PlayerName = 'Ricky' | 'Lilian';
 
@@ -658,6 +659,9 @@ function GameSelection({ playerName, onChangePlayer }: { playerName: PlayerName;
           switch
         </button>
       </div>
+
+      {/* Inbox */}
+      <Inbox playerName={playerName} />
 
       {/* Games grid */}
       <div className="max-w-5xl mx-auto">
