@@ -6,7 +6,6 @@ import { InboxGameItem } from './InboxGameItem';
 
 interface InboxGamesSectionProps {
   games: InboxGame[];
-  unreadCount: number;
   onGameClick: (game: InboxGame) => void;
   playerName: string;
 }
@@ -35,7 +34,7 @@ function sortGames(games: InboxGame[]): InboxGame[] {
   });
 }
 
-export function InboxGamesSection({ games, unreadCount, onGameClick, playerName }: InboxGamesSectionProps) {
+export function InboxGamesSection({ games, onGameClick, playerName }: InboxGamesSectionProps) {
   const sorted = sortGames(games);
 
   return (
@@ -45,11 +44,6 @@ export function InboxGamesSection({ games, unreadCount, onGameClick, playerName 
         <h3 className="text-sm font-semibold text-text-primary tracking-wide uppercase">
           Games
         </h3>
-        {unreadCount > 0 && (
-          <span className="inline-flex items-center justify-center w-5 h-5 text-[10px] font-bold rounded-full bg-[#E63946] text-white">
-            {unreadCount}
-          </span>
-        )}
       </div>
 
       {/* Game list */}

@@ -1,10 +1,10 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
 import type { InboxGame, WhiteboardActivityItem, UseInboxReturn } from '@/lib/inbox-types';
 
-const POLL_INTERVAL_MS = 1500;
+const POLL_INTERVAL_MS = 5000;
 
 function getMyName(): string | null {
   if (typeof window === 'undefined') return null;
@@ -22,6 +22,7 @@ export function useInbox(): UseInboxReturn {
   const [whiteboardLoading, setWhiteboardLoading] = useState(true);
   const [unreadGamesCount, setUnreadGamesCount] = useState(0);
   const [unreadWhiteboardCount, setUnreadWhiteboardCount] = useState(0);
+  const mountedRef = useRef(true);
 
   const fetchInbox = useCallback(async () => {
     const playerName = getMyName();
@@ -100,19 +101,12 @@ export function useInbox(): UseInboxReturn {
     };
   }, []);
 
-  // Initial fetch
   useEffect(() => {
-    const playerName = getMyName();
-    if (!playerName) {
-      setGamesLoading(false);
-      setWhiteboardLoading(false);
-      return;
-    }
+    mountedRef.current = true;
 
-    let cancelled = false;
-    async function init() {
+    async function poll() {
       const result = await fetchInbox();
-      if (cancelled) return;
+      if (!mountedRef.current) return;
       if (result) {
         setGames(result.games);
         setWhiteboardActivity(result.activity);
@@ -122,25 +116,14 @@ export function useInbox(): UseInboxReturn {
       setGamesLoading(false);
       setWhiteboardLoading(false);
     }
-    init();
-    return () => { cancelled = true; };
-  }, [fetchInbox]);
 
-  // Poll for changes
-  useEffect(() => {
-    const playerName = getMyName();
-    if (!playerName) return;
+    poll();
+    const interval = setInterval(poll, POLL_INTERVAL_MS);
 
-    const interval = setInterval(async () => {
-      const result = await fetchInbox();
-      if (!result) return;
-      setGames(result.games);
-      setWhiteboardActivity(result.activity);
-      setUnreadGamesCount(result.unreadGames);
-      setUnreadWhiteboardCount(result.unreadWhiteboard);
-    }, POLL_INTERVAL_MS);
-
-    return () => clearInterval(interval);
+    return () => {
+      mountedRef.current = false;
+      clearInterval(interval);
+    };
   }, [fetchInbox]);
 
   const markGamesRead = useCallback(async () => {

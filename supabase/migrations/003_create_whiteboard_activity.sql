@@ -15,3 +15,4 @@ CREATE INDEX idx_whiteboard_activity_actor ON whiteboard_activity(actor_name);
 ALTER TABLE whiteboard_activity ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Allow anonymous read" ON whiteboard_activity FOR SELECT USING (true);
 CREATE POLICY "Allow anonymous insert" ON whiteboard_activity FOR INSERT WITH CHECK (true);
+CREATE POLICY "Allow anonymous delete" ON whiteboard_activity FOR DELETE USING (true);

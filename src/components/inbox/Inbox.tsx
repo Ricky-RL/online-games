@@ -18,13 +18,10 @@ export function Inbox({ playerName }: InboxProps) {
     gamesLoading,
     whiteboardActivity,
     whiteboardLoading,
-    unreadGamesCount,
-    unreadWhiteboardCount,
     markGamesRead,
     markWhiteboardRead,
   } = useInbox();
 
-  const totalUnread = unreadGamesCount + unreadWhiteboardCount;
   const isEmpty = games.length === 0 && whiteboardActivity.length === 0;
   const isLoading = gamesLoading || whiteboardLoading;
 
@@ -58,11 +55,6 @@ export function Inbox({ playerName }: InboxProps) {
           <h2 className="text-lg font-bold text-text-primary">
             Your Inbox
           </h2>
-          {totalUnread > 0 && (
-            <span className="inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 text-[10px] font-bold rounded-full bg-[#E63946] text-white">
-              {totalUnread}
-            </span>
-          )}
         </div>
 
         {/* Content */}
@@ -79,13 +71,11 @@ export function Inbox({ playerName }: InboxProps) {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
             <InboxGamesSection
               games={games}
-              unreadCount={unreadGamesCount}
               onGameClick={handleGameClick}
               playerName={playerName}
             />
             <InboxWhiteboardSection
               activity={whiteboardActivity}
-              unreadCount={unreadWhiteboardCount}
               onItemClick={handleWhiteboardClick}
             />
           </div>
