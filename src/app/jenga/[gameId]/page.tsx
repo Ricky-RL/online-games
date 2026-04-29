@@ -36,7 +36,7 @@ export default function JengaGamePage({ params }: { params: Promise<{ gameId: st
   }, [game]);
 
   useEffect(() => {
-    if (gameStatus === 'won' && prevStatus.current === 'playing') play('win');
+    if (gameStatus === 'won' && prevStatus.current !== 'won') play('win');
     prevStatus.current = gameStatus;
   }, [gameStatus, play]);
 
@@ -144,7 +144,7 @@ export default function JengaGamePage({ params }: { params: Promise<{ gameId: st
           isMyTurn={isMyTurn}
           selectedBlock={selectedBlock}
           onBlockClick={handleBlockClick}
-          disabled={!isMyTurn || gameStatus !== 'playing'}
+          disabled={!isMyTurn || gameStatus === 'won'}
         />
 
         {/* Pull confirmation */}
