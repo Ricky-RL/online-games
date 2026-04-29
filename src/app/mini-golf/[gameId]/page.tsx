@@ -165,7 +165,7 @@ export default function MiniGolfGamePage({ params }: { params: Promise<{ gameId:
     : `${opponentName} is playing · Hole ${board.currentHole + 1}/3 · Stroke ${board.currentStroke}`;
 
   return (
-    <div className="min-h-screen bg-background flex flex-col" style={{ overscrollBehavior: 'none' }}>
+    <div className="h-dvh bg-background flex flex-col overflow-hidden" style={{ overscrollBehavior: 'none' }}>
       <header className="flex items-center justify-between px-4 py-2 border-b border-border">
         <div className="flex items-center gap-2">
           <SettingsButton />
@@ -181,7 +181,7 @@ export default function MiniGolfGamePage({ params }: { params: Promise<{ gameId:
         </span>
       </header>
 
-      <main className="flex-1 relative flex items-center justify-center p-2">
+      <main className="flex-1 relative flex items-center justify-center p-2 overflow-hidden">
         <StrokeCounter
           stroke={board.currentStroke}
           holeNumber={board.currentHole + 1}

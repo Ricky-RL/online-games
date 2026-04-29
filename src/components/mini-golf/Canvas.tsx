@@ -57,7 +57,8 @@ export function MiniGolfCanvas({
     const container = containerRef.current;
     if (!container) return 1;
     const { width, height } = container.getBoundingClientRect();
-    return Math.min(width / CANVAS_WIDTH, height / CANVAS_HEIGHT);
+    const scale = Math.min(width / CANVAS_WIDTH, height / CANVAS_HEIGHT);
+    return Math.min(scale, 0.85);
   }, []);
 
   const canvasToWorld = useCallback((clientX: number, clientY: number) => {
@@ -72,17 +73,14 @@ export function MiniGolfCanvas({
   }, [getScale]);
 
   const handlePointerDown = useCallback((e: React.PointerEvent) => {
-    if (!isMyTurn || animating || !physicsRef.current) return;
+    if (animating || !physicsRef.current) return;
     const pos = canvasToWorld(e.clientX, e.clientY);
-    const ball = physicsRef.current;
-    const dist = Math.sqrt((pos.x - ball.x) ** 2 + (pos.y - ball.y) ** 2);
-    if (dist > BALL_RADIUS * 4) return;
 
     (e.target as HTMLElement).setPointerCapture(e.pointerId);
     setAiming(true);
     setDragStart(pos);
     setDragCurrent(pos);
-  }, [isMyTurn, animating, canvasToWorld]);
+  }, [animating, canvasToWorld]);
 
   const handlePointerMove = useCallback((e: React.PointerEvent) => {
     if (!aiming) return;
@@ -95,8 +93,16 @@ export function MiniGolfCanvas({
       return;
     }
 
-    const dx = dragStart.x - dragCurrent.x;
-    const dy = dragStart.y - dragCurrent.y;
+    if (!isMyTurn) {
+      setAiming(false);
+      setDragStart(null);
+      setDragCurrent(null);
+      return;
+    }
+
+    const ball = physicsRef.current;
+    const dx = ball.x - dragCurrent.x;
+    const dy = ball.y - dragCurrent.y;
     const power = Math.min(Math.sqrt(dx * dx + dy * dy), MAX_POWER);
 
     if (power < 5) {
@@ -117,7 +123,7 @@ export function MiniGolfCanvas({
     setAiming(false);
     setDragStart(null);
     setDragCurrent(null);
-  }, [aiming, dragStart, dragCurrent, onShotTaken]);
+  }, [aiming, dragStart, dragCurrent, isMyTurn, onShotTaken]);
 
   useEffect(() => {
     if (!animating) return;
@@ -281,23 +287,32 @@ export function MiniGolfCanvas({
 
       // Aiming line
       if (aiming && dragStart && dragCurrent && physicsRef.current) {
-        const dx = dragStart.x - dragCurrent.x;
-        const dy = dragStart.y - dragCurrent.y;
+        const ball = physicsRef.current;
+        const dx = ball.x - dragCurrent.x;
+        const dy = ball.y - dragCurrent.y;
         const power = Math.min(Math.sqrt(dx * dx + dy * dy), MAX_POWER);
         const angle = Math.atan2(dx, -dy);
 
         const lineLen = power * 0.8;
-        const endX = physicsRef.current.x + Math.sin(angle) * lineLen;
-        const endY = physicsRef.current.y - Math.cos(angle) * lineLen;
+        const endX = ball.x + Math.sin(angle) * lineLen;
+        const endY = ball.y - Math.cos(angle) * lineLen;
 
-        ctx.strokeStyle = power >= MAX_POWER * 0.95 ? '#FF4444' : '#FFFFFF';
+        const lineColor = !isMyTurn ? '#888888' : power >= MAX_POWER * 0.95 ? '#FF4444' : '#FFFFFF';
+        ctx.strokeStyle = lineColor;
         ctx.lineWidth = 2;
         ctx.setLineDash([6, 4]);
         ctx.beginPath();
-        ctx.moveTo(physicsRef.current.x, physicsRef.current.y);
+        ctx.moveTo(ball.x, ball.y);
         ctx.lineTo(endX, endY);
         ctx.stroke();
         ctx.setLineDash([]);
+
+        if (!isMyTurn) {
+          ctx.fillStyle = '#888888';
+          ctx.font = '14px sans-serif';
+          ctx.textAlign = 'center';
+          ctx.fillText('Not your turn', CANVAS_WIDTH / 2, CANVAS_HEIGHT - 20);
+        }
       }
 
       animFrameRef.current = requestAnimationFrame(render);
@@ -318,7 +333,7 @@ export function MiniGolfCanvas({
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
-        className="rounded-lg shadow-lg"
+        className="rounded-lg shadow-lg cursor-crosshair"
       />
     </div>
   );
