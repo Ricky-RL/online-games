@@ -165,6 +165,21 @@ function BattleshipIcon() {
   );
 }
 
+function JengaIcon() {
+  return (
+    <svg width="48" height="48" viewBox="0 0 48 48" fill="none">
+      <rect x="10" y="34" width="28" height="6" rx="1" fill="currentColor" opacity="0.9" />
+      <rect x="12" y="26" width="7" height="8" rx="1" fill="currentColor" opacity="0.7" />
+      <rect x="21" y="26" width="7" height="8" rx="1" fill="currentColor" opacity="0.8" />
+      <rect x="30" y="26" width="7" height="8" rx="1" fill="currentColor" opacity="0.7" />
+      <rect x="10" y="18" width="28" height="6" rx="1" fill="currentColor" opacity="0.6" />
+      <rect x="12" y="10" width="7" height="8" rx="1" fill="currentColor" opacity="0.5" />
+      <rect x="21" y="10" width="7" height="8" rx="1" fill="currentColor" opacity="0.5" />
+      <rect x="30" y="10" width="7" height="8" rx="1" fill="currentColor" opacity="0.4" />
+    </svg>
+  );
+}
+
 
 function MiniGolfIcon() {
   return (
@@ -733,8 +748,16 @@ function GameSelection({ playerName, onChangePlayer }: { playerName: PlayerName;
             description="3 holes, lowest score wins. Aim, shoot, and sink it."
             color="#06D6A0"
             icon={<MiniGolfIcon />}
-            delay={0.55}
+            delay={0.35}
             onClick={() => router.push('/mini-golf')}
+          />
+          <ClickableGameCard
+            title="Jenga"
+            description="Pull blocks, don't topple the tower. Nerve and strategy for two."
+            color="#D97706"
+            icon={<JengaIcon />}
+            delay={0.4}
+            onClick={() => router.push('/jenga')}
           />
         </div>
       </div>
