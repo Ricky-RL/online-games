@@ -76,3 +76,24 @@ export type CheckersBoard = CheckersCell[][];
 export interface CheckersSettings { forcedJumps: boolean; moveCount: number; movesSinceCapture: number; continuingPiece: [number, number] | null }
 export interface CheckersGameState { cells: CheckersBoard; settings: CheckersSettings }
 export interface CheckersMove { from: [number, number]; to: [number, number]; captured: [number, number][] }
+
+// === Jenga Types ===
+export interface JengaBlock {
+  id: string;
+  exists: boolean;
+}
+
+export interface JengaMove {
+  player: Player;
+  row: number;
+  col: number;
+  risk: number;
+  wobble_after: number;
+  toppled: boolean;
+}
+
+export interface JengaGameState {
+  tower: JengaBlock[][];
+  wobble_score: number;
+  move_history: JengaMove[];
+}
