@@ -215,7 +215,7 @@ After 60 total turns, net worth is calculated:
 - Cash on hand
 - Property purchase prices (sum of original costs)
 - Houses: $50 each
-- Hotels: $100 each (not $250 — simplified)
+- Hotels: $250 each (4 houses worth + upgrade premium)
 
 Higher net worth wins. Ties are possible (recorded as draw).
 

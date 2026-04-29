@@ -75,10 +75,8 @@ export interface SpaceDefinition {
 
 export type MonopolyPhase =
   | 'roll'
-  | 'landed'
   | 'buy-decision'
   | 'jail-decision'
-  | 'build'
   | 'end-turn'
   | 'game-over';
 
@@ -133,7 +131,7 @@ export const GO_SALARY = 200;
 export const JAIL_FEE = 50;
 export const MAX_JAIL_TURNS = 3;
 export const HOUSE_VALUE = 50;
-export const HOTEL_VALUE = 100;
+export const HOTEL_VALUE = 250;
 ```
 
 - [ ] **Step 2: Commit**
@@ -392,7 +390,8 @@ export function resolveLanding(board: MonopolyBoard, player: Player): { board: M
       if (newCash < 0) {
         const opponent: Player = player === 1 ? 2 : 1;
         const updated = updatePlayerState(board, player, { cash: newCash });
-        return { board: { ...updated, winner: opponent, phase: 'game-over' }, phase: 'game-over' };
+        const finalNetWorth = calculateNetWorth(updated);
+        return { board: { ...updated, winner: opponent, phase: 'game-over', finalNetWorth }, phase: 'game-over' };
       }
       const updated = updatePlayerState(board, player, { cash: newCash });
       return { board: updated, phase: 'end-turn' };
@@ -418,7 +417,8 @@ export function resolveLanding(board: MonopolyBoard, player: Player): { board: M
       if (newCash < 0) {
         const opponent: Player = player === 1 ? 2 : 1;
         const updated = updatePlayerState(board, player, { cash: newCash });
-        return { board: { ...updated, winner: opponent, phase: 'game-over' }, phase: 'game-over' };
+        const finalNetWorth = calculateNetWorth(updated);
+        return { board: { ...updated, winner: opponent, phase: 'game-over', finalNetWorth }, phase: 'game-over' };
       }
       let updated = updatePlayerState(board, player, { cash: newCash });
       const opponent: Player = player === 1 ? 2 : 1;
@@ -534,7 +534,8 @@ export function jailPayFee(board: MonopolyBoard, player: Player): MonopolyBoard 
   if (newCash < 0) {
     const opponent: Player = player === 1 ? 2 : 1;
     const updated = updatePlayerState(board, player, { cash: newCash, inJail: false, jailTurns: 0 });
-    return { ...updated, winner: opponent, phase: 'game-over' };
+    const finalNetWorth = calculateNetWorth(updated);
+    return { ...updated, winner: opponent, phase: 'game-over', finalNetWorth };
   }
   const updated = updatePlayerState(board, player, { cash: newCash, inJail: false, jailTurns: 0 });
   return { ...updated, phase: 'roll' };
@@ -578,7 +579,7 @@ export function calculateNetWorth(board: MonopolyBoard): [number, number] {
     if (prop.houses > 0 && prop.houses <= 4) {
       worth[idx] += prop.houses * HOUSE_VALUE;
     } else if (prop.houses === 5) {
-      worth[idx] += HOTEL_VALUE;
+      worth[idx] += HOTEL_VALUE; // 4 houses + hotel upgrade = $250
     }
   }
 
@@ -626,7 +627,7 @@ import {
   canBuildOnProperty, getBuildableProperties, jailPayFee, jailRollForDoubles,
   calculateNetWorth, performRoll, playerIdx, getPlayerState, ownsFullGroup,
 } from './logic';
-import { MonopolyBoard, STARTING_CASH, GO_SALARY, JAIL_FEE, MAX_TURNS } from './types';
+import { MonopolyBoard, STARTING_CASH, GO_SALARY, JAIL_FEE, MAX_TURNS, HOUSE_VALUE, HOTEL_VALUE } from './types';
 import { BOARD } from './board-data';
 
 describe('createInitialBoard', () => {
@@ -798,7 +799,7 @@ describe('calculateNetWorth', () => {
     let board = createInitialBoard();
     board = { ...board, properties: { 1: { owner: 1, houses: 2 }, 39: { owner: 2, houses: 0 } } };
     const [p1, p2] = calculateNetWorth(board);
-    expect(p1).toBe(STARTING_CASH + 60 + 2 * 50); // cash + property price + 2 houses
+    expect(p1).toBe(STARTING_CASH + 60 + 2 * HOUSE_VALUE); // cash + property price + 2 houses
     expect(p2).toBe(STARTING_CASH + 400); // cash + Shaughnessy price
   });
 });
@@ -840,11 +841,6 @@ import {
 import { recordMatchResult, GameType } from '@/lib/match-results';
 
 const POLL_INTERVAL_MS = 1500;
-
-const PLAYER_IDS: Record<string, string> = {
-  Ricky: '00000000-0000-0000-0000-000000000001',
-  Lilian: '00000000-0000-0000-0000-000000000002',
-};
 
 interface UseMonopolyGameReturn {
   game: MonopolyGame | null;
@@ -1404,8 +1400,8 @@ function SpaceCell({ index, board }: { index: number; board: BoardState }) {
   const space = BOARD[index];
   const pos = getBoardPosition(index);
   const ownership = board.properties[index];
-  const isCorner = pos.col === 0 && pos.row === 0 || pos.col === 10 && pos.row === 0 ||
-                   pos.col === 0 && pos.row === 10 || pos.col === 10 && pos.row === 10;
+  const isCorner = (pos.col === 0 && pos.row === 0) || (pos.col === 10 && pos.row === 0) ||
+                   (pos.col === 0 && pos.row === 10) || (pos.col === 10 && pos.row === 10);
 
   const p1Here = board.players[0].position === index;
   const p2Here = board.players[1].position === index;
@@ -1555,10 +1551,9 @@ export default function MonopolyGamePage({ params }: { params: Promise<{ gameId:
         {board.phase !== 'game-over' && (
           <div className="mb-4">
             <TurnIndicator
-              currentTurn={board.activePlayer}
-              myPlayer={myPlayer ?? 1}
-              player1Name={player1Name}
-              player2Name={player2Name}
+              currentPlayer={board.activePlayer}
+              isMyTurn={isMyTurn}
+              playerName={board.activePlayer === 1 ? player1Name : player2Name}
             />
           </div>
         )}
@@ -1602,7 +1597,7 @@ export default function MonopolyGamePage({ params }: { params: Promise<{ gameId:
             )}
 
             {board.phase === 'buy-decision' && isMyTurn && (
-              <PropertyCard board={board} player={myPlayer!} onBuy={buy} onPass={pass} />
+              <PropertyCard board={board} player={myPlayer!} onBuy={() => { play('bounce'); buy(); }} onPass={pass} />
             )}
 
             {board.phase === 'roll' && isMyTurn && (
