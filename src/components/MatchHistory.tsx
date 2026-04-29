@@ -1,11 +1,9 @@
 'use client';
-
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-
 interface MatchResult {
   id: string;
-  game_type: 'connect-four' | 'tic-tac-toe' | 'wordle' | 'mini-golf' | 'snakes-and-ladders';
+  game_type: 'connect-four' | 'tic-tac-toe' | 'wordle' | 'mini-golf' | 'jenga' | 'snakes-and-ladders';
   winner_id: string | null;
   winner_name: string | null;
   loser_id: string | null;
@@ -18,12 +16,10 @@ interface MatchResult {
   player2_name: string;
   played_at: string;
 }
-
 interface MatchHistoryProps {
   results: MatchResult[];
   loading?: boolean;
 }
-
 function formatRelativeTime(dateStr: string): string {
   const now = Date.now();
   const then = new Date(dateStr).getTime();
@@ -31,7 +27,6 @@ function formatRelativeTime(dateStr: string): string {
   const diffMin = Math.floor(diffMs / 60000);
   const diffHr = Math.floor(diffMs / 3600000);
   const diffDay = Math.floor(diffMs / 86400000);
-
   if (diffMin < 1) return 'just now';
   if (diffMin < 60) return `${diffMin}m ago`;
   if (diffHr < 24) return `${diffHr}h ago`;
@@ -39,27 +34,26 @@ function formatRelativeTime(dateStr: string): string {
   if (diffDay < 7) return `${diffDay}d ago`;
   return new Date(dateStr).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
 }
-
 function gameIcon(gameType: MatchResult['game_type']): string {
   switch (gameType) {
     case 'connect-four': return '◉';
     case 'tic-tac-toe': return '✕○';
     case 'wordle': return '▢▢';
     case 'mini-golf': return '⛳';
+    case 'jenga': return '▮▮';
     case 'snakes-and-ladders': return '🎲';
   }
 }
-
 function gameLabel(gameType: MatchResult['game_type']): string {
   switch (gameType) {
     case 'connect-four': return 'Connect Four';
     case 'tic-tac-toe': return 'Tic-Tac-Toe';
     case 'wordle': return 'Wordle';
     case 'mini-golf': return 'Mini Golf';
+    case 'jenga': return 'Jenga';
     case 'snakes-and-ladders': return 'Snakes & Ladders';
   }
 }
-
 function outcomeText(result: MatchResult): string {
   if (result.game_type === 'wordle') {
     const guesses = result.metadata?.guessCount ?? 0;
@@ -71,7 +65,6 @@ function outcomeText(result: MatchResult): string {
   if (result.is_draw) return 'Draw';
   return `${result.winner_name} won`;
 }
-
 function outcomeColor(result: MatchResult): string {
   if (result.game_type === 'wordle') {
     return result.metadata?.won ? 'text-wordle-correct' : 'text-text-secondary';
@@ -80,15 +73,11 @@ function outcomeColor(result: MatchResult): string {
   if (result.winner_name === 'Ricky') return 'text-player1';
   return 'text-player2';
 }
-
 export function MatchHistory({ results, loading }: MatchHistoryProps) {
   const [showCount, setShowCount] = useState(10);
-
   if (results.length === 0) return null;
-
   const visible = results.slice(0, showCount);
   const hasMore = results.length > showCount;
-
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -99,7 +88,6 @@ export function MatchHistory({ results, loading }: MatchHistoryProps) {
       <h2 className="text-xs font-semibold uppercase tracking-wider text-text-secondary/70 mb-4 px-1">
         Recent Matches
       </h2>
-
       <div className="rounded-3xl border border-border bg-surface overflow-hidden divide-y divide-border">
         {loading && results.length === 0 ? (
           <div className="px-6 py-8 text-center text-sm text-text-secondary">Loading...</div>
@@ -130,7 +118,6 @@ export function MatchHistory({ results, loading }: MatchHistoryProps) {
           ))
         )}
       </div>
-
       {hasMore && (
         <div className="mt-4 text-center">
           <button
