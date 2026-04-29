@@ -2,7 +2,8 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
-import { makeMove as computeMove, checkWin } from '@/lib/game-logic';
+import { makeMove as computeMove, checkWin, isDraw } from '@/lib/game-logic';
+import { recordMatchResult } from '@/lib/match-results';
 import type { Game, Player, Board } from '@/lib/types';
 
 const POLL_INTERVAL_MS = 1500;
@@ -34,6 +35,7 @@ export function useGame(gameId: string): UseGameReturn {
   const [deleted, setDeleted] = useState(false);
   const optimisticBoard = useRef<Board | null>(null);
   const gameRef = useRef<Game | null>(null);
+  const matchRecorded = useRef(false);
 
   const updateGame = useCallback((updater: Game | null | ((prev: Game | null) => Game | null)) => {
     setGame((prev) => {
@@ -218,6 +220,47 @@ export function useGame(gameId: string): UseGameReturn {
           .single();
         if (freshGame) updateGame(freshGame as Game);
         setError(updateError.message);
+        return;
+      }
+
+      // Record match result on win
+      if (winner && !matchRecorded.current) {
+        matchRecorded.current = true;
+        const winnerName = winner === 1 ? currentGame.player1_name : currentGame.player2_name;
+        const loserName = winner === 1 ? currentGame.player2_name : currentGame.player1_name;
+        const winnerId = winner === 1 ? currentGame.player1_id : currentGame.player2_id;
+        const loserId = winner === 1 ? currentGame.player2_id : currentGame.player1_id;
+        recordMatchResult({
+          game_type: 'connect-four',
+          winner_id: winnerId,
+          winner_name: winnerName,
+          loser_id: loserId,
+          loser_name: loserName,
+          is_draw: false,
+          metadata: null,
+          player1_id: currentGame.player1_id!,
+          player1_name: currentGame.player1_name!,
+          player2_id: currentGame.player2_id!,
+          player2_name: currentGame.player2_name!,
+        });
+      }
+
+      // Record match result on draw
+      if (!winner && isDraw(newBoard) && !matchRecorded.current) {
+        matchRecorded.current = true;
+        recordMatchResult({
+          game_type: 'connect-four',
+          winner_id: null,
+          winner_name: null,
+          loser_id: null,
+          loser_name: null,
+          is_draw: true,
+          metadata: null,
+          player1_id: currentGame.player1_id!,
+          player1_name: currentGame.player1_name!,
+          player2_id: currentGame.player2_id!,
+          player2_name: currentGame.player2_name!,
+        });
       }
     },
     [gameId, updateGame]

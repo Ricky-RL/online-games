@@ -5,7 +5,9 @@ import { supabase } from '@/lib/supabase';
 import {
   makeMove as computeMove,
   checkWin,
+  isDraw,
 } from '@/lib/tic-tac-toe-logic';
+import { recordMatchResult } from '@/lib/match-results';
 import type { Player, TicTacToeBoard } from '@/lib/types';
 
 const POLL_INTERVAL_MS = 1500;
@@ -54,6 +56,7 @@ export function useTicTacToeGame(gameId: string): UseTicTacToeGameReturn {
   const [deleted, setDeleted] = useState(false);
   const optimisticBoard = useRef<TicTacToeBoard | null>(null);
   const gameRef = useRef<TicTacToeGame | null>(null);
+  const matchRecorded = useRef(false);
 
   const updateGame = useCallback(
     (updater: TicTacToeGame | null | ((prev: TicTacToeGame | null) => TicTacToeGame | null)) => {
@@ -238,6 +241,47 @@ export function useTicTacToeGame(gameId: string): UseTicTacToeGameReturn {
           .single();
         if (freshGame) updateGame(freshGame as TicTacToeGame);
         setError(updateError.message);
+        return;
+      }
+
+      // Record match result on win
+      if (winner && !matchRecorded.current) {
+        matchRecorded.current = true;
+        const winnerName = winner === 1 ? currentGame.player1_name : currentGame.player2_name;
+        const loserName = winner === 1 ? currentGame.player2_name : currentGame.player1_name;
+        const winnerId = winner === 1 ? currentGame.player1_id : currentGame.player2_id;
+        const loserId = winner === 1 ? currentGame.player2_id : currentGame.player1_id;
+        recordMatchResult({
+          game_type: 'tic-tac-toe',
+          winner_id: winnerId,
+          winner_name: winnerName,
+          loser_id: loserId,
+          loser_name: loserName,
+          is_draw: false,
+          metadata: null,
+          player1_id: currentGame.player1_id!,
+          player1_name: currentGame.player1_name!,
+          player2_id: currentGame.player2_id!,
+          player2_name: currentGame.player2_name!,
+        });
+      }
+
+      // Record match result on draw
+      if (!winner && isDraw(newBoard) && !matchRecorded.current) {
+        matchRecorded.current = true;
+        recordMatchResult({
+          game_type: 'tic-tac-toe',
+          winner_id: null,
+          winner_name: null,
+          loser_id: null,
+          loser_name: null,
+          is_draw: true,
+          metadata: null,
+          player1_id: currentGame.player1_id!,
+          player1_name: currentGame.player1_name!,
+          player2_id: currentGame.player2_id!,
+          player2_name: currentGame.player2_name!,
+        });
       }
     },
     [gameId, updateGame]

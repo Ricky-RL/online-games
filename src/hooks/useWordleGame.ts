@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
 import { isValidGuess, isGameWon, isGameLost, getAnswer } from '@/lib/wordle-logic';
+import { recordMatchResult } from '@/lib/match-results';
 import type { WordleGame, WordleGuess } from '@/lib/wordle-types';
 
 const POLL_INTERVAL_MS = 1500;
@@ -31,6 +32,7 @@ export function useWordleGame(gameId: string): UseWordleGameReturn {
   const gameRef = useRef<WordleGame | null>(null);
   const typingTimeout = useRef<NodeJS.Timeout | null>(null);
   const optimisticGuessCount = useRef<number | null>(null);
+  const matchRecorded = useRef(false);
 
   const updateGame = useCallback((updater: WordleGame | null | ((prev: WordleGame | null) => WordleGame | null)) => {
     setGame((prev) => {
@@ -210,8 +212,45 @@ export function useWordleGame(gameId: string): UseWordleGameReturn {
             setError('Failed to submit guess, please try again');
             return false;
           }
+
+          // Record after successful retry if game ended
+          if ((retryWon || retryLost) && !matchRecorded.current) {
+            matchRecorded.current = true;
+            recordMatchResult({
+              game_type: 'wordle',
+              winner_id: null,
+              winner_name: null,
+              loser_id: null,
+              loser_name: null,
+              is_draw: false,
+              metadata: { guessCount: retryCount, won: retryWon },
+              player1_id: currentGame.player1_id!,
+              player1_name: currentGame.player1_name!,
+              player2_id: currentGame.player2_id!,
+              player2_name: currentGame.player2_name!,
+            });
+          }
         }
       }
+      return true;
+    }
+
+    // Record match result when game ends (won or lost)
+    if ((won || lost) && !matchRecorded.current) {
+      matchRecorded.current = true;
+      recordMatchResult({
+        game_type: 'wordle',
+        winner_id: null,
+        winner_name: null,
+        loser_id: null,
+        loser_name: null,
+        is_draw: false,
+        metadata: { guessCount: newGuessCount, won },
+        player1_id: currentGame.player1_id!,
+        player1_name: currentGame.player1_name!,
+        player2_id: currentGame.player2_id!,
+        player2_name: currentGame.player2_name!,
+      });
     }
 
     return true;

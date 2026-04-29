@@ -7,6 +7,10 @@ import { supabase } from '@/lib/supabase';
 import { createEmptyBoard } from '@/lib/game-logic';
 import { generateAnswerIndex } from '@/lib/wordle-logic';
 import { SettingsButton } from '@/components/SettingsButton';
+import { Leaderboard } from '@/components/Leaderboard';
+import { MatchHistory } from '@/components/MatchHistory';
+import { ResetStatsDialog } from '@/components/ResetStatsDialog';
+import { useMatchHistory } from '@/hooks/useMatchHistory';
 
 type PlayerName = 'Ricky' | 'Lilian';
 
@@ -181,6 +185,13 @@ const PLAYER_IDS: Record<PlayerName, string> = {
 function GameSelection({ playerName, onChangePlayer }: { playerName: PlayerName; onChangePlayer: () => void }) {
   const router = useRouter();
   const [connecting, setConnecting] = useState<string | null>(null);
+  const [showResetDialog, setShowResetDialog] = useState(false);
+  const { results, stats, loading, clearAll } = useMatchHistory();
+
+  const handleResetConfirm = async () => {
+    await clearAll();
+    setShowResetDialog(false);
+  };
 
   const handlePlayConnectFour = useCallback(async () => {
     setConnecting('connect-four');
@@ -467,6 +478,15 @@ function GameSelection({ playerName, onChangePlayer }: { playerName: PlayerName;
         </button>
       </div>
 
+      {/* Leaderboard */}
+      {stats && (
+        <Leaderboard
+          stats={stats}
+          onReset={() => setShowResetDialog(true)}
+          loading={loading}
+        />
+      )}
+
       {/* Games grid */}
       <div className="max-w-3xl mx-auto">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
@@ -506,6 +526,16 @@ function GameSelection({ playerName, onChangePlayer }: { playerName: PlayerName;
           />
         </div>
       </div>
+
+      {/* Match History */}
+      <MatchHistory results={results} loading={loading} />
+
+      {/* Reset confirmation dialog */}
+      <ResetStatsDialog
+        open={showResetDialog}
+        onConfirm={handleResetConfirm}
+        onCancel={() => setShowResetDialog(false)}
+      />
     </motion.div>
   );
 }
