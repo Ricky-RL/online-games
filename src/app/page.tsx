@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { motion, useInView, AnimatePresence } from 'framer-motion';
 import { supabase } from '@/lib/supabase';
 import { createEmptyBoard } from '@/lib/game-logic';
+import { generateAnswerIndex } from '@/lib/wordle-logic';
 import { SettingsButton } from '@/components/SettingsButton';
 
 type PlayerName = 'Ricky' | 'Lilian';
@@ -120,6 +121,25 @@ function WhiteboardIcon() {
   );
 }
 
+function WordleIcon() {
+  return (
+    <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
+      <rect x="1" y="4" width="5" height="5" rx="1" fill="#538D4E" />
+      <rect x="7.5" y="4" width="5" height="5" rx="1" fill="#B59F3B" />
+      <rect x="14" y="4" width="5" height="5" rx="1" fill="#3A3A3C" />
+      <rect x="20.5" y="4" width="5" height="5" rx="1" fill="#538D4E" />
+      <rect x="1" y="11.5" width="5" height="5" rx="1" fill="#3A3A3C" />
+      <rect x="7.5" y="11.5" width="5" height="5" rx="1" fill="#538D4E" />
+      <rect x="14" y="11.5" width="5" height="5" rx="1" fill="#538D4E" />
+      <rect x="20.5" y="11.5" width="5" height="5" rx="1" fill="#B59F3B" />
+      <rect x="1" y="19" width="5" height="5" rx="1" fill="#538D4E" />
+      <rect x="7.5" y="19" width="5" height="5" rx="1" fill="#538D4E" />
+      <rect x="14" y="19" width="5" height="5" rx="1" fill="#538D4E" />
+      <rect x="20.5" y="19" width="5" height="5" rx="1" fill="#538D4E" />
+    </svg>
+  );
+}
+
 
 function PlayerSelector({ onSelect }: { onSelect: (name: PlayerName) => void }) {
   return (
@@ -160,10 +180,10 @@ const PLAYER_IDS: Record<PlayerName, string> = {
 
 function GameSelection({ playerName, onChangePlayer }: { playerName: PlayerName; onChangePlayer: () => void }) {
   const router = useRouter();
-  const [connecting, setConnecting] = useState(false);
+  const [connecting, setConnecting] = useState<string | null>(null);
 
   const handlePlayConnectFour = useCallback(async () => {
-    setConnecting(true);
+    setConnecting('connect-four');
 
     const isRicky = playerName === 'Ricky';
     const myId = PLAYER_IDS[playerName];
@@ -216,7 +236,7 @@ function GameSelection({ playerName, onChangePlayer }: { playerName: PlayerName;
 
       if (joinError) {
         console.error('Error joining game:', joinError);
-        setConnecting(false);
+        setConnecting(null);
         return false;
       }
       return true;
@@ -287,11 +307,144 @@ function GameSelection({ playerName, onChangePlayer }: { playerName: PlayerName;
 
     if (error || !data) {
       console.error('Error creating game:', error);
-      setConnecting(false);
+      setConnecting(null);
       return;
     }
 
     router.push(`/connect-four/${data.id}`);
+  }, [playerName, router]);
+
+  const handlePlayWordle = useCallback(async () => {
+    setConnecting('wordle');
+
+    const isRicky = playerName === 'Ricky';
+    const myId = PLAYER_IDS[playerName];
+
+    async function findGames() {
+      const { data } = await supabase
+        .from('wordle_games')
+        .select('*')
+        .eq('game_type', 'wordle')
+        .eq('status', 'playing')
+        .order('created_at', { ascending: false })
+        .limit(10);
+      return data;
+    }
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    function findMyGame(games: any[] | null) {
+      if (!games) return { activeGame: null, joinableGame: null };
+
+      const activeGame = games.find((g) => {
+        if (isRicky) return g.player1_name === 'Ricky';
+        return g.player2_name === 'Lilian';
+      }) || null;
+
+      const joinableGame = games.find((g) => {
+        if (isRicky) {
+          return g.player1_name === null && g.player2_name === 'Lilian';
+        } else {
+          return g.player2_name === null && g.player1_name === 'Ricky';
+        }
+      }) || null;
+
+      return { activeGame, joinableGame };
+    }
+
+    async function joinGame(gameId: string) {
+      const updateField = isRicky
+        ? { player1_id: myId, player1_name: playerName }
+        : { player2_id: myId, player2_name: playerName };
+
+      const { error: joinError } = await supabase
+        .from('wordle_games')
+        .update({
+          ...updateField,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', gameId)
+        .select()
+        .single();
+
+      if (joinError) {
+        console.error('Error joining game:', joinError);
+        setConnecting(null);
+        return false;
+      }
+      return true;
+    }
+
+    const existingGames = await findGames();
+    let { activeGame, joinableGame } = findMyGame(existingGames);
+
+    if (activeGame) {
+      router.push(`/wordle/${activeGame.id}`);
+      return;
+    }
+
+    if (joinableGame) {
+      if (await joinGame(joinableGame.id)) {
+        router.push(`/wordle/${joinableGame.id}`);
+      }
+      return;
+    }
+
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+
+    const retryGames = await findGames();
+    ({ activeGame, joinableGame } = findMyGame(retryGames));
+
+    if (activeGame) {
+      router.push(`/wordle/${activeGame.id}`);
+      return;
+    }
+
+    if (joinableGame) {
+      if (await joinGame(joinableGame.id)) {
+        router.push(`/wordle/${joinableGame.id}`);
+      }
+      return;
+    }
+
+    const insertData = isRicky
+      ? {
+          game_type: 'wordle',
+          answer_index: generateAnswerIndex(),
+          guesses: [],
+          guess_count: 0,
+          status: 'playing',
+          winner: null,
+          player1_id: myId,
+          player1_name: playerName,
+          player2_id: null,
+          player2_name: null,
+        }
+      : {
+          game_type: 'wordle',
+          answer_index: generateAnswerIndex(),
+          guesses: [],
+          guess_count: 0,
+          status: 'playing',
+          winner: null,
+          player1_id: null,
+          player1_name: null,
+          player2_id: myId,
+          player2_name: playerName,
+        };
+
+    const { data, error } = await supabase
+      .from('wordle_games')
+      .insert(insertData)
+      .select('id')
+      .single();
+
+    if (error || !data) {
+      console.error('Error creating game:', error);
+      setConnecting(null);
+      return;
+    }
+
+    router.push(`/wordle/${data.id}`);
   }, [playerName, router]);
 
   return (
@@ -324,7 +477,16 @@ function GameSelection({ playerName, onChangePlayer }: { playerName: PlayerName;
             icon={<ConnectFourIcon />}
             delay={0.2}
             onClick={handlePlayConnectFour}
-            loading={connecting}
+            loading={connecting === 'connect-four'}
+          />
+          <ClickableGameCard
+            title="Wordle"
+            description="Guess the word together. Share clues, solve as a team."
+            color="#538D4E"
+            icon={<WordleIcon />}
+            delay={0.3}
+            onClick={handlePlayWordle}
+            loading={connecting === 'wordle'}
           />
           <ClickableGameCard
             title="Tic Tac Toe"
