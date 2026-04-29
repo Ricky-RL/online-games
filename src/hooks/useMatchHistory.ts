@@ -7,7 +7,7 @@ const POLL_INTERVAL_MS = 5000;
 
 export interface MatchResult {
   id: string;
-  game_type: 'connect-four' | 'tic-tac-toe' | 'wordle';
+  game_type: 'connect-four' | 'tic-tac-toe' | 'wordle' | 'snakes-and-ladders';
   winner_id: string | null;
   winner_name: string | null;
   loser_id: string | null;
@@ -28,6 +28,7 @@ export interface LeaderboardStats {
   by_game: {
     'connect-four': { ricky: number; lilian: number; draws: number };
     'tic-tac-toe': { ricky: number; lilian: number; draws: number };
+    'snakes-and-ladders': { ricky: number; lilian: number; draws: number };
   };
   streaks: {
     ricky_current: number;
@@ -50,6 +51,7 @@ function computeStats(results: MatchResult[]): LeaderboardStats {
   const by_game = {
     'connect-four': { ricky: 0, lilian: 0, draws: 0 },
     'tic-tac-toe': { ricky: 0, lilian: 0, draws: 0 },
+    'snakes-and-ladders': { ricky: 0, lilian: 0, draws: 0 },
   };
 
   let wordle_played = 0;
@@ -66,7 +68,7 @@ function computeStats(results: MatchResult[]): LeaderboardStats {
       continue;
     }
 
-    const gameKey = r.game_type as 'connect-four' | 'tic-tac-toe';
+    const gameKey = r.game_type as 'connect-four' | 'tic-tac-toe' | 'snakes-and-ladders';
 
     if (r.is_draw) {
       draws++;
