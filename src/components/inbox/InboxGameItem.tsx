@@ -69,6 +69,22 @@ function MiniGolfMini() {
   );
 }
 
+function JengaMini() {
+  return (
+    <div className="w-8 h-8 rounded-lg bg-[#D97706]/10 flex items-center justify-center">
+      <svg width="16" height="16" viewBox="0 0 20 20" fill="none">
+        <rect x="4" y="14" width="12" height="3" rx="0.5" fill="currentColor" opacity="0.8" />
+        <rect x="5" y="10" width="3" height="4" rx="0.5" fill="currentColor" opacity="0.6" />
+        <rect x="9" y="10" width="3" height="4" rx="0.5" fill="currentColor" opacity="0.7" />
+        <rect x="13" y="10" width="3" height="4" rx="0.5" fill="currentColor" opacity="0.6" />
+        <rect x="4" y="6" width="12" height="3" rx="0.5" fill="currentColor" opacity="0.5" />
+        <rect x="5" y="2" width="3" height="4" rx="0.5" fill="currentColor" opacity="0.4" />
+        <rect x="9" y="2" width="3" height="4" rx="0.5" fill="currentColor" opacity="0.4" />
+      </svg>
+    </div>
+  );
+}
+
 function GameIcon({ gameType }: { gameType: InboxGameType }) {
   switch (gameType) {
     case 'connect-four': return <ConnectFourMini />;
@@ -76,6 +92,7 @@ function GameIcon({ gameType }: { gameType: InboxGameType }) {
     case 'checkers': return <CheckersMini />;
     case 'battleship': return <BattleshipMini />;
     case 'mini-golf': return <MiniGolfMini />;
+    case 'jenga': return <JengaMini />;
   }
 }
 
@@ -86,6 +103,7 @@ function gameLabel(gameType: InboxGameType): string {
     case 'checkers': return 'Checkers';
     case 'battleship': return 'Battleship';
     case 'mini-golf': return 'Mini Golf';
+    case 'jenga': return 'Jenga';
   }
 }
 

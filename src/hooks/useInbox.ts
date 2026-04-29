@@ -36,7 +36,7 @@ export function useInbox(): UseInboxReturn {
       supabase
         .from('games')
         .select('id, game_type, current_turn, player1_name, player2_name, updated_at')
-        .in('game_type', ['connect-four', 'tic-tac-toe', 'checkers', 'battleship', 'mini-golf'])
+        .in('game_type', ['connect-four', 'tic-tac-toe', 'checkers', 'battleship', 'mini-golf', 'jenga'])
         .or(`player1_name.eq.${playerName},player2_name.eq.${playerName},and(player1_name.eq.${otherPlayer},player2_name.is.null),and(player2_name.eq.${otherPlayer},player1_name.is.null)`)
         .is('winner', null)
         .order('updated_at', { ascending: false }),
