@@ -35,12 +35,12 @@ function DiceFace({ value }: { value: number }) {
 
 export function DiceRoll({ lastRoll, isMyTurn, onRoll, disabled }: DiceRollProps) {
   const [rolling, setRolling] = useState(false);
-  const animKeyRef = useRef(0);
+  const [animKey, setAnimKey] = useState(0);
   const prevRollRef = useRef(lastRoll);
 
   useEffect(() => {
     if (lastRoll !== prevRollRef.current) {
-      animKeyRef.current += 1;
+      setAnimKey((k) => k + 1);
       prevRollRef.current = lastRoll;
     }
   }, [lastRoll]);
@@ -57,7 +57,7 @@ export function DiceRoll({ lastRoll, isMyTurn, onRoll, disabled }: DiceRollProps
       <AnimatePresence mode="wait">
         {lastRoll ? (
           <motion.div
-            key={`roll-${animKeyRef.current}`}
+            key={`roll-${animKey}`}
             initial={{ rotateZ: -20, scale: 0.8 }}
             animate={{ rotateZ: 0, scale: 1 }}
             transition={{ type: 'spring', stiffness: 300, damping: 15 }}

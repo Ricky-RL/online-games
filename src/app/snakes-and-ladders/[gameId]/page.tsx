@@ -19,10 +19,12 @@ export default function SnakesAndLaddersGamePage({ params }: { params: Promise<{
   const router = useRouter();
   const { game, loading, error, lastMove, deleted, rollDice, resetGame } = useSnakesAndLaddersGame(gameId);
   const [showEndDialog, setShowEndDialog] = useState(false);
+  const [playerName, setPlayerName] = useState<string | null>(null);
 
-  const playerName = typeof window !== 'undefined'
-    ? (sessionStorage.getItem('player-name') || localStorage.getItem('player-name'))
-    : null;
+  useEffect(() => {
+    const name = sessionStorage.getItem('player-name') || localStorage.getItem('player-name');
+    setPlayerName(name);
+  }, []);
 
   const isPlayer1 = game?.player1_name === playerName;
   const myPlayerNumber = isPlayer1 ? 1 : 2;
@@ -97,7 +99,7 @@ export default function SnakesAndLaddersGamePage({ params }: { params: Promise<{
       )}
 
       {/* Board */}
-      <Board board={board} lastMove={lastMove} />
+      <Board board={board} />
 
       {/* Dice */}
       {!game.winner && (

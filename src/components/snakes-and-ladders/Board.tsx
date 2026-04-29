@@ -3,11 +3,9 @@
 import { motion } from 'framer-motion';
 import { useColors } from '@/contexts/PlayerColorsContext';
 import type { SnakesAndLaddersState } from '@/lib/types';
-import type { LastMoveInfo } from '@/hooks/useSnakesAndLaddersGame';
 
 interface BoardProps {
   board: SnakesAndLaddersState;
-  lastMove: LastMoveInfo | null;
 }
 
 function getSquarePosition(square: number): { row: number; col: number } {
@@ -19,7 +17,7 @@ function getSquarePosition(square: number): { row: number; col: number } {
 const SNAKE_COLORS = ['#E63946', '#D62828', '#C1121F', '#A4133C', '#800F2F', '#590D22', '#FF6B6B', '#EE6C4D'];
 const LADDER_COLORS = ['#2D6A4F', '#40916C', '#52B788', '#74C69D', '#1B4332', '#38A3A5', '#57CC99', '#80ED99'];
 
-export function Board({ board, lastMove }: BoardProps) {
+export function Board({ board }: BoardProps) {
   const { player1Color, player2Color } = useColors();
 
   const squares: number[] = [];
