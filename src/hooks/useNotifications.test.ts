@@ -206,4 +206,57 @@ describe('useNotifications', () => {
       expect(Notification).not.toHaveBeenCalled();
     });
   });
+
+  describe('multi-tab dedup', () => {
+    it('broadcasts claim via BroadcastChannel when firing notifications', () => {
+      const mockPostMessage = vi.fn();
+      vi.stubGlobal('BroadcastChannel', class {
+        postMessage = mockPostMessage;
+        addEventListener = vi.fn();
+        removeEventListener = vi.fn();
+        close = vi.fn();
+      });
+
+      const { rerender } = renderHook(
+        (props) => useNotifications(props),
+        {
+          initialProps: { gameId: 'game-1', isMyTurn: false, opponentName: 'Alice', gameType: 'connect-four' as const },
+        }
+      );
+      rerender({ gameId: 'game-1', isMyTurn: true, opponentName: 'Alice', gameType: 'connect-four' as const });
+      expect(mockPostMessage).toHaveBeenCalledWith(
+        expect.objectContaining({ type: 'notification-claim', gameId: 'game-1' })
+      );
+    });
+
+    it('suppresses notifications if another tab claims first', () => {
+      const listeners: ((event: MessageEvent) => void)[] = [];
+      vi.stubGlobal('BroadcastChannel', class {
+        postMessage = vi.fn();
+        addEventListener = (_: string, cb: (event: MessageEvent) => void) => { listeners.push(cb); };
+        removeEventListener = vi.fn();
+        close = vi.fn();
+      });
+
+      const mockPlay = vi.fn().mockResolvedValue(undefined);
+      vi.stubGlobal('Audio', class {
+        play = mockPlay;
+        load = vi.fn();
+        currentTime = 0;
+      });
+
+      const { rerender } = renderHook(
+        (props) => useNotifications(props),
+        {
+          initialProps: { gameId: 'game-1', isMyTurn: false, opponentName: 'Alice', gameType: 'connect-four' as const },
+        }
+      );
+
+      // Simulate another tab claiming
+      listeners.forEach((cb) => cb({ data: { type: 'notification-claim', gameId: 'game-1', tabId: 'other-tab' } } as MessageEvent));
+
+      rerender({ gameId: 'game-1', isMyTurn: true, opponentName: 'Alice', gameType: 'connect-four' as const });
+      expect(mockPlay).not.toHaveBeenCalled();
+    });
+  });
 });
