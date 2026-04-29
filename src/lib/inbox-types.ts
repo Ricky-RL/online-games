@@ -31,4 +31,5 @@ export interface UseInboxReturn {
   unreadWhiteboardCount: number;
   markGamesRead: () => Promise<void>;
   markWhiteboardRead: () => Promise<void>;
+  dismissItem: (itemType: 'game' | 'whiteboard', itemId: string) => Promise<void>;
 }

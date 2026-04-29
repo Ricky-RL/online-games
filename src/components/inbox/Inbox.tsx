@@ -21,6 +21,7 @@ export function Inbox({ playerName }: InboxProps) {
     whiteboardLoading,
     markGamesRead,
     markWhiteboardRead,
+    dismissItem,
   } = useInbox();
 
   const isEmpty = games.length === 0 && whiteboardActivity.length === 0;
@@ -101,11 +102,13 @@ export function Inbox({ playerName }: InboxProps) {
             <InboxGamesSection
               games={games}
               onGameClick={handleGameClick}
+              onDismiss={(gameId) => dismissItem('game', gameId)}
               playerName={playerName}
             />
             <InboxWhiteboardSection
               activity={whiteboardActivity}
               onItemClick={handleWhiteboardClick}
+              onDismiss={(itemId) => dismissItem('whiteboard', itemId)}
             />
           </div>
         )}

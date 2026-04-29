@@ -30,7 +30,7 @@ export function useInbox(): UseInboxReturn {
 
     const otherPlayer = getOtherPlayer(playerName);
 
-    const [gamesResult, activityResult, readStateResult] = await Promise.all([
+    const [gamesResult, activityResult, readStateResult, dismissedResult] = await Promise.all([
       // Fetch games where I'm already a participant OR where the other player
       // started a game and my slot is empty (waiting for me to join)
       supabase
@@ -50,17 +50,25 @@ export function useInbox(): UseInboxReturn {
         .from('inbox_read_state')
         .select('section, last_read_at')
         .eq('player_name', playerName),
+      supabase
+        .from('inbox_dismissed_items')
+        .select('item_type, item_id')
+        .eq('player_name', playerName),
     ]);
 
-    if (gamesResult.error || activityResult.error || readStateResult.error) {
+    if (gamesResult.error || activityResult.error || readStateResult.error || dismissedResult.error) {
       return null;
     }
+
+    const dismissedItems = dismissedResult.data ?? [];
+    const dismissedGameIds = new Set(dismissedItems.filter((d) => d.item_type === 'game').map((d) => d.item_id));
+    const dismissedWhiteboardIds = new Set(dismissedItems.filter((d) => d.item_type === 'whiteboard').map((d) => d.item_id));
 
     const readStates = readStateResult.data ?? [];
     const gamesLastReadAt = readStates.find((r) => r.section === 'games')?.last_read_at ?? '1970-01-01T00:00:00Z';
     const whiteboardLastReadAt = readStates.find((r) => r.section === 'whiteboard')?.last_read_at ?? '1970-01-01T00:00:00Z';
 
-    const enrichedGames: InboxGame[] = (gamesResult.data ?? []).map((game) => {
+    const enrichedGames: InboxGame[] = (gamesResult.data ?? []).filter((game) => !dismissedGameIds.has(game.id)).map((game) => {
       const iAmPlayer1 = game.player1_name === playerName;
       const iAmPlayer2 = game.player2_name === playerName;
       const iAmInGame = iAmPlayer1 || iAmPlayer2;
@@ -92,7 +100,7 @@ export function useInbox(): UseInboxReturn {
       };
     });
 
-    const enrichedActivity: WhiteboardActivityItem[] = (activityResult.data ?? []).map((item) => ({
+    const enrichedActivity: WhiteboardActivityItem[] = (activityResult.data ?? []).filter((item) => !dismissedWhiteboardIds.has(item.id)).map((item) => ({
       id: item.id,
       note_id: item.note_id,
       action: item.action,
@@ -182,6 +190,25 @@ export function useInbox(): UseInboxReturn {
     setWhiteboardActivity((prev) => prev.map((item) => ({ ...item, isUnread: false })));
   }, []);
 
+  const dismissItem = useCallback(async (itemType: 'game' | 'whiteboard', itemId: string) => {
+    const playerName = getMyName();
+    if (!playerName) return;
+
+    await supabase
+      .from('inbox_dismissed_items')
+      .upsert(
+        { player_name: playerName, item_type: itemType, item_id: itemId },
+        { onConflict: 'player_name,item_type,item_id' }
+      );
+
+    // Optimistically remove from local state
+    if (itemType === 'game') {
+      setGames((prev) => prev.filter((g) => g.id !== itemId));
+    } else {
+      setWhiteboardActivity((prev) => prev.filter((a) => a.id !== itemId));
+    }
+  }, []);
+
   return {
     games,
     gamesLoading,
@@ -191,5 +218,6 @@ export function useInbox(): UseInboxReturn {
     unreadWhiteboardCount,
     markGamesRead,
     markWhiteboardRead,
+    dismissItem,
   };
 }
