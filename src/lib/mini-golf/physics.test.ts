@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { createPhysicsState, stepPhysics, shootBall } from './physics';
+import { createPhysicsState, stepPhysics, shootBall, getMovingWallPosition } from './physics';
 import { Level, BALL_RADIUS, SINK_SPEED_THRESHOLD, MIN_SPEED } from './types';
 
 const simpleLevel: Level = {
@@ -82,5 +82,21 @@ describe('stepPhysics', () => {
     };
     const result = stepPhysics(state, simpleLevel);
     expect(result.sunk).toBe(false);
+  });
+
+  it('reflects ball off moving walls', () => {
+    const levelWithMovingWall: Level = {
+      ...simpleLevel,
+      movingWalls: [
+        {
+          start: { x1: 50, y1: 300, x2: 350, y2: 300 },
+          end: { x1: 50, y1: 300, x2: 350, y2: 300 },
+          speed: 0,
+        },
+      ],
+    };
+    const state = { x: 200, y: 305, vx: 0, vy: -5, moving: true, sunk: false };
+    const result = stepPhysics(state, levelWithMovingWall, 0);
+    expect(result.vy).toBeGreaterThan(0);
   });
 });

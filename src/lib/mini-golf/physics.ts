@@ -24,7 +24,7 @@ export function shootBall(state: PhysicsState, angle: number, power: number): Ph
   };
 }
 
-export function stepPhysics(state: PhysicsState, level: Level): PhysicsState {
+export function stepPhysics(state: PhysicsState, level: Level, time: number = 0): PhysicsState {
   if (!state.moving || state.sunk) return state;
 
   let { x, y, vx, vy } = state;
@@ -45,6 +45,20 @@ export function stepPhysics(state: PhysicsState, level: Level): PhysicsState {
       nextX = x + vx;
       nextY = y + vy;
       break;
+    }
+  }
+
+  if (level.movingWalls) {
+    for (const mw of level.movingWalls) {
+      const wallPos = getMovingWallPosition(mw, time);
+      if (circleLineCollision({ x: nextX, y: nextY }, BALL_RADIUS, wallPos)) {
+        const reflected = reflectVelocity(vx, vy, wallPos);
+        vx = reflected.vx;
+        vy = reflected.vy;
+        nextX = x + vx;
+        nextY = y + vy;
+        break;
+      }
     }
   }
 

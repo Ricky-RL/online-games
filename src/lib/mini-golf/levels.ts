@@ -326,9 +326,10 @@ export const LEVELS: Level[] = [
       { x1: 50, y1: 650, x2: 350, y2: 650 },
       { x1: 50, y1: 50, x2: 50, y2: 650 },
       { x1: 350, y1: 50, x2: 350, y2: 650 },
-      // Island walls (small square around hole area)
+      // Island walls (small square around hole area with entrance gap at bottom)
       { x1: 150, y1: 150, x2: 250, y2: 150 },
-      { x1: 150, y1: 260, x2: 250, y2: 260 },
+      { x1: 150, y1: 260, x2: 180, y2: 260 },
+      { x1: 220, y1: 260, x2: 250, y2: 260 },
       { x1: 150, y1: 150, x2: 150, y2: 260 },
       { x1: 250, y1: 150, x2: 250, y2: 260 },
     ],

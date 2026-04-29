@@ -127,7 +127,7 @@ export function MiniGolfCanvas({
       timeRef.current += 1 / 60;
 
       const prev = physicsRef.current;
-      let state = stepPhysics(prev, level);
+      let state = stepPhysics(prev, level, timeRef.current);
 
       if (state.vx !== prev.vx || state.vy !== prev.vy) {
         if (prev.moving && state.moving) {
