@@ -1,6 +1,6 @@
 import { supabase } from '@/lib/supabase';
 
-export type GameType = 'connect-four' | 'tic-tac-toe' | 'wordle' | 'mini-golf';
+export type GameType = 'connect-four' | 'tic-tac-toe' | 'wordle' | 'mini-golf' | 'jenga';
 
 export interface MatchResultInsert {
   game_type: GameType;

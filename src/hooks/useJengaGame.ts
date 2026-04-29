@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
 import { pullBlock, createInitialTower } from '@/lib/jenga-logic';
+import { recordMatchResult } from '@/lib/match-results';
 import type { Player, JengaGameState } from '@/lib/types';
 
 const POLL_INTERVAL_MS = 1500;
@@ -161,6 +162,28 @@ export function useJengaGame(gameId: string): UseJengaGameReturn {
           .from('games').select('*').eq('id', gameId).single();
         if (freshGame) updateGame(freshGame as JengaGame);
         setError(updateError.message);
+      }
+
+      // Record match result if game ended
+      if (winner && !updateError) {
+        const currentGame = gameRef.current;
+        if (currentGame && currentGame.player1_id && currentGame.player2_id) {
+          const loserNumber: Player = myPlayerNumber;
+          const winnerNumber: Player = (3 - myPlayerNumber) as Player;
+          recordMatchResult({
+            game_type: 'jenga',
+            winner_id: winnerNumber === 1 ? currentGame.player1_id : currentGame.player2_id,
+            winner_name: winnerNumber === 1 ? currentGame.player1_name : currentGame.player2_name,
+            loser_id: loserNumber === 1 ? currentGame.player1_id : currentGame.player2_id,
+            loser_name: loserNumber === 1 ? currentGame.player1_name : currentGame.player2_name,
+            is_draw: false,
+            metadata: { totalMoves: newBoard.move_history.length },
+            player1_id: currentGame.player1_id,
+            player1_name: currentGame.player1_name || '',
+            player2_id: currentGame.player2_id,
+            player2_name: currentGame.player2_name || '',
+          });
+        }
       }
     },
     [gameId, updateGame]
