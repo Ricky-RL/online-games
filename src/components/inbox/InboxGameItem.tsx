@@ -57,12 +57,28 @@ function BattleshipMini() {
   );
 }
 
+function SnakesAndLaddersMini() {
+  return (
+    <div className="w-8 h-8 rounded-lg bg-[#538D4E]/10 flex items-center justify-center">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+        <path d="M3 13L7 3" stroke="#538D4E" strokeWidth="1.5" strokeLinecap="round" />
+        <path d="M5 13L9 3" stroke="#538D4E" strokeWidth="1.5" strokeLinecap="round" />
+        <line x1="3.5" y1="11" x2="5.5" y2="11" stroke="#538D4E" strokeWidth="1" />
+        <line x1="4.5" y1="8" x2="6.5" y2="8" stroke="#538D4E" strokeWidth="1" />
+        <line x1="5.5" y1="5" x2="7.5" y2="5" stroke="#538D4E" strokeWidth="1" />
+        <path d="M10 4C11 3 13 3 13 5C13 7 10 7 11 9C11.5 10 12 10.5 13 10" stroke="#E63946" strokeWidth="1.2" strokeLinecap="round" fill="none" />
+      </svg>
+    </div>
+  );
+}
+
 function GameIcon({ gameType }: { gameType: InboxGameType }) {
   switch (gameType) {
     case 'connect-four': return <ConnectFourMini />;
     case 'tic-tac-toe': return <TicTacToeMini />;
     case 'checkers': return <CheckersMini />;
     case 'battleship': return <BattleshipMini />;
+    case 'snakes-and-ladders': return <SnakesAndLaddersMini />;
   }
 }
 
@@ -72,6 +88,7 @@ function gameLabel(gameType: InboxGameType): string {
     case 'tic-tac-toe': return 'Tic Tac Toe';
     case 'checkers': return 'Checkers';
     case 'battleship': return 'Battleship';
+    case 'snakes-and-ladders': return 'Snakes & Ladders';
   }
 }
 
