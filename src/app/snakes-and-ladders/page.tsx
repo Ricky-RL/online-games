@@ -142,7 +142,7 @@ export default function SnakesAndLaddersLobby() {
       : {
           game_type: 'snakes-and-ladders',
           board,
-          current_turn: 1 as const,
+          current_turn: 2 as const,
           winner: null,
           player1_id: null,
           player1_name: null,

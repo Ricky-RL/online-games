@@ -14,8 +14,59 @@ function getSquarePosition(square: number): { row: number; col: number } {
   return { row: 9 - row, col };
 }
 
-const SNAKE_COLORS = ['#E63946', '#D62828', '#C1121F', '#A4133C', '#800F2F', '#590D22', '#FF6B6B', '#EE6C4D'];
-const LADDER_COLORS = ['#2D6A4F', '#40916C', '#52B788', '#74C69D', '#1B4332', '#38A3A5', '#57CC99', '#80ED99'];
+function getCenter(square: number): { x: number; y: number } {
+  const { row, col } = getSquarePosition(square);
+  return { x: col * 50 + 25, y: row * 50 + 25 };
+}
+
+function snakePath(from: number, to: number): string {
+  const start = getCenter(from);
+  const end = getCenter(to);
+  const dx = end.x - start.x;
+  const dy = end.y - start.y;
+  const dist = Math.sqrt(dx * dx + dy * dy);
+  const waves = Math.max(2, Math.round(dist / 80));
+  const amp = 12;
+
+  const perpX = -dy / dist;
+  const perpY = dx / dist;
+
+  let d = `M ${start.x} ${start.y}`;
+  for (let i = 1; i <= waves * 2; i++) {
+    const t = i / (waves * 2);
+    const mx = start.x + dx * t;
+    const my = start.y + dy * t;
+    const sign = i % 2 === 0 ? 1 : -1;
+    const offset = sign * amp * (1 - Math.abs(t - 0.5) * 1.2);
+    d += ` Q ${mx + perpX * offset} ${my + perpY * offset}, ${start.x + dx * ((i + 0.5) / (waves * 2 + 1))} ${start.y + dy * ((i + 0.5) / (waves * 2 + 1))}`;
+  }
+  d += ` L ${end.x} ${end.y}`;
+  return d;
+}
+
+function ladderRungs(from: number, to: number, spacing: number = 6): { x1: number; y1: number; x2: number; y2: number }[] {
+  const start = getCenter(from);
+  const end = getCenter(to);
+  const dx = end.x - start.x;
+  const dy = end.y - start.y;
+  const dist = Math.sqrt(dx * dx + dy * dy);
+  const count = Math.max(2, Math.round(dist / 30));
+
+  const perpX = (-dy / dist) * spacing;
+  const perpY = (dx / dist) * spacing;
+
+  const rungs = [];
+  for (let i = 1; i < count; i++) {
+    const t = i / count;
+    const cx = start.x + dx * t;
+    const cy = start.y + dy * t;
+    rungs.push({
+      x1: cx - perpX, y1: cy - perpY,
+      x2: cx + perpX, y2: cy + perpY,
+    });
+  }
+  return rungs;
+}
 
 export function Board({ board }: BoardProps) {
   const { player1Color, player2Color } = useColors();
@@ -23,16 +74,14 @@ export function Board({ board }: BoardProps) {
   const squares: number[] = [];
   for (let i = 1; i <= 100; i++) squares.push(i);
 
-  const snakeEntries = Object.entries(board.snakes).map(([head, tail], i) => ({
+  const snakeEntries = Object.entries(board.snakes).map(([head, tail]) => ({
     from: Number(head),
-    to: tail,
-    color: SNAKE_COLORS[i % SNAKE_COLORS.length],
+    to: tail as number,
   }));
 
-  const ladderEntries = Object.entries(board.ladders).map(([bottom, top], i) => ({
+  const ladderEntries = Object.entries(board.ladders).map(([bottom, top]) => ({
     from: Number(bottom),
-    to: top,
-    color: LADDER_COLORS[i % LADDER_COLORS.length],
+    to: top as number,
   }));
 
   return (
@@ -57,10 +106,10 @@ export function Board({ board }: BoardProps) {
               <span className="absolute top-0.5 left-1 text-[8px]">{num}</span>
 
               {isSnakeHead && (
-                <div className="absolute inset-0 bg-red-500/5 border border-red-400/20 rounded-sm" />
+                <div className="absolute inset-0 bg-red-500/8 rounded-sm" />
               )}
               {isLadderBottom && (
-                <div className="absolute inset-0 bg-green-500/5 border border-green-400/20 rounded-sm" />
+                <div className="absolute inset-0 bg-emerald-500/8 rounded-sm" />
               )}
 
               {/* Player pieces */}
@@ -87,38 +136,57 @@ export function Board({ board }: BoardProps) {
         })}
       </div>
 
-      {/* Snake/Ladder indicators overlay */}
+      {/* Snake/Ladder overlay */}
       <svg className="absolute inset-0 w-full h-full pointer-events-none" viewBox="0 0 500 500">
-        {snakeEntries.map(({ from, to, color }) => {
-          const fromPos = getSquarePosition(from);
-          const toPos = getSquarePosition(to);
-          const x1 = fromPos.col * 50 + 25;
-          const y1 = fromPos.row * 50 + 25;
-          const x2 = toPos.col * 50 + 25;
-          const y2 = toPos.row * 50 + 25;
+        {/* Ladders: two rails + rungs, solid green */}
+        {ladderEntries.map(({ from, to }) => {
+          const start = getCenter(from);
+          const end = getCenter(to);
+          const dx = end.x - start.x;
+          const dy = end.y - start.y;
+          const dist = Math.sqrt(dx * dx + dy * dy);
+          const perpX = (-dy / dist) * 6;
+          const perpY = (dx / dist) * 6;
+          const rungs = ladderRungs(from, to, 6);
+
           return (
-            <line
-              key={`snake-${from}`}
-              x1={x1} y1={y1} x2={x2} y2={y2}
-              stroke={color}
-              strokeWidth="3"
-              opacity="0.6"
-              strokeLinecap="round"
-              strokeDasharray="8 4"
-            />
+            <g key={`ladder-${from}`} opacity="0.55">
+              {/* Left rail */}
+              <line
+                x1={start.x - perpX} y1={start.y - perpY}
+                x2={end.x - perpX} y2={end.y - perpY}
+                stroke="#16a34a" strokeWidth="2.5" strokeLinecap="round"
+              />
+              {/* Right rail */}
+              <line
+                x1={start.x + perpX} y1={start.y + perpY}
+                x2={end.x + perpX} y2={end.y + perpY}
+                stroke="#16a34a" strokeWidth="2.5" strokeLinecap="round"
+              />
+              {/* Rungs */}
+              {rungs.map((r, i) => (
+                <line
+                  key={i}
+                  x1={r.x1} y1={r.y1} x2={r.x2} y2={r.y2}
+                  stroke="#16a34a" strokeWidth="2" strokeLinecap="round"
+                />
+              ))}
+            </g>
           );
         })}
-        {ladderEntries.map(({ from, to, color }) => {
-          const fromPos = getSquarePosition(from);
-          const toPos = getSquarePosition(to);
-          const x1 = fromPos.col * 50 + 25;
-          const y1 = fromPos.row * 50 + 25;
-          const x2 = toPos.col * 50 + 25;
-          const y2 = toPos.row * 50 + 25;
+
+        {/* Snakes: wavy red paths with head dot */}
+        {snakeEntries.map(({ from, to }) => {
+          const start = getCenter(from);
           return (
-            <g key={`ladder-${from}`}>
-              <line x1={x1 - 5} y1={y1} x2={x2 - 5} y2={y2} stroke={color} strokeWidth="2.5" opacity="0.7" strokeLinecap="round" />
-              <line x1={x1 + 5} y1={y1} x2={x2 + 5} y2={y2} stroke={color} strokeWidth="2.5" opacity="0.7" strokeLinecap="round" />
+            <g key={`snake-${from}`} opacity="0.6">
+              <path
+                d={snakePath(from, to)}
+                stroke="#dc2626" strokeWidth="3.5" fill="none"
+                strokeLinecap="round" strokeLinejoin="round"
+              />
+              {/* Snake head */}
+              <circle cx={start.x} cy={start.y} r="4" fill="#dc2626" />
             </g>
           );
         })}
