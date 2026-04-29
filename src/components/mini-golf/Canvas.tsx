@@ -35,12 +35,24 @@ export function MiniGolfCanvas({
   const animFrameRef = useRef<number>(0);
   const timeRef = useRef<number>(0);
   const bounceCountRef = useRef<number>(0);
+  const holeCompletedRef = useRef(false);
   const [aiming, setAiming] = useState(false);
   const [dragStart, setDragStart] = useState<{ x: number; y: number } | null>(null);
   const [dragCurrent, setDragCurrent] = useState<{ x: number; y: number } | null>(null);
   const [animating, setAnimating] = useState(false);
   const strokeRef = useRef(currentStroke);
   const { player1Color, player2Color } = useColors();
+
+  // Stable callback refs to avoid restarting the animation loop when callbacks change
+  const onHoleCompleteRef = useRef(onHoleComplete);
+  const onBounceRef = useRef(onBounce);
+  const onSinkRef = useRef(onSink);
+  const onSplashRef = useRef(onSplash);
+
+  useEffect(() => { onHoleCompleteRef.current = onHoleComplete; }, [onHoleComplete]);
+  useEffect(() => { onBounceRef.current = onBounce; }, [onBounce]);
+  useEffect(() => { onSinkRef.current = onSink; }, [onSink]);
+  useEffect(() => { onSplashRef.current = onSplash; }, [onSplash]);
 
   const level = LEVELS[levelId];
 
@@ -51,6 +63,7 @@ export function MiniGolfCanvas({
   useEffect(() => {
     physicsRef.current = createPhysicsState(level);
     bounceCountRef.current = 0;
+    holeCompletedRef.current = false;
   }, [level]);
 
   const getScale = useCallback(() => {
@@ -119,6 +132,7 @@ export function MiniGolfCanvas({
 
     physicsRef.current = shootBall(physicsRef.current, angle, power);
     bounceCountRef.current = 0;
+    holeCompletedRef.current = false;
     setAnimating(true);
     setAiming(false);
     setDragStart(null);
@@ -138,13 +152,13 @@ export function MiniGolfCanvas({
       if (state.vx !== prev.vx || state.vy !== prev.vy) {
         if (prev.moving && state.moving) {
           bounceCountRef.current++;
-          onBounce?.();
+          onBounceRef.current?.();
         }
       }
 
       if (checkWaterHazard({ x: state.x, y: state.y }, level)) {
         state = createPhysicsState(level);
-        onSplash?.();
+        onSplashRef.current?.();
       }
 
       const portalExit = checkPortal({ x: state.x, y: state.y }, level);
@@ -156,12 +170,17 @@ export function MiniGolfCanvas({
 
       if (!state.moving) {
         setAnimating(false);
-        if (state.sunk) {
-          onSink?.();
-          onHoleComplete(strokeRef.current);
-        } else if (strokeRef.current >= MAX_STROKES) {
-          onHoleComplete(PENALTY_SCORE);
+        if (!holeCompletedRef.current) {
+          if (state.sunk) {
+            holeCompletedRef.current = true;
+            onSinkRef.current?.();
+            onHoleCompleteRef.current(strokeRef.current);
+          } else if (strokeRef.current >= MAX_STROKES) {
+            holeCompletedRef.current = true;
+            onHoleCompleteRef.current(PENALTY_SCORE);
+          }
         }
+        return;
       }
 
       animFrameRef.current = requestAnimationFrame(loop);
@@ -169,7 +188,7 @@ export function MiniGolfCanvas({
 
     animFrameRef.current = requestAnimationFrame(loop);
     return () => cancelAnimationFrame(animFrameRef.current);
-  }, [animating, level, onHoleComplete, onBounce, onSink, onSplash]);
+  }, [animating, level]);
 
   useEffect(() => {
     const canvas = canvasRef.current;

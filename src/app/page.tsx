@@ -204,6 +204,17 @@ function MiniGolfIcon() {
   );
 }
 
+function WordSearchIcon() {
+  return (
+    <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
+      <rect x="2" y="2" width="24" height="24" rx="3" stroke="#6B48FF" strokeWidth="2" fill="none" opacity="0.8" />
+      <text x="5" y="12" fontSize="6" fill="#6B48FF" opacity="0.9" fontFamily="monospace" fontWeight="bold">WO</text>
+      <text x="5" y="22" fontSize="6" fill="#6B48FF" opacity="0.9" fontFamily="monospace" fontWeight="bold">RD</text>
+      <line x1="5" y1="9" x2="18" y2="9" stroke="#E63946" strokeWidth="2" strokeLinecap="round" opacity="0.7" />
+    </svg>
+  );
+}
+
 
 function PlayerSelector({ onSelect }: { onSelect: (name: PlayerName) => void }) {
   return (
@@ -779,6 +790,14 @@ function GameSelection({ playerName, onChangePlayer }: { playerName: PlayerName;
             icon={<SnakesAndLaddersIcon />}
             delay={0.45}
             onClick={() => router.push('/snakes-and-ladders')}
+          />
+          <ClickableGameCard
+            title="Word Search"
+            description="Find hidden words in a grid. Race against each other on the same puzzle."
+            color="#6B48FF"
+            icon={<WordSearchIcon />}
+            delay={0.5}
+            onClick={() => router.push('/word-search')}
           />
         </div>
       </div>
