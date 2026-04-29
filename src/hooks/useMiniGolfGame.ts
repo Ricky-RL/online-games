@@ -102,13 +102,15 @@ export function useMiniGolfGame(gameId: string): UseMiniGolfGameReturn {
     const newBoard = recordScore(current.board, current.board.currentHole, player, strokes);
 
     const gameComplete = isGameComplete(newBoard);
-    const playerIdx = playerIndex(player);
-    const allMyHolesDone = newBoard.scores.every(h => h[playerIdx] !== null);
+    const otherPlayer: Player = player === 1 ? 2 : 1;
+    const otherPlayerIdx = playerIndex(otherPlayer);
+    const currentHole = current.board.currentHole;
+    const otherPlayerHasPlayedThisHole = newBoard.scores[currentHole][otherPlayerIdx] !== null;
 
     let phase: GamePhase = 'aiming';
     let currentTurn = current.current_turn;
     let winner = current.winner;
-    let nextHole = current.board.currentHole;
+    let nextHole = currentHole;
 
     if (gameComplete && !matchRecorded.current) {
       phase = 'finished';
@@ -153,10 +155,13 @@ export function useMiniGolfGame(gameId: string): UseMiniGolfGameReturn {
     } else if (gameComplete) {
       phase = 'finished';
       winner = getWinner(newBoard);
-    } else if (allMyHolesDone) {
-      currentTurn = player === 1 ? 2 : 1;
+    } else if (!otherPlayerHasPlayedThisHole) {
+      // Other player still needs to play this hole — switch turn, keep same hole
+      currentTurn = otherPlayer;
     } else {
-      nextHole = current.board.currentHole + 1;
+      // Both players have completed this hole — advance to next hole, player 1 goes first
+      nextHole = currentHole + 1;
+      currentTurn = 1;
     }
 
     const board: MiniGolfBoard = {
