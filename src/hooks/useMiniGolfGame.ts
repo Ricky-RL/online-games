@@ -1,0 +1,236 @@
+'use client';
+
+import { useState, useEffect, useRef, useCallback } from 'react';
+import { supabase } from '@/lib/supabase';
+import { MiniGolfGame, MiniGolfBoard, GamePhase, Shot } from '@/lib/mini-golf/types';
+import { playerIndex, recordScore, isHoleComplete, isGameComplete, getWinner } from '@/lib/mini-golf/logic';
+import { Player } from '@/lib/types';
+
+const POLL_INTERVAL_MS = 1500;
+
+interface UseMiniGolfGameReturn {
+  game: MiniGolfGame | null;
+  loading: boolean;
+  error: string | null;
+  deleted: boolean;
+  takeShot: (shot: Shot) => Promise<void>;
+  recordHoleResult: (strokes: number) => Promise<void>;
+  setReady: () => Promise<void>;
+  forfeit: () => Promise<void>;
+  resetGame: () => Promise<void>;
+}
+
+export function useMiniGolfGame(gameId: string): UseMiniGolfGameReturn {
+  const [game, setGame] = useState<MiniGolfGame | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [deleted, setDeleted] = useState(false);
+  const gameRef = useRef<MiniGolfGame | null>(null);
+
+  const getPlayerNumber = useCallback((): Player | null => {
+    const name = sessionStorage.getItem('player-name') || localStorage.getItem('player-name');
+    if (!game) return null;
+    if (name === game.player1_name) return 1;
+    if (name === game.player2_name) return 2;
+    return null;
+  }, [game]);
+
+  const fetchGame = useCallback(async () => {
+    const { data, error: fetchError } = await supabase
+      .from('games')
+      .select('*')
+      .eq('id', gameId)
+      .single();
+
+    if (fetchError || !data) {
+      if (!gameRef.current) setError('Game not found');
+      else setDeleted(true);
+      return;
+    }
+
+    const fresh = data as MiniGolfGame;
+    const prev = gameRef.current;
+
+    if (prev && fresh.board.version < prev.board.version) return;
+
+    gameRef.current = fresh;
+    setGame(fresh);
+    setLoading(false);
+  }, [gameId]);
+
+  useEffect(() => {
+    fetchGame();
+    const interval = setInterval(fetchGame, POLL_INTERVAL_MS);
+    return () => clearInterval(interval);
+  }, [fetchGame]);
+
+  const takeShot = useCallback(async (shot: Shot) => {
+    const current = gameRef.current;
+    if (!current) return;
+
+    const board: MiniGolfBoard = {
+      ...current.board,
+      currentStroke: current.board.currentStroke + 1,
+      lastShot: shot,
+      version: current.board.version + 1,
+    };
+
+    const optimistic = { ...current, board };
+    gameRef.current = optimistic;
+    setGame(optimistic);
+
+    const { error: updateError } = await supabase
+      .from('games')
+      .update({ board, updated_at: new Date().toISOString() })
+      .eq('id', gameId)
+      .eq('board->>version', current.board.version);
+
+    if (updateError) {
+      await fetchGame();
+    }
+  }, [gameId, fetchGame]);
+
+  const recordHoleResult = useCallback(async (strokes: number) => {
+    const current = gameRef.current;
+    if (!current) return;
+    const player = getPlayerNumber();
+    if (!player) return;
+
+    const newBoard = recordScore(current.board, current.board.currentHole, player, strokes);
+
+    const holeComplete = isHoleComplete(newBoard, newBoard.currentHole);
+    const gameComplete = holeComplete && isGameComplete(newBoard);
+
+    let phase: GamePhase = 'aiming';
+    let currentTurn = current.current_turn;
+    let winner = current.winner;
+
+    if (gameComplete) {
+      phase = 'finished';
+      winner = getWinner(newBoard);
+    } else if (holeComplete) {
+      phase = 'scoreboard';
+    } else {
+      currentTurn = player === 1 ? 2 : 1;
+    }
+
+    const board: MiniGolfBoard = {
+      ...newBoard,
+      currentStroke: 0,
+      lastShot: null,
+      phase,
+      version: current.board.version + 1,
+    };
+
+    const optimistic = { ...current, board, current_turn: currentTurn as Player, winner };
+    gameRef.current = optimistic;
+    setGame(optimistic);
+
+    const { error: updateError } = await supabase
+      .from('games')
+      .update({
+        board,
+        current_turn: currentTurn,
+        winner,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', gameId)
+      .eq('board->>version', current.board.version);
+
+    if (updateError) {
+      await fetchGame();
+    }
+  }, [gameId, fetchGame, getPlayerNumber]);
+
+  const setReady = useCallback(async () => {
+    const current = gameRef.current;
+    if (!current || current.board.phase !== 'scoreboard') return;
+    const player = getPlayerNumber();
+    if (!player) return;
+
+    const idx = playerIndex(player);
+    const ready = [...current.board.ready] as [boolean, boolean];
+    ready[idx] = true;
+
+    const bothReady = ready[0] && ready[1];
+
+    const board: MiniGolfBoard = bothReady
+      ? {
+          ...current.board,
+          currentHole: current.board.currentHole + 1,
+          currentStroke: 0,
+          lastShot: null,
+          ready: [false, false],
+          phase: 'aiming',
+          version: current.board.version + 1,
+        }
+      : {
+          ...current.board,
+          ready,
+          version: current.board.version + 1,
+        };
+
+    const currentTurn: Player = bothReady ? 1 : current.current_turn;
+
+    const optimistic = { ...current, board, current_turn: currentTurn };
+    gameRef.current = optimistic;
+    setGame(optimistic);
+
+    const { error: updateError } = await supabase
+      .from('games')
+      .update({
+        board,
+        current_turn: currentTurn,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', gameId)
+      .eq('board->>version', current.board.version);
+
+    if (updateError) {
+      await fetchGame();
+    }
+  }, [gameId, fetchGame, getPlayerNumber]);
+
+  const forfeit = useCallback(async () => {
+    const current = gameRef.current;
+    if (!current) return;
+    const player = getPlayerNumber();
+    if (!player) return;
+
+    const winner: Player = player === 1 ? 2 : 1;
+    const board: MiniGolfBoard = {
+      ...current.board,
+      phase: 'finished',
+      version: current.board.version + 1,
+    };
+
+    const { error: updateError } = await supabase
+      .from('games')
+      .update({ board, winner, updated_at: new Date().toISOString() })
+      .eq('id', gameId);
+
+    if (!updateError) {
+      gameRef.current = { ...current, board, winner };
+      setGame({ ...current, board, winner });
+    }
+  }, [gameId, getPlayerNumber]);
+
+  const resetGame = useCallback(async () => {
+    const current = gameRef.current;
+    if (!current) return;
+
+    await supabase
+      .from('games')
+      .update({
+        game_type: 'ended',
+        player1_name: null,
+        player2_name: null,
+      })
+      .eq('id', gameId);
+
+    await supabase.from('games').delete().eq('id', gameId);
+    setDeleted(true);
+  }, [gameId]);
+
+  return { game, loading, error, deleted, takeShot, recordHoleResult, setReady, forfeit, resetGame };
+}
