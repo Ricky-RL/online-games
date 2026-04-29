@@ -10,9 +10,10 @@ interface WinCelebrationProps {
   winnerName: string | null;
   isMe: boolean;
   onPlayAgain: () => void;
+  onHome: () => void;
 }
 
-export function WinCelebration({ winner, winnerName, isMe, onPlayAgain }: WinCelebrationProps) {
+export function WinCelebration({ winner, winnerName, isMe, onPlayAgain, onHome }: WinCelebrationProps) {
   useEffect(() => {
     // Fire confetti on mount
     confetti({
@@ -52,12 +53,20 @@ export function WinCelebration({ winner, winnerName, isMe, onPlayAgain }: WinCel
         {message}
       </motion.h2>
 
-      <button
-        onClick={onPlayAgain}
-        className="px-6 py-3 text-base font-medium rounded-xl bg-board text-white hover:bg-board-surface transition-colors shadow-lg cursor-pointer"
-      >
-        Play Again
-      </button>
+      <div className="flex items-center gap-3">
+        <button
+          onClick={onHome}
+          className="px-6 py-3 text-base font-medium rounded-xl border border-border bg-surface text-text-secondary hover:text-text-primary hover:border-text-secondary/30 shadow-sm hover:shadow transition-all cursor-pointer"
+        >
+          Home
+        </button>
+        <button
+          onClick={onPlayAgain}
+          className="px-6 py-3 text-base font-medium rounded-xl bg-board text-white hover:bg-board-surface transition-colors shadow-lg cursor-pointer"
+        >
+          Play Again
+        </button>
+      </div>
     </motion.div>
   );
 }

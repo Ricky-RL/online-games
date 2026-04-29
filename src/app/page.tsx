@@ -266,7 +266,7 @@ function GameSelection({ playerName, onChangePlayer }: { playerName: PlayerName;
       : {
           game_type: 'connect-four',
           board: createEmptyBoard(),
-          current_turn: 1 as const,
+          current_turn: 2 as const,
           winner: null,
           player1_id: null,
           player1_name: null,
