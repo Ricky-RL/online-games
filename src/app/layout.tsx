@@ -2,8 +2,8 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Connect Four",
-  description: "A delightful two-player game",
+  title: "Game Night",
+  description: "A tiny collection of two-player games",
 };
 
 export const viewport: Viewport = {
