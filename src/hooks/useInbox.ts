@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
-import type { InboxGame, WhiteboardActivityItem, UseInboxReturn } from '@/lib/inbox-types';
+import type { InboxGame, InboxGameType, WhiteboardActivityItem, UseInboxReturn } from '@/lib/inbox-types';
 
 const POLL_INTERVAL_MS = 5000;
 
@@ -36,7 +36,7 @@ export function useInbox(): UseInboxReturn {
       supabase
         .from('games')
         .select('id, game_type, current_turn, player1_name, player2_name, updated_at')
-        .in('game_type', ['connect-four', 'tic-tac-toe'])
+        .in('game_type', ['connect-four', 'tic-tac-toe', 'checkers', 'battleship'])
         .or(`player1_name.eq.${playerName},player2_name.eq.${playerName},and(player1_name.eq.${otherPlayer},player2_name.is.null),and(player2_name.eq.${otherPlayer},player1_name.is.null)`)
         .is('winner', null)
         .order('updated_at', { ascending: false }),
@@ -82,7 +82,7 @@ export function useInbox(): UseInboxReturn {
 
       return {
         id: game.id,
-        game_type: game.game_type,
+        game_type: game.game_type as InboxGameType,
         current_turn: game.current_turn,
         player1_name: game.player1_name,
         player2_name: game.player2_name,

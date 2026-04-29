@@ -1,6 +1,8 @@
+export type InboxGameType = 'connect-four' | 'tic-tac-toe' | 'checkers' | 'battleship';
+
 export interface InboxGame {
   id: string;
-  game_type: 'connect-four' | 'tic-tac-toe';
+  game_type: InboxGameType;
   current_turn: 1 | 2;
   player1_name: string | null;
   player2_name: string | null;
