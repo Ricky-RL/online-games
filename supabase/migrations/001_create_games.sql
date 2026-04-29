@@ -20,3 +20,4 @@ alter table games enable row level security;
 create policy "Allow anonymous select" on games for select using (true);
 create policy "Allow anonymous insert" on games for insert with check (true);
 create policy "Allow anonymous update" on games for update using (true);
+create policy "Allow anonymous delete" on games for delete using (true);

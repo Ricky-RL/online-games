@@ -2,17 +2,28 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
-import { makeMove as computeMove, checkWin, isDraw } from '@/lib/game-logic';
-import { getPlayerId } from '@/lib/player-id';
+import { makeMove as computeMove, checkWin } from '@/lib/game-logic';
 import type { Game, Player, Board } from '@/lib/types';
+
+const POLL_INTERVAL_MS = 1500;
+
+function getMyName(): string | null {
+  if (typeof window === 'undefined') return null;
+  return sessionStorage.getItem('player-name') || localStorage.getItem('player-name');
+}
+
+function totalMoves(board: Board): number {
+  return board.reduce((sum, col) => sum + col.length, 0);
+}
 
 interface UseGameReturn {
   game: Game | null;
   loading: boolean;
   error: string | null;
   lastMove: { col: number; row: number } | null;
+  deleted: boolean;
   makeMove: (column: number) => Promise<void>;
-  joinGame: (playerName: string) => Promise<void>;
+  resetGame: () => Promise<void>;
 }
 
 export function useGame(gameId: string): UseGameReturn {
@@ -20,84 +31,121 @@ export function useGame(gameId: string): UseGameReturn {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [lastMove, setLastMove] = useState<{ col: number; row: number } | null>(null);
+  const [deleted, setDeleted] = useState(false);
   const optimisticBoard = useRef<Board | null>(null);
+  const gameRef = useRef<Game | null>(null);
 
-  // Fetch initial game state
+  const updateGame = useCallback((updater: Game | null | ((prev: Game | null) => Game | null)) => {
+    setGame((prev) => {
+      const next = typeof updater === 'function' ? updater(prev) : updater;
+      gameRef.current = next;
+      return next;
+    });
+  }, []);
+
+  const fetchGame = useCallback(async () => {
+    const { data, error: fetchError } = await supabase
+      .from('games')
+      .select('*')
+      .eq('id', gameId)
+      .single();
+
+    if (fetchError) {
+      if (fetchError.code === 'PGRST116') {
+        setDeleted(true);
+        return null;
+      }
+      setError(fetchError.message);
+      return null;
+    }
+    return data as Game;
+  }, [gameId]);
+
+  // Initial fetch
   useEffect(() => {
-    async function fetchGame() {
+    let cancelled = false;
+    async function init() {
       setLoading(true);
-      const { data, error: fetchError } = await supabase
-        .from('games')
-        .select('*')
-        .eq('id', gameId)
-        .single();
-
-      if (fetchError) {
-        setError(fetchError.message);
-      } else {
-        setGame(data as Game);
+      const gameData = await fetchGame();
+      if (cancelled) return;
+      if (gameData) {
+        updateGame(gameData);
       }
       setLoading(false);
     }
+    init();
+    return () => { cancelled = true; };
+  }, [fetchGame, updateGame]);
 
-    fetchGame();
-  }, [gameId]);
-
-  // Subscribe to realtime changes
+  // Poll for changes
   useEffect(() => {
-    const channel = supabase
-      .channel(`game-${gameId}`)
-      .on(
-        'postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'games',
-          filter: `id=eq.${gameId}`,
-        },
-        (payload) => {
-          const incoming = payload.new as Game;
+    if (deleted) return;
 
-          // Suppress echo: if incoming board matches our optimistic update, ignore
-          if (
-            optimisticBoard.current &&
-            JSON.stringify(incoming.board) ===
-              JSON.stringify(optimisticBoard.current)
-          ) {
+    const interval = setInterval(async () => {
+      const fresh = await fetchGame();
+      if (!fresh) return;
+
+      if (!fresh.player1_name && !fresh.player2_name) {
+        setDeleted(true);
+        return;
+      }
+
+      updateGame((prev) => {
+        if (!prev) return fresh;
+
+        if (optimisticBoard.current) {
+          if (JSON.stringify(fresh.board) === JSON.stringify(optimisticBoard.current)) {
             optimisticBoard.current = null;
-            return;
+            return fresh;
           }
-
+          if (totalMoves(fresh.board) < totalMoves(prev.board)) {
+            return {
+              ...prev,
+              player1_name: fresh.player1_name,
+              player2_name: fresh.player2_name,
+              player1_id: fresh.player1_id,
+              player2_id: fresh.player2_id,
+            };
+          }
           optimisticBoard.current = null;
-
-          // Compute opponent's lastMove by diffing boards
-          setGame((prev) => {
-            if (prev) {
-              for (let col = 0; col < 7; col++) {
-                if (incoming.board[col].length > prev.board[col].length) {
-                  setLastMove({ col, row: incoming.board[col].length - 1 });
-                  break;
-                }
-              }
-            }
-            return incoming;
-          });
         }
-      )
-      .subscribe();
 
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [gameId]);
+        if (JSON.stringify(fresh) === JSON.stringify(prev)) return prev;
+
+        // Guard against out-of-order poll responses regressing state
+        if (totalMoves(fresh.board) < totalMoves(prev.board)) {
+          return prev;
+        }
+
+        if (totalMoves(fresh.board) > totalMoves(prev.board)) {
+          for (let col = 0; col < 7; col++) {
+            if (fresh.board[col].length > prev.board[col].length) {
+              setLastMove({ col, row: fresh.board[col].length - 1 });
+              break;
+            }
+          }
+        }
+
+        return fresh;
+      });
+    }, POLL_INTERVAL_MS);
+
+    return () => clearInterval(interval);
+  }, [gameId, fetchGame, updateGame, deleted]);
 
   const makeMove = useCallback(
     async (column: number) => {
-      if (!game) return;
+      const currentGame = gameRef.current;
+      if (!currentGame) return;
 
-      const playerId = getPlayerId();
-      const isPlayer1 = game.player1_id === playerId;
-      const isPlayer2 = game.player2_id === playerId;
+      const myName = getMyName();
+      if (!myName) {
+        setError('No player name set');
+        return;
+      }
+
+      const isPlayer1 = currentGame.player1_name === myName;
+      const isPlayer2 = currentGame.player2_name === myName;
 
       if (!isPlayer1 && !isPlayer2) {
         setError('You are not a player in this game');
@@ -105,35 +153,32 @@ export function useGame(gameId: string): UseGameReturn {
       }
 
       const myPlayerNumber: Player = isPlayer1 ? 1 : 2;
-      if (game.current_turn !== myPlayerNumber) {
+
+      if (currentGame.current_turn !== myPlayerNumber) {
         setError('Not your turn');
         return;
       }
 
-      if (game.winner !== null) {
+      if (currentGame.winner !== null) {
         setError('Game is already over');
         return;
       }
 
-      // Compute new board
-      const newBoard = computeMove(game.board, column, myPlayerNumber);
+      const newBoard = computeMove(currentGame.board, column, myPlayerNumber);
       if (!newBoard) {
         setError('Column is full');
         return;
       }
 
-      // Check for win
       const row = newBoard[column].length - 1;
       const winPositions = checkWin(newBoard, column, row, myPlayerNumber);
       const winner = winPositions ? myPlayerNumber : null;
 
-      // Determine next turn
       const nextTurn: Player = myPlayerNumber === 1 ? 2 : 1;
 
-      // Optimistic update
       optimisticBoard.current = newBoard;
       setLastMove({ col: column, row });
-      setGame((prev) =>
+      updateGame((prev) =>
         prev
           ? {
               ...prev,
@@ -145,69 +190,49 @@ export function useGame(gameId: string): UseGameReturn {
       );
       setError(null);
 
-      // Persist to Supabase
       const { error: updateError } = await supabase
         .from('games')
         .update({
           board: newBoard,
-          current_turn: winner ? game.current_turn : nextTurn,
+          current_turn: winner ? currentGame.current_turn : nextTurn,
           winner,
           updated_at: new Date().toISOString(),
         })
         .eq('id', gameId);
 
       if (updateError) {
-        // Re-fetch instead of using stale closure
         optimisticBoard.current = null;
         const { data: freshGame } = await supabase
           .from('games')
           .select('*')
           .eq('id', gameId)
           .single();
-        if (freshGame) setGame(freshGame as Game);
+        if (freshGame) updateGame(freshGame as Game);
         setError(updateError.message);
       }
     },
-    [game, gameId]
+    [gameId, updateGame]
   );
 
-  const joinGame = useCallback(
-    async (playerName: string) => {
-      if (!game) return;
+  const resetGame = useCallback(async () => {
+    const { createEmptyBoard } = await import('@/lib/game-logic');
 
-      const playerId = getPlayerId();
+    await supabase
+      .from('games')
+      .update({
+        board: createEmptyBoard(),
+        current_turn: 1,
+        winner: null,
+        player1_id: null,
+        player1_name: null,
+        player2_id: null,
+        player2_name: null,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', gameId);
 
-      const { data, error: updateError } = await supabase
-        .from('games')
-        .update({
-          player2_id: playerId,
-          player2_name: playerName,
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', gameId)
-        .is('player2_id', null)
-        .select();
+    setDeleted(true);
+  }, [gameId]);
 
-      if (updateError) {
-        setError(updateError.message);
-      } else if (!data || data.length === 0) {
-        const { data: freshGame } = await supabase
-          .from('games')
-          .select('*')
-          .eq('id', gameId)
-          .single();
-        if (freshGame) setGame(freshGame as Game);
-        setError('Someone else already joined this game');
-      } else {
-        setGame((prev) =>
-          prev
-            ? { ...prev, player2_id: playerId, player2_name: playerName }
-            : null
-        );
-      }
-    },
-    [game, gameId]
-  );
-
-  return { game, loading, error, lastMove, makeMove, joinGame };
+  return { game, loading, error, lastMove, deleted, makeMove, resetGame };
 }

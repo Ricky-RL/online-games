@@ -1,37 +1,42 @@
 'use client';
 
-import { use, useMemo, useCallback, useEffect, useRef } from 'react';
+import { use, useMemo, useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useGame } from '@/hooks/useGame';
 import { useGameSounds } from '@/hooks/useSound';
-import { getPlayerId } from '@/lib/player-id';
 import { getGameStatus } from '@/lib/game-logic';
 import { checkWin } from '@/lib/game-logic';
 import { GameBoard } from '@/components/Board';
 import { TurnIndicator } from '@/components/TurnIndicator';
-import { WaitingForOpponent } from '@/components/WaitingForOpponent';
 import { WinCelebration } from '@/components/WinCelebration';
-import { GameFullMessage } from '@/components/GameFullMessage';
 import type { Player } from '@/lib/types';
+
+function getMyName(): string | null {
+  if (typeof window === 'undefined') return null;
+  return sessionStorage.getItem('player-name') || localStorage.getItem('player-name');
+}
 
 export default function GamePage({ params }: { params: Promise<{ gameId: string }> }) {
   const { gameId } = use(params);
-  const { game, loading, error, lastMove, makeMove, joinGame } = useGame(gameId);
+  const { game, loading, error, lastMove, deleted, makeMove, resetGame } = useGame(gameId);
   const { play } = useGameSounds();
   const router = useRouter();
   const prevStatus = useRef<string | null>(null);
+  const [myName, setMyName] = useState<string | null>(null);
 
-  const playerId = useMemo(() => {
-    if (typeof window === 'undefined') return '';
-    return getPlayerId();
+  useEffect(() => {
+    setMyName(getMyName());
   }, []);
+
+  useEffect(() => {
+    if (deleted) router.push('/');
+  }, [deleted, router]);
 
   const gameStatus = useMemo(() => {
     if (!game) return null;
     return getGameStatus(game);
   }, [game]);
 
-  // Play win sound when game transitions to won
   useEffect(() => {
     if (gameStatus === 'won' && prevStatus.current === 'playing') {
       play('win');
@@ -40,11 +45,11 @@ export default function GamePage({ params }: { params: Promise<{ gameId: string 
   }, [gameStatus, play]);
 
   const myPlayerNumber: Player | null = useMemo(() => {
-    if (!game) return null;
-    if (game.player1_id === playerId) return 1;
-    if (game.player2_id === playerId) return 2;
+    if (!game || !myName) return null;
+    if (game.player1_name === myName) return 1;
+    if (game.player2_name === myName) return 2;
     return null;
-  }, [game, playerId]);
+  }, [game, myName]);
 
   const isMyTurn = useMemo(() => {
     if (!game || !myPlayerNumber) return false;
@@ -77,13 +82,10 @@ export default function GamePage({ params }: { params: Promise<{ gameId: string 
     [makeMove, play]
   );
 
-  const handlePlayAgain = useCallback(() => {
+  const handleReset = useCallback(async () => {
+    await resetGame();
     router.push('/');
-  }, [router]);
-
-  const handleJoinGame = useCallback(async () => {
-    await joinGame('Player 2');
-  }, [joinGame]);
+  }, [resetGame, router]);
 
   if (loading) {
     return (
@@ -109,41 +111,6 @@ export default function GamePage({ params }: { params: Promise<{ gameId: string 
     );
   }
 
-  const isSpectator = myPlayerNumber === null && game.player2_id !== null;
-  if (isSpectator) {
-    return (
-      <div className="flex-1 flex items-center justify-center p-8">
-        <GameFullMessage />
-      </div>
-    );
-  }
-
-  const canJoin = myPlayerNumber === null && game.player2_id === null;
-  if (canJoin) {
-    return (
-      <div className="flex-1 flex flex-col items-center justify-center gap-6 p-8">
-        <h2 className="text-xl font-semibold text-text-primary">
-          Join this game?
-        </h2>
-        <button
-          onClick={handleJoinGame}
-          className="px-6 py-3 text-base font-medium rounded-xl bg-board text-white hover:bg-board-surface transition-colors cursor-pointer"
-        >
-          Join as Player 2
-        </button>
-      </div>
-    );
-  }
-
-  if (gameStatus === 'waiting') {
-    const gameUrl = typeof window !== 'undefined' ? window.location.href : '';
-    return (
-      <div className="flex-1 flex items-center justify-center p-8">
-        <WaitingForOpponent gameUrl={gameUrl} />
-      </div>
-    );
-  }
-
   if (gameStatus === 'won' && game.winner) {
     const winnerName = game.winner === 1 ? game.player1_name : game.player2_name;
     const isMe = game.winner === myPlayerNumber;
@@ -153,7 +120,7 @@ export default function GamePage({ params }: { params: Promise<{ gameId: string 
           winner={game.winner}
           winnerName={winnerName}
           isMe={isMe}
-          onPlayAgain={handlePlayAgain}
+          onPlayAgain={handleReset}
         />
         <GameBoard
           board={game.board}
@@ -184,7 +151,7 @@ export default function GamePage({ params }: { params: Promise<{ gameId: string 
           />
         </div>
         <button
-          onClick={handlePlayAgain}
+          onClick={handleReset}
           className="px-6 py-3 text-base font-medium rounded-xl bg-board text-white hover:bg-board-surface transition-colors cursor-pointer"
         >
           Play Again
@@ -205,10 +172,25 @@ export default function GamePage({ params }: { params: Promise<{ gameId: string 
         board={game.board}
         currentPlayer={game.current_turn}
         onColumnClick={handleMakeMove}
-        disabled={!isMyTurn || gameStatus !== 'playing'}
+        disabled={!isMyTurn || (gameStatus !== 'playing' && gameStatus !== 'waiting')}
         winningCells={winningCells}
         lastMove={lastMove}
       />
+
+      <div className="flex items-center gap-3">
+        <button
+          onClick={() => router.push('/')}
+          className="px-4 py-2 text-sm font-medium rounded-xl border border-border bg-surface text-text-secondary hover:text-text-primary hover:border-text-secondary/30 shadow-sm hover:shadow transition-all cursor-pointer"
+        >
+          Home
+        </button>
+        <button
+          onClick={handleReset}
+          className="px-4 py-2 text-sm font-medium rounded-xl border border-player1/20 bg-player1/5 text-player1/80 hover:bg-player1/10 hover:border-player1/40 hover:text-player1 shadow-sm hover:shadow transition-all cursor-pointer"
+        >
+          Reset Game
+        </button>
+      </div>
     </div>
   );
 }
