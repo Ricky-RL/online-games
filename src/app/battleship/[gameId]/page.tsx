@@ -127,27 +127,7 @@ export default function BattleshipGamePage({ params }: { params: Promise<{ gameI
     );
   }
 
-  if (game.board.phase === 'setup') {
-    return (
-      <motion.div
-        className="flex-1 flex flex-col items-center justify-center min-h-screen p-4"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ duration: 0.4 }}
-      >
-        <SettingsButton />
-        <GameSetupWaiting playerName={myName || 'Player'} />
-        <nav className="flex items-center gap-4 mt-8">
-          <button
-            onClick={() => router.push('/')}
-            className="text-sm text-text-secondary hover:text-text-primary transition-colors cursor-pointer"
-          >
-            Home
-          </button>
-        </nav>
-      </motion.div>
-    );
-  }
+  const waitingForOpponent = game.board.phase === 'setup';
 
   return (
     <>
@@ -160,19 +140,23 @@ export default function BattleshipGamePage({ params }: { params: Promise<{ gameI
         <SettingsButton />
 
         <div className="flex items-center gap-4">
-          {!game.winner && game.board.phase === 'playing' && (
+          {waitingForOpponent ? (
+            <GameSetupWaiting playerName={myName || 'Player'} />
+          ) : !game.winner && game.board.phase === 'playing' ? (
             <TurnIndicator
               currentPlayer={game.current_turn}
               isMyTurn={isMyTurn}
               playerName={opponentName}
             />
+          ) : null}
+          {!waitingForOpponent && (
+            <NotificationControls
+              permissionState={permissionState}
+              requestPermission={requestPermission}
+              isMuted={isMuted}
+              toggleMute={toggleMute}
+            />
           )}
-          <NotificationControls
-            permissionState={permissionState}
-            requestPermission={requestPermission}
-            isMuted={isMuted}
-            toggleMute={toggleMute}
-          />
         </div>
 
         <div className="flex flex-col lg:flex-row items-center lg:items-start gap-6 w-full max-w-4xl justify-center">
