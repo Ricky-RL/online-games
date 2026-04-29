@@ -10,6 +10,7 @@ interface LeaderboardStats {
   by_game: {
     'connect-four': { ricky: number; lilian: number; draws: number };
     'tic-tac-toe': { ricky: number; lilian: number; draws: number };
+    'mini-golf': { ricky: number; lilian: number; draws: number };
     'snakes-and-ladders': { ricky: number; lilian: number; draws: number };
   };
   streaks: {
@@ -113,6 +114,12 @@ export function Leaderboard({ stats, onReset, loading }: LeaderboardProps) {
                         ricky={stats.by_game['tic-tac-toe'].ricky}
                         lilian={stats.by_game['tic-tac-toe'].lilian}
                         draws={stats.by_game['tic-tac-toe'].draws}
+                      />
+                      <GameStat
+                        label="Mini Golf"
+                        ricky={stats.by_game['mini-golf'].ricky}
+                        lilian={stats.by_game['mini-golf'].lilian}
+                        draws={stats.by_game['mini-golf'].draws}
                       />
                       <GameStat
                         label="Snakes & Ladders"

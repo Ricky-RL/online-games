@@ -7,6 +7,7 @@ import { InboxWhiteboardItem } from './InboxWhiteboardItem';
 interface InboxWhiteboardSectionProps {
   activity: WhiteboardActivityItem[];
   onItemClick: () => void;
+  onDismiss: (itemId: string) => void;
 }
 
 const listContainer = {
@@ -24,7 +25,7 @@ const listItem = {
   show: { opacity: 1, y: 0, transition: { duration: 0.35, ease: [0.21, 0.47, 0.32, 0.98] as const } },
 };
 
-export function InboxWhiteboardSection({ activity, onItemClick }: InboxWhiteboardSectionProps) {
+export function InboxWhiteboardSection({ activity, onItemClick, onDismiss }: InboxWhiteboardSectionProps) {
   return (
     <div>
       {/* Section header */}
@@ -46,7 +47,7 @@ export function InboxWhiteboardSection({ activity, onItemClick }: InboxWhiteboar
         >
           {activity.map((item) => (
             <motion.div key={item.id} variants={listItem}>
-              <InboxWhiteboardItem item={item} onClick={onItemClick} />
+              <InboxWhiteboardItem item={item} onClick={onItemClick} onDismiss={() => onDismiss(item.id)} />
             </motion.div>
           ))}
         </motion.div>

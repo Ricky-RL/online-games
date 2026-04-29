@@ -7,6 +7,7 @@ import { InboxGameItem } from './InboxGameItem';
 interface InboxGamesSectionProps {
   games: InboxGame[];
   onGameClick: (game: InboxGame) => void;
+  onDismiss: (gameId: string) => void;
   playerName: string;
 }
 
@@ -34,7 +35,7 @@ function sortGames(games: InboxGame[]): InboxGame[] {
   });
 }
 
-export function InboxGamesSection({ games, onGameClick, playerName }: InboxGamesSectionProps) {
+export function InboxGamesSection({ games, onGameClick, onDismiss, playerName }: InboxGamesSectionProps) {
   const sorted = sortGames(games);
 
   return (
@@ -58,7 +59,7 @@ export function InboxGamesSection({ games, onGameClick, playerName }: InboxGames
         >
           {sorted.map((game) => (
             <motion.div key={game.id} variants={listItem}>
-              <InboxGameItem game={game} onClick={() => onGameClick(game)} playerName={playerName} />
+              <InboxGameItem game={game} onClick={() => onGameClick(game)} onDismiss={() => onDismiss(game.id)} playerName={playerName} />
             </motion.div>
           ))}
         </motion.div>

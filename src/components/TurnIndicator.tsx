@@ -7,11 +7,12 @@ interface TurnIndicatorProps {
   currentPlayer: Player;
   isMyTurn: boolean;
   playerName?: string | null;
+  label?: string;
 }
 
-export function TurnIndicator({ currentPlayer, isMyTurn, playerName }: TurnIndicatorProps) {
+export function TurnIndicator({ currentPlayer, isMyTurn, playerName, label: labelProp }: TurnIndicatorProps) {
   const color = currentPlayer === 1 ? 'bg-player1' : 'bg-player2';
-  const label = isMyTurn ? 'Your turn' : `${playerName ?? 'Opponent'}'s turn`;
+  const label = labelProp ?? (isMyTurn ? 'Your turn' : `${playerName ?? 'Opponent'}'s turn`);
 
   return (
     <div className="flex items-center gap-3 px-4 py-2 rounded-full bg-surface border border-border">

@@ -5,7 +5,7 @@ import { motion } from 'framer-motion';
 
 interface MatchResult {
   id: string;
-  game_type: 'connect-four' | 'tic-tac-toe' | 'wordle' | 'snakes-and-ladders';
+  game_type: 'connect-four' | 'tic-tac-toe' | 'wordle' | 'mini-golf' | 'snakes-and-ladders';
   winner_id: string | null;
   winner_name: string | null;
   loser_id: string | null;
@@ -45,6 +45,7 @@ function gameIcon(gameType: MatchResult['game_type']): string {
     case 'connect-four': return '◉';
     case 'tic-tac-toe': return '✕○';
     case 'wordle': return '▢▢';
+    case 'mini-golf': return '⛳';
     case 'snakes-and-ladders': return '🎲';
   }
 }
@@ -54,6 +55,7 @@ function gameLabel(gameType: MatchResult['game_type']): string {
     case 'connect-four': return 'Connect Four';
     case 'tic-tac-toe': return 'Tic-Tac-Toe';
     case 'wordle': return 'Wordle';
+    case 'mini-golf': return 'Mini Golf';
     case 'snakes-and-ladders': return 'Snakes & Ladders';
   }
 }

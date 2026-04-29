@@ -6,6 +6,7 @@ import type { InboxGame, InboxGameType } from '@/lib/inbox-types';
 interface InboxGameItemProps {
   game: InboxGame;
   onClick: () => void;
+  onDismiss: () => void;
   playerName: string;
 }
 
@@ -57,6 +58,17 @@ function BattleshipMini() {
   );
 }
 
+function MiniGolfMini() {
+  return (
+    <div className="w-8 h-8 rounded-lg bg-[#06D6A0]/10 flex items-center justify-center">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#06D6A0" strokeWidth="2">
+        <circle cx="12" cy="18" r="3" />
+        <path d="M12 15V3l6 4" />
+      </svg>
+    </div>
+  );
+}
+
 function SnakesAndLaddersMini() {
   return (
     <div className="w-8 h-8 rounded-lg bg-[#538D4E]/10 flex items-center justify-center">
@@ -78,6 +90,7 @@ function GameIcon({ gameType }: { gameType: InboxGameType }) {
     case 'tic-tac-toe': return <TicTacToeMini />;
     case 'checkers': return <CheckersMini />;
     case 'battleship': return <BattleshipMini />;
+    case 'mini-golf': return <MiniGolfMini />;
     case 'snakes-and-ladders': return <SnakesAndLaddersMini />;
   }
 }
@@ -88,6 +101,7 @@ function gameLabel(gameType: InboxGameType): string {
     case 'tic-tac-toe': return 'Tic Tac Toe';
     case 'checkers': return 'Checkers';
     case 'battleship': return 'Battleship';
+    case 'mini-golf': return 'Mini Golf';
     case 'snakes-and-ladders': return 'Snakes & Ladders';
   }
 }
@@ -125,34 +139,50 @@ function getOpponentName(game: InboxGame, playerName: string): string {
   return game.player1_name ?? 'Waiting...';
 }
 
-export function InboxGameItem({ game, onClick, playerName }: InboxGameItemProps) {
+export function InboxGameItem({ game, onClick, onDismiss, playerName }: InboxGameItemProps) {
   const opponentName = getOpponentName(game, playerName);
 
   return (
-    <motion.button
-      onClick={onClick}
-      className="w-full flex items-center gap-3 p-3 rounded-xl border border-border bg-surface/50 hover:bg-surface hover:border-border/80 transition-all cursor-pointer text-left group"
-      whileHover={{ scale: 1.01 }}
-      whileTap={{ scale: 0.99 }}
-      transition={{ type: 'spring', stiffness: 400, damping: 25 }}
-    >
-      {/* Game icon */}
-      <GameIcon gameType={game.game_type} />
+    <div className="relative group/item">
+      <motion.button
+        onClick={onClick}
+        className="w-full flex items-center gap-3 p-3 rounded-xl border border-border bg-surface/50 hover:bg-surface hover:border-border/80 transition-all cursor-pointer text-left group"
+        whileHover={{ scale: 1.01 }}
+        whileTap={{ scale: 0.99 }}
+        transition={{ type: 'spring', stiffness: 400, damping: 25 }}
+      >
+        {/* Game icon */}
+        <GameIcon gameType={game.game_type} />
 
-      {/* Game info */}
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2">
-          <span className="text-sm font-medium text-text-primary truncate">
-            {gameLabel(game.game_type)}
+        {/* Game info */}
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-medium text-text-primary truncate">
+              {gameLabel(game.game_type)}
+            </span>
+          </div>
+          <span className="text-xs text-text-secondary">
+            vs {opponentName}
           </span>
         </div>
-        <span className="text-xs text-text-secondary">
-          vs {opponentName}
-        </span>
-      </div>
 
-      {/* Turn badge */}
-      <TurnBadge game={game} />
-    </motion.button>
+        {/* Turn badge */}
+        <TurnBadge game={game} />
+      </motion.button>
+
+      {/* Dismiss button */}
+      <button
+        onClick={(e) => {
+          e.stopPropagation();
+          onDismiss();
+        }}
+        className="absolute top-1.5 right-1.5 w-5 h-5 rounded-full flex items-center justify-center opacity-0 group-hover/item:opacity-100 transition-opacity bg-surface border border-border hover:bg-red-50 hover:border-red-200 hover:text-red-500 text-text-secondary/60"
+        aria-label="Dismiss notification"
+      >
+        <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+          <path d="M2.5 2.5L7.5 7.5M7.5 2.5L2.5 7.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+        </svg>
+      </button>
+    </div>
   );
 }

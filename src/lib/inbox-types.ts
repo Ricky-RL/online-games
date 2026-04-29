@@ -1,4 +1,4 @@
-export type InboxGameType = 'connect-four' | 'tic-tac-toe' | 'checkers' | 'battleship' | 'snakes-and-ladders';
+export type InboxGameType = 'connect-four' | 'tic-tac-toe' | 'checkers' | 'battleship' | 'mini-golf' | 'snakes-and-ladders';
 
 export interface InboxGame {
   id: string;
@@ -31,4 +31,5 @@ export interface UseInboxReturn {
   unreadWhiteboardCount: number;
   markGamesRead: () => Promise<void>;
   markWhiteboardRead: () => Promise<void>;
+  dismissItem: (itemType: 'game' | 'whiteboard', itemId: string) => Promise<void>;
 }
