@@ -77,7 +77,7 @@ Follows the pattern of `useGame.ts` / `useTicTacToeGame.ts`:
 - If position === 100 after move: set `winner` on the games row
 - `matchRecorded` ref prevents double-recording
 - Detect opponent's move by comparing player positions between polls
-- Out-of-order poll guard: compare total moves (sum of position changes or lastRoll sequence)
+- Out-of-order poll guard: only accept poll responses with `updated_at` >= current known `updated_at` (same pattern as other game hooks)
 
 ### Return Interface
 
