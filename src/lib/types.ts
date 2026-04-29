@@ -76,3 +76,11 @@ export type CheckersBoard = CheckersCell[][];
 export interface CheckersSettings { forcedJumps: boolean; moveCount: number; movesSinceCapture: number; continuingPiece: [number, number] | null }
 export interface CheckersGameState { cells: CheckersBoard; settings: CheckersSettings }
 export interface CheckersMove { from: [number, number]; to: [number, number]; captured: [number, number][] }
+
+// Snakes and Ladders types
+export interface SnakesAndLaddersState {
+  players: { 1: number; 2: number }
+  snakes: Record<number, number>
+  ladders: Record<number, number>
+  lastRoll: { player: 1 | 2; value: number } | null
+}
