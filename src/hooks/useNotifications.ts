@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useCallback, useState } from 'react';
 
-type GameType = 'connect-four' | 'tic-tac-toe' | 'mini-golf';
+type GameType = 'connect-four' | 'tic-tac-toe' | 'mini-golf' | 'battleship';
 
 interface UseNotificationsOptions {
   gameId: string;
@@ -126,6 +126,7 @@ export function useNotifications({
         'connect-four': 'Connect Four',
         'tic-tac-toe': 'Tic-Tac-Toe',
         'mini-golf': 'Mini Golf',
+        'battleship': 'Battleship',
       };
       const body = bodyMap[gameType];
       const notification = new Notification(title, { body });

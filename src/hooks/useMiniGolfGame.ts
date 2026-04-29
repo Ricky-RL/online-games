@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
 import { MiniGolfGame, MiniGolfBoard, GamePhase, Shot } from '@/lib/mini-golf/types';
 import { playerIndex, recordScore, isHoleComplete, isGameComplete, getWinner } from '@/lib/mini-golf/logic';
+import { recordMatchResult } from '@/lib/match-results';
 import { Player } from '@/lib/types';
 
 const POLL_INTERVAL_MS = 1500;
@@ -26,6 +27,7 @@ export function useMiniGolfGame(gameId: string): UseMiniGolfGameReturn {
   const [error, setError] = useState<string | null>(null);
   const [deleted, setDeleted] = useState(false);
   const gameRef = useRef<MiniGolfGame | null>(null);
+  const matchRecorded = useRef(false);
 
   const getPlayerNumber = useCallback((): Player | null => {
     const name = sessionStorage.getItem('player-name') || localStorage.getItem('player-name');
@@ -105,7 +107,47 @@ export function useMiniGolfGame(gameId: string): UseMiniGolfGameReturn {
     let currentTurn = current.current_turn;
     let winner = current.winner;
 
-    if (gameComplete) {
+    if (gameComplete && !matchRecorded.current) {
+      phase = 'finished';
+      winner = getWinner(newBoard);
+      matchRecorded.current = true;
+
+      if (current.player1_id && current.player2_id && current.player1_name && current.player2_name) {
+        if (winner) {
+          const winnerName = winner === 1 ? current.player1_name : current.player2_name;
+          const loserName = winner === 1 ? current.player2_name : current.player1_name;
+          const winnerId = winner === 1 ? current.player1_id : current.player2_id;
+          const loserId = winner === 1 ? current.player2_id : current.player1_id;
+          recordMatchResult({
+            game_type: 'mini-golf',
+            winner_id: winnerId,
+            winner_name: winnerName,
+            loser_id: loserId,
+            loser_name: loserName,
+            is_draw: false,
+            metadata: null,
+            player1_id: current.player1_id,
+            player1_name: current.player1_name,
+            player2_id: current.player2_id,
+            player2_name: current.player2_name,
+          });
+        } else {
+          recordMatchResult({
+            game_type: 'mini-golf',
+            winner_id: null,
+            winner_name: null,
+            loser_id: null,
+            loser_name: null,
+            is_draw: true,
+            metadata: null,
+            player1_id: current.player1_id,
+            player1_name: current.player1_name,
+            player2_id: current.player2_id,
+            player2_name: current.player2_name,
+          });
+        }
+      }
+    } else if (gameComplete) {
       phase = 'finished';
       winner = getWinner(newBoard);
     } else if (holeComplete) {

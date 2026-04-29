@@ -8,6 +8,11 @@
   --color-text-secondary: #6B6560;
   --color-board: #1D3557;
   --color-board-surface: #264573;
+  --color-wordle-correct: #538D4E;
+  --color-wordle-present: #B59F3B;
+  --color-wordle-absent: #3A3A3C;
+  --color-wordle-cell-border: #3A3A3C;
+  --color-wordle-cell-empty: #121213;
   --font-sans: 'Satoshi', system-ui, -apple-system, sans-serif;
 }
 
@@ -36,4 +41,12 @@ body {
 
 @utility text-player2 {
   color: var(--color-player2);
+}
+
+@utility bg-checkers-dark {
+  background-color: #A0724A;
+}
+
+@utility bg-checkers-light {
+  background-color: #F5E6D3;
 }

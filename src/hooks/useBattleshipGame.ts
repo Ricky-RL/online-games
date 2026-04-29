@@ -3,63 +3,41 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
 import {
-  makeMove as computeMove,
-  checkWin,
-  isDraw,
-} from '@/lib/tic-tac-toe-logic';
-import { recordMatchResult } from '@/lib/match-results';
-import type { Player, TicTacToeBoard } from '@/lib/types';
+  makeAttack as computeAttack,
+  shouldKeepTurn,
+  checkWinner,
+  totalAttacks,
+} from '@/lib/battleship-logic';
+import type { Player, BattleshipGame, BattleshipBoardState, Attack } from '@/lib/types';
 
 const POLL_INTERVAL_MS = 1500;
-
-export interface TicTacToeGame {
-  id: string;
-  game_type: string;
-  board: TicTacToeBoard;
-  current_turn: Player;
-  winner: Player | null;
-  player1_id: string | null;
-  player2_id: string | null;
-  player1_name: string | null;
-  player2_name: string | null;
-  created_at: string;
-  updated_at: string;
-}
 
 function getMyName(): string | null {
   if (typeof window === 'undefined') return null;
   return sessionStorage.getItem('player-name') || localStorage.getItem('player-name');
 }
 
-function totalMoves(board: TicTacToeBoard): number {
-  return board.reduce(
-    (sum, row) => sum + row.filter((cell) => cell !== null).length,
-    0
-  );
-}
-
-interface UseTicTacToeGameReturn {
-  game: TicTacToeGame | null;
+interface UseBattleshipGameReturn {
+  game: BattleshipGame | null;
   loading: boolean;
   error: string | null;
-  lastMove: { row: number; col: number } | null;
+  lastAttack: Attack | null;
   deleted: boolean;
-  makeMove: (row: number, col: number) => Promise<void>;
+  makeAttack: (row: number, col: number) => Promise<void>;
   resetGame: () => Promise<void>;
 }
 
-export function useTicTacToeGame(gameId: string): UseTicTacToeGameReturn {
-  const [game, setGame] = useState<TicTacToeGame | null>(null);
+export function useBattleshipGame(gameId: string): UseBattleshipGameReturn {
+  const [game, setGame] = useState<BattleshipGame | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [lastMove, setLastMove] = useState<{ row: number; col: number } | null>(null);
+  const [lastAttack, setLastAttack] = useState<Attack | null>(null);
   const [deleted, setDeleted] = useState(false);
-  const optimisticBoard = useRef<TicTacToeBoard | null>(null);
-  const gameRef = useRef<TicTacToeGame | null>(null);
-  const matchRecorded = useRef(false);
+  const optimisticBoard = useRef<BattleshipBoardState | null>(null);
+  const gameRef = useRef<BattleshipGame | null>(null);
 
   const updateGame = useCallback(
-    (updater: TicTacToeGame | null | ((prev: TicTacToeGame | null) => TicTacToeGame | null)) => {
+    (updater: BattleshipGame | null | ((prev: BattleshipGame | null) => BattleshipGame | null)) => {
       setGame((prev) => {
         const next = typeof updater === 'function' ? updater(prev) : updater;
         gameRef.current = next;
@@ -92,7 +70,7 @@ export function useTicTacToeGame(gameId: string): UseTicTacToeGameReturn {
       return null;
     }
 
-    return data as TicTacToeGame;
+    return data as BattleshipGame;
   }, [gameId, updateGame]);
 
   // Initial fetch
@@ -129,7 +107,7 @@ export function useTicTacToeGame(gameId: string): UseTicTacToeGameReturn {
             optimisticBoard.current = null;
             return fresh;
           }
-          if (totalMoves(fresh.board) < totalMoves(prev.board)) {
+          if (totalAttacks(fresh.board) < totalAttacks(prev.board)) {
             return {
               ...prev,
               player1_name: fresh.player1_name,
@@ -143,19 +121,17 @@ export function useTicTacToeGame(gameId: string): UseTicTacToeGameReturn {
 
         if (JSON.stringify(fresh) === JSON.stringify(prev)) return prev;
 
-        // Guard against out-of-order poll responses regressing state
-        if (totalMoves(fresh.board) < totalMoves(prev.board)) {
+        if (totalAttacks(fresh.board) < totalAttacks(prev.board)) {
           return prev;
         }
 
-        // Detect the opponent's last move
-        if (totalMoves(fresh.board) > totalMoves(prev.board)) {
-          for (let row = 0; row < 3; row++) {
-            for (let col = 0; col < 3; col++) {
-              if (prev.board[row][col] === null && fresh.board[row][col] !== null) {
-                setLastMove({ row, col });
-              }
-            }
+        if (totalAttacks(fresh.board) > totalAttacks(prev.board)) {
+          if (fresh.board.player1Attacks.length > prev.board.player1Attacks.length) {
+            const newAtk = fresh.board.player1Attacks[fresh.board.player1Attacks.length - 1];
+            setLastAttack(newAtk);
+          } else if (fresh.board.player2Attacks.length > prev.board.player2Attacks.length) {
+            const newAtk = fresh.board.player2Attacks[fresh.board.player2Attacks.length - 1];
+            setLastAttack(newAtk);
           }
         }
 
@@ -166,7 +142,7 @@ export function useTicTacToeGame(gameId: string): UseTicTacToeGameReturn {
     return () => clearInterval(interval);
   }, [gameId, fetchGame, updateGame, deleted]);
 
-  const makeMove = useCallback(
+  const makeAttack = useCallback(
     async (row: number, col: number) => {
       const currentGame = gameRef.current;
       if (!currentGame) return;
@@ -197,27 +173,34 @@ export function useTicTacToeGame(gameId: string): UseTicTacToeGameReturn {
         return;
       }
 
-      let newBoard: TicTacToeBoard;
-      try {
-        newBoard = computeMove(currentGame.board, row, col, myPlayerNumber);
-      } catch {
-        setError('Cell is already occupied');
+      if (currentGame.board.phase !== 'playing') {
+        setError('Game not in progress');
         return;
       }
 
-      const winner = checkWin(newBoard);
-      const nextTurn: Player = myPlayerNumber === 1 ? 2 : 1;
+      let newBoard: BattleshipBoardState;
+      try {
+        newBoard = computeAttack(currentGame.board, row, col, myPlayerNumber);
+      } catch (e: unknown) {
+        setError(e instanceof Error ? e.message : 'Invalid attack');
+        return;
+      }
+
+      const myAttacks = myPlayerNumber === 1 ? newBoard.player1Attacks : newBoard.player2Attacks;
+      const lastAtk = myAttacks[myAttacks.length - 1];
+      const keepTurn = shouldKeepTurn(lastAtk.result);
+      const winner = checkWinner(newBoard);
+      const nextTurn: Player = winner
+        ? currentGame.current_turn
+        : keepTurn
+          ? myPlayerNumber
+          : (myPlayerNumber === 1 ? 2 : 1);
 
       optimisticBoard.current = newBoard;
-      setLastMove({ row, col });
+      setLastAttack(lastAtk);
       updateGame((prev) =>
         prev
-          ? {
-              ...prev,
-              board: newBoard,
-              current_turn: winner ? prev.current_turn : nextTurn,
-              winner,
-            }
+          ? { ...prev, board: newBoard, current_turn: nextTurn, winner }
           : null
       );
       setError(null);
@@ -226,7 +209,7 @@ export function useTicTacToeGame(gameId: string): UseTicTacToeGameReturn {
         .from('games')
         .update({
           board: newBoard,
-          current_turn: winner ? currentGame.current_turn : nextTurn,
+          current_turn: nextTurn,
           winner,
           updated_at: new Date().toISOString(),
         })
@@ -239,49 +222,8 @@ export function useTicTacToeGame(gameId: string): UseTicTacToeGameReturn {
           .select('*')
           .eq('id', gameId)
           .single();
-        if (freshGame) updateGame(freshGame as TicTacToeGame);
+        if (freshGame) updateGame(freshGame as BattleshipGame);
         setError(updateError.message);
-        return;
-      }
-
-      // Record match result on win
-      if (winner && !matchRecorded.current) {
-        matchRecorded.current = true;
-        const winnerName = winner === 1 ? currentGame.player1_name : currentGame.player2_name;
-        const loserName = winner === 1 ? currentGame.player2_name : currentGame.player1_name;
-        const winnerId = winner === 1 ? currentGame.player1_id : currentGame.player2_id;
-        const loserId = winner === 1 ? currentGame.player2_id : currentGame.player1_id;
-        recordMatchResult({
-          game_type: 'tic-tac-toe',
-          winner_id: winnerId,
-          winner_name: winnerName,
-          loser_id: loserId,
-          loser_name: loserName,
-          is_draw: false,
-          metadata: null,
-          player1_id: currentGame.player1_id!,
-          player1_name: currentGame.player1_name!,
-          player2_id: currentGame.player2_id!,
-          player2_name: currentGame.player2_name!,
-        });
-      }
-
-      // Record match result on draw
-      if (!winner && isDraw(newBoard) && !matchRecorded.current) {
-        matchRecorded.current = true;
-        recordMatchResult({
-          game_type: 'tic-tac-toe',
-          winner_id: null,
-          winner_name: null,
-          loser_id: null,
-          loser_name: null,
-          is_draw: true,
-          metadata: null,
-          player1_id: currentGame.player1_id!,
-          player1_name: currentGame.player1_name!,
-          player2_id: currentGame.player2_id!,
-          player2_name: currentGame.player2_name!,
-        });
       }
     },
     [gameId, updateGame]
@@ -292,7 +234,13 @@ export function useTicTacToeGame(gameId: string): UseTicTacToeGameReturn {
       .from('games')
       .update({
         game_type: 'ended',
-        board: [[null, null, null], [null, null, null], [null, null, null]],
+        board: {
+          player1Ships: [],
+          player2Ships: [],
+          player1Attacks: [],
+          player2Attacks: [],
+          phase: 'setup',
+        },
         current_turn: 1,
         winner: null,
         player1_name: null,
@@ -321,5 +269,5 @@ export function useTicTacToeGame(gameId: string): UseTicTacToeGameReturn {
     setDeleted(true);
   }, [gameId]);
 
-  return { game, loading, error, lastMove, deleted, makeMove, resetGame };
+  return { game, loading, error, lastAttack, deleted, makeAttack, resetGame };
 }
