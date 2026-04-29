@@ -5,8 +5,7 @@ import { motion } from 'framer-motion';
 
 interface MatchResult {
   id: string;
-  game_type: 'connect-four' | 'tic-tac-toe' | 'wordle' | 'mini-golf';
-  game_type: 'connect-four' | 'tic-tac-toe' | 'wordle' | 'jenga';
+  game_type: 'connect-four' | 'tic-tac-toe' | 'wordle' | 'mini-golf' | 'jenga';
   winner_id: string | null;
   winner_name: string | null;
   loser_id: string | null;
