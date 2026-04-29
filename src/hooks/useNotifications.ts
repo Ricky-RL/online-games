@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useCallback, useState } from 'react';
 
-type GameType = 'connect-four' | 'tic-tac-toe' | 'battleship';
+type GameType = 'connect-four' | 'tic-tac-toe' | 'battleship' | 'snakes-and-ladders';
 
 interface UseNotificationsOptions {
   gameId: string;
@@ -122,7 +122,7 @@ export function useNotifications({
       const title = opponentName
         ? `${opponentName} played — it's your turn!`
         : "It's your turn!";
-      const body = gameType === 'connect-four' ? 'Connect Four' : gameType === 'battleship' ? 'Battleship' : 'Tic-Tac-Toe';
+      const body = gameType === 'connect-four' ? 'Connect Four' : gameType === 'battleship' ? 'Battleship' : gameType === 'snakes-and-ladders' ? 'Snakes & Ladders' : 'Tic-Tac-Toe';
       const notification = new Notification(title, { body });
       notification.onclick = () => {
         window.focus();
