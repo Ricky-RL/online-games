@@ -532,25 +532,6 @@ function GameSelection({ playerName, onChangePlayer }: { playerName: PlayerName;
     }
 
     async function joinGame(gameId: string) {
-      const { data: gameData } = await supabase
-        .from('games')
-        .select('board')
-        .eq('id', gameId)
-        .single();
-
-      if (!gameData) {
-        setConnecting(null);
-        return false;
-      }
-
-      const currentBoard = gameData.board as { player1Ships: unknown[]; player2Ships: unknown[]; player1Attacks: unknown[]; player2Attacks: unknown[]; phase: string };
-      const updatedBoard = {
-        ...currentBoard,
-        player1Ships: isRicky ? generateRandomPlacement() : currentBoard.player1Ships,
-        player2Ships: isRicky ? currentBoard.player2Ships : generateRandomPlacement(),
-        phase: 'playing',
-      };
-
       const updateField = isRicky
         ? { player1_id: myId, player1_name: playerName }
         : { player2_id: myId, player2_name: playerName };
@@ -559,7 +540,6 @@ function GameSelection({ playerName, onChangePlayer }: { playerName: PlayerName;
         .from('games')
         .update({
           ...updateField,
-          board: updatedBoard,
           updated_at: new Date().toISOString(),
         })
         .eq('id', gameId)
@@ -607,11 +587,11 @@ function GameSelection({ playerName, onChangePlayer }: { playerName: PlayerName;
     }
 
     const board = {
-      player1Ships: isRicky ? generateRandomPlacement() : [],
-      player2Ships: isRicky ? [] : generateRandomPlacement(),
+      player1Ships: generateRandomPlacement(),
+      player2Ships: generateRandomPlacement(),
       player1Attacks: [],
       player2Attacks: [],
-      phase: 'setup',
+      phase: 'playing',
     };
 
     const insertData = isRicky

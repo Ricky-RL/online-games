@@ -68,25 +68,6 @@ export default function BattleshipLobby() {
       }
 
       async function joinGame(gameId: string) {
-        const { data: gameData } = await supabase
-          .from('games')
-          .select('board')
-          .eq('id', gameId)
-          .single();
-
-        if (!gameData) {
-          setConnecting(null);
-          return false;
-        }
-
-        const currentBoard = gameData.board as BattleshipBoardState;
-        const updatedBoard: BattleshipBoardState = {
-          ...currentBoard,
-          player1Ships: isRicky ? generateRandomPlacement() : currentBoard.player1Ships,
-          player2Ships: isRicky ? currentBoard.player2Ships : generateRandomPlacement(),
-          phase: 'playing',
-        };
-
         const updateField = isRicky
           ? { player1_id: myId, player1_name: name }
           : { player2_id: myId, player2_name: name };
@@ -95,7 +76,6 @@ export default function BattleshipLobby() {
           .from('games')
           .update({
             ...updateField,
-            board: updatedBoard,
             updated_at: new Date().toISOString(),
           })
           .eq('id', gameId)
@@ -143,11 +123,11 @@ export default function BattleshipLobby() {
       }
 
       const board: BattleshipBoardState = {
-        player1Ships: isRicky ? generateRandomPlacement() : [],
-        player2Ships: isRicky ? [] : generateRandomPlacement(),
+        player1Ships: generateRandomPlacement(),
+        player2Ships: generateRandomPlacement(),
         player1Attacks: [],
         player2Attacks: [],
-        phase: 'setup',
+        phase: 'playing',
       };
 
       const insertData = isRicky

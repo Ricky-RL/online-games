@@ -8,7 +8,6 @@ import { buildShipGrid, getSunkShips } from '@/lib/battleship-logic';
 import { PlayerBoard } from '@/components/battleship/PlayerBoard';
 import { TrackingBoard } from '@/components/battleship/TrackingBoard';
 import { ShipOverlay as ShipStatus } from '@/components/battleship/ShipOverlay';
-import { GameSetupWaiting } from '@/components/battleship/GameSetupWaiting';
 import { SettingsButton } from '@/components/SettingsButton';
 import { TurnIndicator } from '@/components/TurnIndicator';
 import { WinCelebration } from '@/components/WinCelebration';
@@ -127,8 +126,6 @@ export default function BattleshipGamePage({ params }: { params: Promise<{ gameI
     );
   }
 
-  const waitingForOpponent = game.board.phase === 'setup';
-
   return (
     <>
       <motion.div
@@ -140,23 +137,19 @@ export default function BattleshipGamePage({ params }: { params: Promise<{ gameI
         <SettingsButton />
 
         <div className="flex items-center gap-4">
-          {waitingForOpponent ? (
-            <GameSetupWaiting playerName={myName || 'Player'} />
-          ) : !game.winner && game.board.phase === 'playing' ? (
+          {!game.winner && (
             <TurnIndicator
               currentPlayer={game.current_turn}
               isMyTurn={isMyTurn}
               playerName={opponentName}
             />
-          ) : null}
-          {!waitingForOpponent && (
-            <NotificationControls
-              permissionState={permissionState}
-              requestPermission={requestPermission}
-              isMuted={isMuted}
-              toggleMute={toggleMute}
-            />
           )}
+          <NotificationControls
+            permissionState={permissionState}
+            requestPermission={requestPermission}
+            isMuted={isMuted}
+            toggleMute={toggleMute}
+          />
         </div>
 
         <div className="flex flex-col lg:flex-row items-center lg:items-start gap-6 w-full max-w-4xl justify-center">
@@ -170,7 +163,7 @@ export default function BattleshipGamePage({ params }: { params: Promise<{ gameI
               myAttacks={myAttacks}
               sunkShips={opponentSunkShips}
               onCellClick={handleAttack}
-              disabled={!isMyTurn || !!game.winner || game.board.phase !== 'playing'}
+              disabled={!isMyTurn || !!game.winner}
               lastAttack={lastAttack && myAttacks.includes(lastAttack) ? lastAttack : null}
             />
             <ShipStatus sunkShipIds={opponentSunkShipIds} label="Enemy Fleet" />
