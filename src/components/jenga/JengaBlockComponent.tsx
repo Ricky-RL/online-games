@@ -28,7 +28,10 @@ export function JengaBlockComponent({
   orientation,
   onClick,
 }: JengaBlockComponentProps) {
-  if (!exists) return <div className="w-full h-full" />;
+  if (!exists) {
+    const emptyWidth = orientation === 'horizontal' ? 'w-[60px] h-[20px]' : 'w-[20px] h-[60px]';
+    return <div className={emptyWidth} />;
+  }
 
   const isHorizontal = orientation === 'horizontal';
   const blockWidth = isHorizontal ? 'w-[60px] h-[20px]' : 'w-[20px] h-[60px]';

@@ -121,6 +121,12 @@ export function Leaderboard({ stats, onReset, loading }: LeaderboardProps) {
                         lilian={stats.by_game['mini-golf'].lilian}
                         draws={stats.by_game['mini-golf'].draws}
                       />
+                      <GameStat
+                        label="Jenga"
+                        ricky={stats.by_game['jenga'].ricky}
+                        lilian={stats.by_game['jenga'].lilian}
+                        draws={stats.by_game['jenga'].draws}
+                      />
                     </div>
                   </div>
                 )}

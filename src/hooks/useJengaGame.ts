@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
-import { pullBlock, createInitialTower } from '@/lib/jenga-logic';
+import { pullBlock, createInitialTower, getPlayableBlocks } from '@/lib/jenga-logic';
 import { recordMatchResult } from '@/lib/match-results';
 import type { Player, JengaGameState } from '@/lib/types';
 
@@ -131,6 +131,12 @@ export function useJengaGame(gameId: string): UseJengaGameReturn {
       const myPlayerNumber: Player = isPlayer1 ? 1 : 2;
       if (currentGame.current_turn !== myPlayerNumber) { setError('Not your turn'); return; }
       if (currentGame.winner !== null) { setError('Game is already over'); return; }
+
+      const playable = getPlayableBlocks(currentGame.board);
+      if (!playable.some(([r, c]) => r === row && c === col)) {
+        setError('That block is not playable');
+        return;
+      }
 
       const randomValue = Math.random();
       const newBoard = pullBlock(currentGame.board, row, col, myPlayerNumber, randomValue);
