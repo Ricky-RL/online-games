@@ -38,6 +38,7 @@ export function useMonopolyGame(gameId: string): UseMonopolyGameReturn {
   const matchRecorded = useRef(false);
 
   const getMyPlayer = useCallback((): Player | null => {
+    if (typeof window === 'undefined') return null;
     const name = sessionStorage.getItem('player-name') || localStorage.getItem('player-name');
     if (!game) return null;
     if (name === game.player1_name) return 1;
