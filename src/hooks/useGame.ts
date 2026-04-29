@@ -85,11 +85,6 @@ export function useGame(gameId: string): UseGameReturn {
       const fresh = await fetchGame();
       if (!fresh) return;
 
-      if (!fresh.player1_name && !fresh.player2_name) {
-        setDeleted(true);
-        return;
-      }
-
       updateGame((prev) => {
         if (!prev) return fresh;
 
@@ -215,20 +210,9 @@ export function useGame(gameId: string): UseGameReturn {
   );
 
   const resetGame = useCallback(async () => {
-    const { createEmptyBoard } = await import('@/lib/game-logic');
-
     await supabase
       .from('games')
-      .update({
-        board: createEmptyBoard(),
-        current_turn: 1,
-        winner: null,
-        player1_id: null,
-        player1_name: null,
-        player2_id: null,
-        player2_name: null,
-        updated_at: new Date().toISOString(),
-      })
+      .delete()
       .eq('id', gameId);
 
     setDeleted(true);
