@@ -3,9 +3,6 @@
 import { useRef, useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion, useInView, AnimatePresence } from 'framer-motion';
-import { supabase } from '@/lib/supabase';
-import { createEmptyBoard } from '@/lib/game-logic';
-import { generateAnswerIndex } from '@/lib/wordle-logic';
 import { SettingsButton } from '@/components/SettingsButton';
 
 type PlayerName = 'Ricky' | 'Lilian';
@@ -28,7 +25,7 @@ function ClickableGameCard({ title, description, color, icon, delay = 0, onClick
     <motion.div
       initial={{ opacity: 0, y: 30 }}
       animate={isInView ? { opacity: 1, y: 0 } : { opacity: 0, y: 30 }}
-      transition={{ duration: 0.6, delay, ease: [0.21, 0.47, 0.32, 0.98] }}
+      transition={{ duration: 0.4, delay, ease: [0.21, 0.47, 0.32, 0.98] }}
     >
       <button
         ref={ref}
@@ -140,6 +137,17 @@ function WordleIcon() {
   );
 }
 
+function CheckersIcon() {
+  return (
+    <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
+      <circle cx="9" cy="9" r="4.5" fill="#A0724A" opacity="0.9" />
+      <circle cx="19" cy="9" r="4.5" fill="#E63946" opacity="0.9" />
+      <circle cx="9" cy="19" r="4.5" fill="#FFBE0B" opacity="0.9" />
+      <circle cx="19" cy="19" r="4.5" fill="#A0724A" opacity="0.9" />
+    </svg>
+  );
+}
+
 
 function PlayerSelector({ onSelect }: { onSelect: (name: PlayerName) => void }) {
   return (
@@ -147,7 +155,7 @@ function PlayerSelector({ onSelect }: { onSelect: (name: PlayerName) => void }) 
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -20 }}
-      transition={{ duration: 0.5, ease: [0.21, 0.47, 0.32, 0.98] }}
+      transition={{ duration: 0.35, ease: [0.21, 0.47, 0.32, 0.98] }}
       className="flex flex-col items-center gap-8 text-center"
     >
       <p className="text-lg sm:text-xl text-text-secondary leading-relaxed">
@@ -184,6 +192,11 @@ function GameSelection({ playerName, onChangePlayer }: { playerName: PlayerName;
 
   const handlePlayConnectFour = useCallback(async () => {
     setConnecting('connect-four');
+
+    const [{ supabase }, { createEmptyBoard }] = await Promise.all([
+      import('@/lib/supabase'),
+      import('@/lib/game-logic'),
+    ]);
 
     const isRicky = playerName === 'Ricky';
     const myId = PLAYER_IDS[playerName];
@@ -316,6 +329,11 @@ function GameSelection({ playerName, onChangePlayer }: { playerName: PlayerName;
 
   const handlePlayWordle = useCallback(async () => {
     setConnecting('wordle');
+
+    const [{ supabase }, { generateAnswerIndex }] = await Promise.all([
+      import('@/lib/supabase'),
+      import('@/lib/wordle-logic'),
+    ]);
 
     const isRicky = playerName === 'Ricky';
     const myId = PLAYER_IDS[playerName];
@@ -451,7 +469,7 @@ function GameSelection({ playerName, onChangePlayer }: { playerName: PlayerName;
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.6, delay: 0.1, ease: [0.21, 0.47, 0.32, 0.98] }}
+      transition={{ duration: 0.4, delay: 0.05, ease: [0.21, 0.47, 0.32, 0.98] }}
       className="w-full"
     >
       {/* Player greeting and switch */}
@@ -475,7 +493,7 @@ function GameSelection({ playerName, onChangePlayer }: { playerName: PlayerName;
             description="Drop pieces, connect four in a row. Classic strategy for two."
             color="#E63946"
             icon={<ConnectFourIcon />}
-            delay={0.2}
+            delay={0.1}
             onClick={handlePlayConnectFour}
             loading={connecting === 'connect-four'}
           />
@@ -493,15 +511,23 @@ function GameSelection({ playerName, onChangePlayer }: { playerName: PlayerName;
             description="X and O, three in a row. Quick rounds, pure fun."
             color="#FFBE0B"
             icon={<TicTacToeIcon />}
-            delay={0.35}
+            delay={0.15}
             onClick={() => router.push('/tic-tac-toe')}
+          />
+          <ClickableGameCard
+            title="Checkers"
+            description="Jump and capture across the board. Classic strategy for two."
+            color="#A0724A"
+            icon={<CheckersIcon />}
+            delay={0.2}
+            onClick={() => router.push('/checkers')}
           />
           <ClickableGameCard
             title="Whiteboard"
             description="Shared sticky notes and doodles. Think together, draw together."
             color="#FFBE0B"
             icon={<WhiteboardIcon />}
-            delay={0.45}
+            delay={0.25}
             onClick={() => router.push('/whiteboard')}
           />
         </div>
@@ -541,14 +567,14 @@ export default function Home() {
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8, ease: [0.21, 0.47, 0.32, 0.98] }}
+          transition={{ duration: 0.35, ease: [0.21, 0.47, 0.32, 0.98] }}
           className="flex flex-col items-center gap-6 text-center max-w-xl"
         >
           {/* Decorative dots */}
           <motion.div
             initial={{ opacity: 0, scale: 0.8 }}
             animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.6, delay: 0.2 }}
+            transition={{ duration: 0.4, delay: 0.1 }}
             className="flex items-center gap-2"
           >
             <div className="w-2.5 h-2.5 rounded-full bg-player1 opacity-70" />
@@ -588,7 +614,7 @@ export default function Home() {
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          transition={{ duration: 1, delay: 0.8 }}
+          transition={{ duration: 0.6, delay: 0.4 }}
           className="max-w-3xl mx-auto flex items-center justify-center"
         >
           <p className="text-xs text-text-secondary/40 tracking-wide">

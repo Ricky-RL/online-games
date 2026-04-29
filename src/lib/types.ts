@@ -23,3 +23,11 @@ export interface Game {
 }
 
 export type GameStatus = 'waiting' | 'playing' | 'won' | 'draw';
+
+// Checkers types
+export interface CheckersPiece { player: Player; king: boolean }
+export type CheckersCell = CheckersPiece | null;
+export type CheckersBoard = CheckersCell[][];
+export interface CheckersSettings { forcedJumps: boolean; moveCount: number; movesSinceCapture: number; continuingPiece: [number, number] | null }
+export interface CheckersGameState { cells: CheckersBoard; settings: CheckersSettings }
+export interface CheckersMove { from: [number, number]; to: [number, number]; captured: [number, number][] }
