@@ -5,6 +5,8 @@ import { useRouter } from 'next/navigation';
 import { motion, useInView, AnimatePresence } from 'framer-motion';
 import { supabase } from '@/lib/supabase';
 import { createEmptyBoard } from '@/lib/game-logic';
+import { generateRandomPlacement } from '@/lib/battleship-logic';
+import type { BattleshipBoardState } from '@/lib/types';
 import { SettingsButton } from '@/components/SettingsButton';
 
 type PlayerName = 'Ricky' | 'Lilian';
@@ -121,6 +123,18 @@ function WhiteboardIcon() {
 }
 
 
+function BattleshipIcon() {
+  return (
+    <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
+      <path d="M4 18L6 22H22L24 18H4Z" fill="#E63946" opacity="0.8" />
+      <rect x="8" y="14" width="12" height="4" rx="1" fill="#FFBE0B" opacity="0.7" />
+      <rect x="13" y="8" width="2" height="6" fill="#FFBE0B" opacity="0.6" />
+      <path d="M15 8L20 10L15 12Z" fill="#E63946" opacity="0.7" />
+      <path d="M2 24Q7 22 14 24Q21 26 26 24" stroke="#80D8FF" strokeWidth="1.5" fill="none" opacity="0.5" />
+    </svg>
+  );
+}
+
 function PlayerSelector({ onSelect }: { onSelect: (name: PlayerName) => void }) {
   return (
     <motion.div
@@ -161,6 +175,7 @@ const PLAYER_IDS: Record<PlayerName, string> = {
 function GameSelection({ playerName, onChangePlayer }: { playerName: PlayerName; onChangePlayer: () => void }) {
   const router = useRouter();
   const [connecting, setConnecting] = useState(false);
+  const [connectingBattleship, setConnectingBattleship] = useState(false);
 
   const handlePlayConnectFour = useCallback(async () => {
     setConnecting(true);
@@ -294,6 +309,163 @@ function GameSelection({ playerName, onChangePlayer }: { playerName: PlayerName;
     router.push(`/connect-four/${data.id}`);
   }, [playerName, router]);
 
+  const handlePlayBattleship = useCallback(async () => {
+    setConnectingBattleship(true);
+
+    const isRicky = playerName === 'Ricky';
+    const myId = PLAYER_IDS[playerName];
+
+    async function findGames() {
+      const { data } = await supabase
+        .from('games')
+        .select('*')
+        .eq('game_type', 'battleship')
+        .is('winner', null)
+        .order('created_at', { ascending: false })
+        .limit(10);
+      return data;
+    }
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    function findMyGame(games: any[] | null) {
+      if (!games) return { activeGame: null, joinableGame: null };
+
+      const activeGame = games.find((g) => {
+        if (isRicky) return g.player1_name === 'Ricky';
+        return g.player2_name === 'Lilian';
+      }) || null;
+
+      const joinableGame = games.find((g) => {
+        if (isRicky) {
+          return g.player1_name === null && g.player2_name === 'Lilian';
+        } else {
+          return g.player2_name === null && g.player1_name === 'Ricky';
+        }
+      }) || null;
+
+      return { activeGame, joinableGame };
+    }
+
+    async function joinGame(gameId: string) {
+      const { data: gameData } = await supabase
+        .from('games')
+        .select('board')
+        .eq('id', gameId)
+        .single();
+
+      if (!gameData) {
+        setConnectingBattleship(false);
+        return false;
+      }
+
+      const currentBoard = gameData.board as BattleshipBoardState;
+      const updatedBoard: BattleshipBoardState = {
+        ...currentBoard,
+        player1Ships: isRicky ? generateRandomPlacement() : currentBoard.player1Ships,
+        player2Ships: isRicky ? currentBoard.player2Ships : generateRandomPlacement(),
+        phase: 'playing',
+      };
+
+      const updateField = isRicky
+        ? { player1_id: myId, player1_name: playerName }
+        : { player2_id: myId, player2_name: playerName };
+
+      const { error: joinError } = await supabase
+        .from('games')
+        .update({
+          ...updateField,
+          board: updatedBoard,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', gameId)
+        .select()
+        .single();
+
+      if (joinError) {
+        console.error('Error joining game:', joinError);
+        setConnectingBattleship(false);
+        return false;
+      }
+      return true;
+    }
+
+    const existingGames = await findGames();
+    let { activeGame, joinableGame } = findMyGame(existingGames);
+
+    if (activeGame) {
+      router.push(`/battleship/${activeGame.id}`);
+      return;
+    }
+
+    if (joinableGame) {
+      if (await joinGame(joinableGame.id)) {
+        router.push(`/battleship/${joinableGame.id}`);
+      }
+      return;
+    }
+
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+
+    const retryGames = await findGames();
+    ({ activeGame, joinableGame } = findMyGame(retryGames));
+
+    if (activeGame) {
+      router.push(`/battleship/${activeGame.id}`);
+      return;
+    }
+
+    if (joinableGame) {
+      if (await joinGame(joinableGame.id)) {
+        router.push(`/battleship/${joinableGame.id}`);
+      }
+      return;
+    }
+
+    const board: BattleshipBoardState = {
+      player1Ships: isRicky ? generateRandomPlacement() : [],
+      player2Ships: isRicky ? [] : generateRandomPlacement(),
+      player1Attacks: [],
+      player2Attacks: [],
+      phase: 'setup',
+    };
+
+    const insertData = isRicky
+      ? {
+          game_type: 'battleship',
+          board,
+          current_turn: 1 as const,
+          winner: null,
+          player1_id: myId,
+          player1_name: playerName,
+          player2_id: null,
+          player2_name: null,
+        }
+      : {
+          game_type: 'battleship',
+          board,
+          current_turn: 1 as const,
+          winner: null,
+          player1_id: null,
+          player1_name: null,
+          player2_id: myId,
+          player2_name: playerName,
+        };
+
+    const { data, error } = await supabase
+      .from('games')
+      .insert(insertData)
+      .select('id')
+      .single();
+
+    if (error || !data) {
+      console.error('Error creating game:', error);
+      setConnectingBattleship(false);
+      return;
+    }
+
+    router.push(`/battleship/${data.id}`);
+  }, [playerName, router]);
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -341,6 +513,15 @@ function GameSelection({ playerName, onChangePlayer }: { playerName: PlayerName;
             icon={<WhiteboardIcon />}
             delay={0.45}
             onClick={() => router.push('/whiteboard')}
+          />
+          <ClickableGameCard
+            title="Battleship"
+            description="Hunt and sink the fleet. Fire shots, track hits, claim the sea."
+            color="#1D3557"
+            icon={<BattleshipIcon />}
+            delay={0.5}
+            onClick={handlePlayBattleship}
+            loading={connectingBattleship}
           />
         </div>
       </div>
