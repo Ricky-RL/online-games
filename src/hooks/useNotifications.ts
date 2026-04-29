@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useCallback, useState } from 'react';
 
-type GameType = 'connect-four' | 'tic-tac-toe';
+type GameType = 'connect-four' | 'tic-tac-toe' | 'mini-golf';
 
 interface UseNotificationsOptions {
   gameId: string;
@@ -122,7 +122,12 @@ export function useNotifications({
       const title = opponentName
         ? `${opponentName} played — it's your turn!`
         : "It's your turn!";
-      const body = gameType === 'connect-four' ? 'Connect Four' : 'Tic-Tac-Toe';
+      const bodyMap: Record<GameType, string> = {
+        'connect-four': 'Connect Four',
+        'tic-tac-toe': 'Tic-Tac-Toe',
+        'mini-golf': 'Mini Golf',
+      };
+      const body = bodyMap[gameType];
       const notification = new Notification(title, { body });
       notification.onclick = () => {
         window.focus();
