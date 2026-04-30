@@ -13,6 +13,7 @@ const GAME_LABELS: Record<string, string> = {
   "word-search": "Word Search",
   whiteboard: "Whiteboard",
   wordle: "Wordle",
+  "daily-wordle": "Daily Wordle",
 };
 
 interface TurnPayload {

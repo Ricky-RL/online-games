@@ -35,7 +35,7 @@ export function useInbox(): UseInboxReturn {
 
     const otherPlayer = getOtherPlayer(playerName);
 
-    const [gamesResult, activityResult, readStateResult, dismissedResult] = await Promise.all([
+    const [gamesResult, wordleResult, activityResult, readStateResult, dismissedResult] = await Promise.all([
       // Fetch games where I'm already a participant OR where the other player
       // started a game and my slot is empty (waiting for me to join)
       supabase
@@ -44,6 +44,14 @@ export function useInbox(): UseInboxReturn {
         .in('game_type', ['connect-four', 'tic-tac-toe', 'checkers', 'battleship', 'mini-golf', 'jenga', 'snakes-and-ladders', 'word-search', 'monopoly'])
         .or(`player1_name.eq.${playerName},player2_name.eq.${playerName},player1_id.eq.${PLAYER_IDS[playerName]},player2_id.eq.${PLAYER_IDS[playerName]},and(player1_name.eq.${otherPlayer},player2_name.is.null),and(player2_name.eq.${otherPlayer},player1_name.is.null),and(player1_id.eq.${PLAYER_IDS[otherPlayer]},player2_id.is.null),and(player2_id.eq.${PLAYER_IDS[otherPlayer]},player1_id.is.null)`)
         .is('winner', null)
+        .order('updated_at', { ascending: false }),
+      // Fetch daily wordle games (answer_index = -1) that are still in progress
+      supabase
+        .from('wordle_games')
+        .select('*')
+        .eq('answer_index', -1)
+        .eq('status', 'playing')
+        .or(`player1_name.eq.${playerName},player2_name.eq.${playerName},player1_id.eq.${PLAYER_IDS[playerName]},player2_id.eq.${PLAYER_IDS[playerName]},and(player1_name.eq.${otherPlayer},player2_name.is.null),and(player2_name.eq.${otherPlayer},player1_name.is.null),and(player1_id.eq.${PLAYER_IDS[otherPlayer]},player2_id.is.null),and(player2_id.eq.${PLAYER_IDS[otherPlayer]},player1_id.is.null)`)
         .order('updated_at', { ascending: false }),
       supabase
         .from('whiteboard_activity')
@@ -61,7 +69,7 @@ export function useInbox(): UseInboxReturn {
         .eq('player_name', playerName),
     ]);
 
-    if (gamesResult.error || activityResult.error || readStateResult.error || dismissedResult.error) {
+    if (gamesResult.error || wordleResult.error || activityResult.error || readStateResult.error || dismissedResult.error) {
       return null;
     }
 
@@ -114,6 +122,48 @@ export function useInbox(): UseInboxReturn {
       };
     });
 
+    // Enrich daily wordle games — turns are implicit based on last guess
+    const enrichedWordleGames: InboxGame[] = (wordleResult.data ?? []).filter((game) => !dismissedGameIds.has(game.id)).map((game) => {
+      const resolvedPlayer1Name = game.player1_name ?? (game.player1_id === PLAYER_IDS.Ricky ? 'Ricky' : game.player1_id === PLAYER_IDS.Lilian ? 'Lilian' : null);
+      const resolvedPlayer2Name = game.player2_name ?? (game.player2_id === PLAYER_IDS.Ricky ? 'Ricky' : game.player2_id === PLAYER_IDS.Lilian ? 'Lilian' : null);
+
+      const iAmPlayer1 = resolvedPlayer1Name === playerName || game.player1_id === PLAYER_IDS[playerName];
+      const iAmPlayer2 = resolvedPlayer2Name === playerName || game.player2_id === PLAYER_IDS[playerName];
+      const iAmInGame = iAmPlayer1 || iAmPlayer2;
+
+      const opponentInSlot1 = resolvedPlayer1Name === otherPlayer || game.player1_id === PLAYER_IDS[otherPlayer];
+      const opponentInSlot2 = resolvedPlayer2Name === otherPlayer || game.player2_id === PLAYER_IDS[otherPlayer];
+      const isWaitingForMe = !iAmInGame && (
+        (opponentInSlot1 && game.player2_id === null) ||
+        (opponentInSlot2 && game.player1_id === null)
+      );
+
+      const isWaitingForOpponent = iAmInGame && (
+        (iAmPlayer1 && game.player2_id === null) ||
+        (iAmPlayer2 && game.player1_id === null)
+      );
+
+      // Determine whose turn it is from the guesses array
+      const guesses: Array<{ player: number }> = game.guesses ?? [];
+      const lastGuessPlayer = guesses.length > 0 ? guesses[guesses.length - 1].player : null;
+      // If no guesses yet, both players can go — show as "your turn" for both
+      // If last guess was by player N, it's the other player's turn
+      const myPlayerNum = iAmPlayer1 ? 1 : 2;
+      const isMyTurn = isWaitingForMe ||
+        (iAmInGame && !isWaitingForOpponent && (lastGuessPlayer === null || lastGuessPlayer !== myPlayerNum));
+
+      return {
+        id: game.id,
+        game_type: 'daily-wordle' as InboxGameType,
+        current_turn: (lastGuessPlayer === 1 ? 2 : 1) as 1 | 2,
+        player1_name: resolvedPlayer1Name,
+        player2_name: resolvedPlayer2Name,
+        updated_at: game.updated_at,
+        isMyTurn,
+        isWaitingForOpponent,
+      };
+    });
+
     const enrichedActivity: WhiteboardActivityItem[] = (activityResult.data ?? []).filter((item) => !dismissedWhiteboardIds.has(item.id)).map((item) => ({
       id: item.id,
       note_id: item.note_id,
@@ -126,7 +176,7 @@ export function useInbox(): UseInboxReturn {
     }));
 
     // Filter out games waiting for opponent — they're not actionable in the inbox
-    const actionableGames = enrichedGames.filter((g) => !g.isWaitingForOpponent);
+    const actionableGames = [...enrichedGames, ...enrichedWordleGames].filter((g) => !g.isWaitingForOpponent);
 
     // Combine games and whiteboard activity, sort by priority then date, limit to 3
     const combined: Array<{ type: 'game'; item: InboxGame; date: string; priority: number } | { type: 'whiteboard'; item: WhiteboardActivityItem; date: string; priority: number }> = [

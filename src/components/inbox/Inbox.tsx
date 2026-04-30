@@ -31,6 +31,12 @@ export function Inbox({ playerName }: InboxProps) {
     markGamesRead();
     const iAmInGame = game.player1_name === playerName || game.player2_name === playerName;
 
+    // Daily wordle games are in the wordle_games table — route directly
+    if (game.game_type === 'daily-wordle') {
+      router.push(`/wordle/${game.id}`);
+      return;
+    }
+
     if (!iAmInGame) {
       // Player hasn't joined yet — join the game directly, then navigate to it
       if (game.game_type === 'connect-four' || game.game_type === 'battleship') {

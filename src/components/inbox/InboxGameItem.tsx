@@ -123,6 +123,21 @@ function MonopolyMini() {
   );
 }
 
+function DailyWordleMini() {
+  return (
+    <div className="w-8 h-8 rounded-lg bg-[#538D4E]/10 flex items-center justify-center">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+        <rect x="1" y="2" width="4" height="4" rx="0.5" fill="#538D4E" opacity="0.9" />
+        <rect x="6" y="2" width="4" height="4" rx="0.5" fill="#B59F3B" opacity="0.9" />
+        <rect x="11" y="2" width="4" height="4" rx="0.5" fill="#3A3A3C" opacity="0.6" />
+        <rect x="1" y="7" width="4" height="4" rx="0.5" fill="#B59F3B" opacity="0.9" />
+        <rect x="6" y="7" width="4" height="4" rx="0.5" fill="#538D4E" opacity="0.9" />
+        <rect x="11" y="7" width="4" height="4" rx="0.5" fill="#538D4E" opacity="0.9" />
+      </svg>
+    </div>
+  );
+}
+
 function GameIcon({ gameType }: { gameType: InboxGameType }) {
   switch (gameType) {
     case 'connect-four': return <ConnectFourMini />;
@@ -134,6 +149,7 @@ function GameIcon({ gameType }: { gameType: InboxGameType }) {
     case 'snakes-and-ladders': return <SnakesAndLaddersMini />;
     case 'word-search': return <WordSearchMini />;
     case 'monopoly': return <MonopolyMini />;
+    case 'daily-wordle': return <DailyWordleMini />;
   }
 }
 
@@ -148,6 +164,7 @@ function gameLabel(gameType: InboxGameType): string {
     case 'snakes-and-ladders': return 'Snakes & Ladders';
     case 'word-search': return 'Word Search';
     case 'monopoly': return 'Monopoly';
+    case 'daily-wordle': return 'Daily Wordle';
   }
 }
 
