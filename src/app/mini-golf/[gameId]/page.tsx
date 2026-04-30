@@ -137,6 +137,16 @@ export default function MiniGolfGamePage({ params }: { params: Promise<{ gameId:
     <div className="h-dvh bg-background flex flex-col overflow-hidden" style={{ overscrollBehavior: 'none' }}>
       <header className="flex items-center justify-between px-4 py-2 border-b border-border">
         <div className="flex items-center gap-2">
+          <button
+            onClick={handleHome}
+            className="p-1.5 rounded-lg hover:bg-surface transition-colors"
+            aria-label="Home"
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-text-secondary">
+              <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+              <polyline points="9 22 9 12 15 12 15 22" />
+            </svg>
+          </button>
           <SettingsButton />
           <NotificationControls
             isMuted={isMuted}
