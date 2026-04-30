@@ -6,6 +6,11 @@ import type { InboxGame, InboxGameType, WhiteboardActivityItem, UseInboxReturn }
 
 const POLL_INTERVAL_MS = 5000;
 
+const PLAYER_IDS: Record<string, string> = {
+  Ricky: '00000000-0000-0000-0000-000000000001',
+  Lilian: '00000000-0000-0000-0000-000000000002',
+};
+
 function getMyName(): string | null {
   if (typeof window === 'undefined') return null;
   return sessionStorage.getItem('player-name') || localStorage.getItem('player-name');
@@ -35,9 +40,9 @@ export function useInbox(): UseInboxReturn {
       // started a game and my slot is empty (waiting for me to join)
       supabase
         .from('games')
-        .select('id, game_type, current_turn, player1_name, player2_name, updated_at')
+        .select('*')
         .in('game_type', ['connect-four', 'tic-tac-toe', 'checkers', 'battleship', 'mini-golf', 'jenga', 'snakes-and-ladders', 'word-search', 'monopoly'])
-        .or(`player1_name.eq.${playerName},player2_name.eq.${playerName},and(player1_name.eq.${otherPlayer},player2_name.is.null),and(player2_name.eq.${otherPlayer},player1_name.is.null)`)
+        .or(`player1_name.eq.${playerName},player2_name.eq.${playerName},player1_id.eq.${PLAYER_IDS[playerName]},player2_id.eq.${PLAYER_IDS[playerName]},and(player1_name.eq.${otherPlayer},player2_name.is.null),and(player2_name.eq.${otherPlayer},player1_name.is.null),and(player1_id.eq.${PLAYER_IDS[otherPlayer]},player2_id.is.null),and(player2_id.eq.${PLAYER_IDS[otherPlayer]},player1_id.is.null)`)
         .is('winner', null)
         .order('updated_at', { ascending: false }),
       supabase
@@ -69,18 +74,27 @@ export function useInbox(): UseInboxReturn {
     const whiteboardLastReadAt = readStates.find((r) => r.section === 'whiteboard')?.last_read_at ?? '1970-01-01T00:00:00Z';
 
     const enrichedGames: InboxGame[] = (gamesResult.data ?? []).filter((game) => !dismissedGameIds.has(game.id)).map((game) => {
-      const iAmPlayer1 = game.player1_name === playerName;
-      const iAmPlayer2 = game.player2_name === playerName;
+      // Resolve player names: if a player ID is set but name is null, resolve from known IDs
+      const resolvedPlayer1Name = game.player1_name ?? (game.player1_id === PLAYER_IDS.Ricky ? 'Ricky' : game.player1_id === PLAYER_IDS.Lilian ? 'Lilian' : null);
+      const resolvedPlayer2Name = game.player2_name ?? (game.player2_id === PLAYER_IDS.Ricky ? 'Ricky' : game.player2_id === PLAYER_IDS.Lilian ? 'Lilian' : null);
+
+      const iAmPlayer1 = resolvedPlayer1Name === playerName || game.player1_id === PLAYER_IDS[playerName];
+      const iAmPlayer2 = resolvedPlayer2Name === playerName || game.player2_id === PLAYER_IDS[playerName];
       const iAmInGame = iAmPlayer1 || iAmPlayer2;
 
       // Game is waiting for me to join (opponent created it, my slot is null)
+      const opponentInSlot1 = resolvedPlayer1Name === otherPlayer || game.player1_id === PLAYER_IDS[otherPlayer];
+      const opponentInSlot2 = resolvedPlayer2Name === otherPlayer || game.player2_id === PLAYER_IDS[otherPlayer];
       const isWaitingForMe = !iAmInGame && (
-        (game.player1_name === otherPlayer && game.player2_name === null) ||
-        (game.player2_name === otherPlayer && game.player1_name === null)
+        (opponentInSlot1 && game.player2_id === null) ||
+        (opponentInSlot2 && game.player1_id === null)
       );
 
-      // Game is waiting for opponent to join (I created it, their slot is null)
-      const isWaitingForOpponent = iAmInGame && (game.player1_name === null || game.player2_name === null);
+      // Game is waiting for opponent to join (I created it, their slot is empty)
+      const isWaitingForOpponent = iAmInGame && (
+        (iAmPlayer1 && game.player2_id === null) ||
+        (iAmPlayer2 && game.player1_id === null)
+      );
 
       // It's my turn if I'm in the game and current_turn points to my player number,
       // OR if the game is waiting for me to join (I need to take action)
@@ -92,8 +106,8 @@ export function useInbox(): UseInboxReturn {
         id: game.id,
         game_type: game.game_type as InboxGameType,
         current_turn: game.current_turn,
-        player1_name: game.player1_name,
-        player2_name: game.player2_name,
+        player1_name: resolvedPlayer1Name,
+        player2_name: resolvedPlayer2Name,
         updated_at: game.updated_at,
         isMyTurn,
         isWaitingForOpponent,
@@ -111,12 +125,15 @@ export function useInbox(): UseInboxReturn {
       isUnread: new Date(item.created_at) > new Date(whiteboardLastReadAt),
     }));
 
-    // Combine games and whiteboard activity, sort by date, limit to 3 most recent
-    const combined: Array<{ type: 'game'; item: InboxGame; date: string } | { type: 'whiteboard'; item: WhiteboardActivityItem; date: string }> = [
-      ...enrichedGames.map((g) => ({ type: 'game' as const, item: g, date: g.updated_at })),
-      ...enrichedActivity.map((a) => ({ type: 'whiteboard' as const, item: a, date: a.created_at })),
+    // Filter out games waiting for opponent — they're not actionable in the inbox
+    const actionableGames = enrichedGames.filter((g) => !g.isWaitingForOpponent);
+
+    // Combine games and whiteboard activity, sort by priority then date, limit to 3
+    const combined: Array<{ type: 'game'; item: InboxGame; date: string; priority: number } | { type: 'whiteboard'; item: WhiteboardActivityItem; date: string; priority: number }> = [
+      ...actionableGames.map((g) => ({ type: 'game' as const, item: g, date: g.updated_at, priority: g.isMyTurn ? 2 : 1 })),
+      ...enrichedActivity.map((a) => ({ type: 'whiteboard' as const, item: a, date: a.created_at, priority: 1 })),
     ];
-    combined.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    combined.sort((a, b) => b.priority - a.priority || new Date(b.date).getTime() - new Date(a.date).getTime());
     const top3 = combined.slice(0, 3);
 
     const limitedGames = top3.filter((x) => x.type === 'game').map((x) => x.item) as InboxGame[];
