@@ -520,6 +520,97 @@ function GameSelection({ playerName, onChangePlayer }: { playerName: PlayerName;
     const isRicky = playerName === 'Ricky';
     const myId = PLAYER_IDS[playerName];
 
+    // Matchmaking: look for an existing daily wordle game to join or resume
+    async function findDailyGames() {
+      const { data } = await supabase
+        .from('wordle_games')
+        .select('*')
+        .eq('game_type', 'wordle')
+        .eq('answer_index', -1)
+        .eq('answer_word', dailyWord)
+        .eq('status', 'playing')
+        .order('created_at', { ascending: false })
+        .limit(10);
+      return data;
+    }
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    function findMyDailyGame(games: any[] | null) {
+      if (!games) return { activeGame: null, joinableGame: null };
+
+      const activeGame = games.find((g) => {
+        if (isRicky) return g.player1_name === 'Ricky';
+        return g.player2_name === 'Lilian';
+      }) || null;
+
+      const joinableGame = games.find((g) => {
+        if (isRicky) {
+          return g.player1_name === null && g.player2_name === 'Lilian';
+        } else {
+          return g.player2_name === null && g.player1_name === 'Ricky';
+        }
+      }) || null;
+
+      return { activeGame, joinableGame };
+    }
+
+    async function joinDailyGame(gameId: string) {
+      const updateField = isRicky
+        ? { player1_id: myId, player1_name: playerName }
+        : { player2_id: myId, player2_name: playerName };
+
+      const { error: joinError } = await supabase
+        .from('wordle_games')
+        .update({
+          ...updateField,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', gameId)
+        .select()
+        .single();
+
+      if (joinError) {
+        console.error('Error joining daily game:', joinError);
+        setConnecting(null);
+        return false;
+      }
+      return true;
+    }
+
+    const existingGames = await findDailyGames();
+    let { activeGame, joinableGame } = findMyDailyGame(existingGames);
+
+    if (activeGame) {
+      router.push(`/wordle/${activeGame.id}`);
+      return;
+    }
+
+    if (joinableGame) {
+      if (await joinDailyGame(joinableGame.id)) {
+        router.push(`/wordle/${joinableGame.id}`);
+      }
+      return;
+    }
+
+    // Brief wait and retry in case the other player just created a game
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+
+    const retryGames = await findDailyGames();
+    ({ activeGame, joinableGame } = findMyDailyGame(retryGames));
+
+    if (activeGame) {
+      router.push(`/wordle/${activeGame.id}`);
+      return;
+    }
+
+    if (joinableGame) {
+      if (await joinDailyGame(joinableGame.id)) {
+        router.push(`/wordle/${joinableGame.id}`);
+      }
+      return;
+    }
+
+    // No existing game found — create a new one
     const insertData = isRicky
       ? {
           game_type: 'wordle',
