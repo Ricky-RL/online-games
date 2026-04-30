@@ -9,6 +9,7 @@ export interface WordleGame {
   id: string;
   game_type: 'wordle';
   answer_index: number;
+  answer_word: string | null;
   guesses: WordleGuess[];
   guess_count: number;
   player1_typing: string | null;

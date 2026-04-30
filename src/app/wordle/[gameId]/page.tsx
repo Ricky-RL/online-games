@@ -37,7 +37,7 @@ export default function WordleGamePage({ params }: { params: Promise<{ gameId: s
 
   const answer = useMemo(() => {
     if (!game) return '';
-    return getAnswer(game.answer_index);
+    return getAnswer(game.answer_index, game.answer_word);
   }, [game]);
 
   const evaluations: LetterState[][] = useMemo(() => {
