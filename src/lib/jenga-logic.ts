@@ -108,13 +108,26 @@ export function getPlayableBlocks(state: JengaGameState): [number, number][] {
   return playable;
 }
 
+export function getEarlyGameMultiplier(moveIndex: number): number {
+  if (moveIndex < 4) return 3;
+  if (moveIndex < 8) return 2;
+  if (moveIndex < 14) return 1.5;
+  return 1;
+}
+
+export function getMovePoints(risk: number, moveIndex: number): number {
+  return Math.round(risk * getEarlyGameMultiplier(moveIndex));
+}
+
 export function getPlayerScores(state: JengaGameState): { player1: number; player2: number } {
   let player1 = 0;
   let player2 = 0;
-  for (const move of state.move_history) {
+  for (let i = 0; i < state.move_history.length; i++) {
+    const move = state.move_history[i];
     if (!move.toppled) {
-      if (move.player === 1) player1 += move.risk;
-      else player2 += move.risk;
+      const pts = getMovePoints(move.risk, i);
+      if (move.player === 1) player1 += pts;
+      else player2 += pts;
     }
   }
   return { player1, player2 };

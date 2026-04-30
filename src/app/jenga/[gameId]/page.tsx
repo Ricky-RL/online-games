@@ -4,7 +4,7 @@ import { use, useMemo, useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useJengaGame, type JengaGame } from '@/hooks/useJengaGame';
 import { useGameSounds } from '@/hooks/useSound';
-import { getJengaGameStatus, calculateBlockRisk, getPlayerScores, getMinimumRiskThreshold } from '@/lib/jenga-logic';
+import { getJengaGameStatus, calculateBlockRisk, getPlayerScores, getMinimumRiskThreshold, getMovePoints, getEarlyGameMultiplier } from '@/lib/jenga-logic';
 import { JengaTower } from '@/components/jenga/JengaTower';
 import { JengaWobbleMeter } from '@/components/jenga/JengaWobbleMeter';
 import { TurnIndicator } from '@/components/TurnIndicator';
@@ -192,7 +192,17 @@ export default function JengaGamePage({ params }: { params: Promise<{ gameId: st
             <span className="text-sm text-text-secondary">
               Risk: <strong className="text-text-primary">{selectedRisk}%</strong>
               {' · '}
-              <span className="text-emerald-500 font-medium">+{selectedRisk} pts</span>
+              {(() => {
+                const moveIdx = game!.board.move_history.length;
+                const mult = getEarlyGameMultiplier(moveIdx);
+                const pts = getMovePoints(selectedRisk ?? 0, moveIdx);
+                return (
+                  <>
+                    <span className="text-emerald-500 font-medium">+{pts} pts</span>
+                    {mult > 1 && <span className="text-amber-500 text-xs ml-1">({mult}x early bonus)</span>}
+                  </>
+                );
+              })()}
             </span>
             <button
               onClick={handleConfirmPull}
