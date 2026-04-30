@@ -38,6 +38,8 @@ export function JengaBlockComponent({
 
   const colors = woodColor(risk);
   const halfDepth = blockDepth / 2;
+  const halfWidth = blockWidth / 2;
+  const halfHeight = blockHeight / 2;
 
   return (
     <motion.button
@@ -74,53 +76,51 @@ export function JengaBlockComponent({
       />
       {/* Top face */}
       <div
-        className="absolute"
+        className="absolute left-0"
         style={{
           width: `${blockWidth}px`,
           height: `${blockDepth}px`,
           backgroundColor: colors.top,
-          transform: `translateY(-${halfDepth}px) rotateX(90deg)`,
-          transformOrigin: 'bottom center',
+          transform: `rotateX(90deg) translateZ(${halfHeight}px)`,
+          transformOrigin: 'center center',
           borderRadius: '1px',
           border: '1px solid rgba(0,0,0,0.05)',
         }}
       />
       {/* Bottom face */}
       <div
-        className="absolute"
+        className="absolute left-0"
         style={{
           width: `${blockWidth}px`,
           height: `${blockDepth}px`,
           backgroundColor: colors.side,
-          top: `${blockHeight}px`,
-          transform: `translateY(-${halfDepth}px) rotateX(90deg)`,
-          transformOrigin: 'top center',
+          transform: `rotateX(-90deg) translateZ(${halfHeight}px)`,
+          transformOrigin: 'center center',
           borderRadius: '1px',
         }}
       />
       {/* Right face */}
       <div
-        className="absolute"
+        className="absolute top-0"
         style={{
           width: `${blockDepth}px`,
           height: `${blockHeight}px`,
           backgroundColor: colors.side,
-          left: `${blockWidth}px`,
-          transform: `translateX(-${halfDepth}px) rotateY(90deg)`,
-          transformOrigin: 'left center',
+          transform: `rotateY(90deg) translateZ(${halfWidth}px)`,
+          transformOrigin: 'center center',
           borderRadius: '1px',
           border: '1px solid rgba(0,0,0,0.05)',
         }}
       />
       {/* Left face */}
       <div
-        className="absolute"
+        className="absolute top-0"
         style={{
           width: `${blockDepth}px`,
           height: `${blockHeight}px`,
           backgroundColor: colors.front,
-          transform: `translateX(-${halfDepth}px) rotateY(-90deg)`,
-          transformOrigin: 'right center',
+          transform: `rotateY(-90deg) translateZ(${halfWidth}px)`,
+          transformOrigin: 'center center',
           borderRadius: '1px',
         }}
       />

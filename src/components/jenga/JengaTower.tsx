@@ -40,14 +40,16 @@ export function JengaTower({ state, isMyTurn, selectedBlock, onBlockClick, disab
     dragStart.current = null;
   }, []);
 
-  // Real Jenga proportions: block is 3x longer than it is wide
-  // A layer of 3 blocks side-by-side = a square footprint
-  const BLOCK_LENGTH = 48;   // long dimension of a block
-  const BLOCK_WIDTH = 16;    // short dimension (width/depth)
-  const BLOCK_HEIGHT = 12;   // thickness
+  // Real Jenga proportions: block length = 3 * block width
+  // A layer of 3 blocks side-by-side forms a square footprint (3 * width = length)
+  const BLOCK_WIDTH = 20;    // narrow dimension of a block
+  const BLOCK_LENGTH = 60;   // long dimension (= 3 * BLOCK_WIDTH)
+  const BLOCK_HEIGHT = 12;   // thickness/height of each block
   const GAP = 1;
-  const ROW_HEIGHT = BLOCK_HEIGHT + 1;
+  const ROW_HEIGHT = BLOCK_HEIGHT + GAP;
   const towerRows = state.tower.length;
+  // Both layer types have 3 blocks side-by-side at BLOCK_WIDTH each = same total
+  const ROW_WIDTH = BLOCK_WIDTH * 3 + GAP * 2;
 
   return (
     <div className="flex flex-col items-center gap-4">
@@ -70,7 +72,7 @@ export function JengaTower({ state, isMyTurn, selectedBlock, onBlockClick, disab
             transformStyle: 'preserve-3d',
             transform: `rotateX(12deg) rotateY(${rotationY}deg)`,
             position: 'relative',
-            width: `${BLOCK_LENGTH * 3 + GAP * 2 + 60}px`,
+            width: `${ROW_WIDTH + 80}px`,
             height: `${towerRows * ROW_HEIGHT + 60}px`,
           }}
         >
@@ -78,45 +80,20 @@ export function JengaTower({ state, isMyTurn, selectedBlock, onBlockClick, disab
             const isPerp = rowIdx % 2 === 1;
             const yOffset = (towerRows - 1 - rowIdx) * ROW_HEIGHT;
 
-            if (isPerp) {
-              // Perpendicular row: blocks run front-to-back (Z axis)
-              // Visible from front: you see the short end (BLOCK_WIDTH wide)
-              // 3 blocks side by side showing their ends = 3 * BLOCK_WIDTH wide
-              return (
-                <div
-                  key={rowIdx}
-                  style={{
-                    position: 'absolute',
-                    bottom: `${yOffset}px`,
-                    left: '50%',
-                    transform: 'translateX(-50%)',
-                    transformStyle: 'preserve-3d',
-                    display: 'flex',
-                    justifyContent: 'center',
-                    gap: `${GAP}px`,
-                  }}
-                >
-                  {row.map((block, colIdx) => (
-                    <JengaBlockComponent
-                      key={block.id}
-                      row={rowIdx}
-                      col={colIdx}
-                      exists={block.exists}
-                      risk={calculateBlockRisk(state, rowIdx, colIdx)}
-                      isPlayable={playableSet.has(`${rowIdx}-${colIdx}`)}
-                      isSelected={selectedBlock?.[0] === rowIdx && selectedBlock?.[1] === colIdx}
-                      blockWidth={BLOCK_WIDTH}
-                      blockHeight={BLOCK_HEIGHT}
-                      blockDepth={BLOCK_LENGTH}
-                      onClick={() => onBlockClick(rowIdx, colIdx)}
-                    />
-                  ))}
-                </div>
-              );
-            }
+            // Both layers show 3 blocks side-by-side in a flex row.
+            // The alternating direction is conveyed by rotating the entire row
+            // 90 degrees around Y in 3D space. This way, when the tower is viewed
+            // with perspective/rotation, you see the cross-hatch pattern.
+            //
+            // Even rows: blocks run left-right (no extra rotation)
+            //   - Blocks show their NARROW end (BLOCK_WIDTH) side-by-side
+            //   - Block depth = BLOCK_LENGTH (going into screen)
+            //
+            // Odd rows: blocks run front-back (row rotated 90deg Y)
+            //   - Same block arrangement but rotated, so they appear perpendicular
+            //   - Blocks show their NARROW end (BLOCK_WIDTH) side-by-side
+            //   - Block depth = BLOCK_LENGTH (now going left-right due to rotation)
 
-            // Normal row: blocks run left-to-right (X axis)
-            // Visible from front: you see the long face (BLOCK_LENGTH wide)
             return (
               <div
                 key={rowIdx}
@@ -124,8 +101,8 @@ export function JengaTower({ state, isMyTurn, selectedBlock, onBlockClick, disab
                   position: 'absolute',
                   bottom: `${yOffset}px`,
                   left: '50%',
+                  transform: `translateX(-50%)${isPerp ? ' rotateY(90deg)' : ''}`,
                   transformStyle: 'preserve-3d',
-                  transform: `translateX(-50%)`,
                   display: 'flex',
                   justifyContent: 'center',
                   gap: `${GAP}px`,
@@ -140,9 +117,9 @@ export function JengaTower({ state, isMyTurn, selectedBlock, onBlockClick, disab
                     risk={calculateBlockRisk(state, rowIdx, colIdx)}
                     isPlayable={playableSet.has(`${rowIdx}-${colIdx}`)}
                     isSelected={selectedBlock?.[0] === rowIdx && selectedBlock?.[1] === colIdx}
-                    blockWidth={BLOCK_LENGTH}
+                    blockWidth={BLOCK_WIDTH}
                     blockHeight={BLOCK_HEIGHT}
-                    blockDepth={BLOCK_WIDTH}
+                    blockDepth={BLOCK_LENGTH}
                     onClick={() => onBlockClick(rowIdx, colIdx)}
                   />
                 ))}
