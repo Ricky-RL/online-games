@@ -181,7 +181,11 @@ function getOpponentName(game: InboxGame, playerName: string): string {
   if (game.player1_name === playerName) {
     return game.player2_name ?? 'Waiting...';
   }
-  return game.player1_name ?? 'Waiting...';
+  if (game.player2_name === playerName) {
+    return game.player1_name ?? 'Waiting...';
+  }
+  // Player hasn't joined yet — opponent is whichever slot is filled
+  return game.player1_name ?? game.player2_name ?? 'Waiting...';
 }
 
 export function InboxGameItem({ game, onClick, onDismiss, playerName }: InboxGameItemProps) {
