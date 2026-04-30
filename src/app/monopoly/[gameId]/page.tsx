@@ -149,7 +149,7 @@ export default function MonopolyGamePage({ params }: { params: Promise<{ gameId:
 
             {board.phase !== 'game-over' && myPlayer && (
               <motion.button
-                onClick={forfeitGame}
+                onClick={() => { if (window.confirm('Are you sure you want to forfeit? This cannot be undone.')) forfeitGame(); }}
                 className="w-full mt-3 sm:mt-4 px-4 py-2 min-h-[44px] rounded-xl border border-red-500/30 text-red-400 text-sm font-medium hover:bg-red-500/10 transition-colors cursor-pointer"
                 whileTap={{ scale: 0.95 }}
               >
