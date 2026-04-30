@@ -50,7 +50,7 @@ export function useInbox(): UseInboxReturn {
         .from('wordle_games')
         .select('*')
         .eq('answer_index', -1)
-        .eq('status', 'playing')
+        .in('status', ['waiting', 'playing'])
         .or(`player1_name.eq.${playerName},player2_name.eq.${playerName},player1_id.eq.${PLAYER_IDS[playerName]},player2_id.eq.${PLAYER_IDS[playerName]},and(player1_name.eq.${otherPlayer},player2_name.is.null),and(player2_name.eq.${otherPlayer},player1_name.is.null),and(player1_id.eq.${PLAYER_IDS[otherPlayer]},player2_id.is.null),and(player2_id.eq.${PLAYER_IDS[otherPlayer]},player1_id.is.null)`)
         .order('updated_at', { ascending: false }),
       supabase
