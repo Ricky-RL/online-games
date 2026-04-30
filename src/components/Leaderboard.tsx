@@ -26,6 +26,14 @@ interface LeaderboardStats {
     won: number;
     average_guesses: number;
   };
+  daily_wordle_stats: {
+    played: number;
+    won: number;
+    current_streak: number;
+    best_streak: number;
+    guess_distribution: [number, number, number, number, number, number];
+    history: { date: string; guesses: number; won: boolean }[];
+  };
 }
 
 interface LeaderboardProps {
@@ -214,6 +222,72 @@ export function Leaderboard({ stats, onReset, loading }: LeaderboardProps) {
                   </div>
                 )}
 
+                {/* Daily Wordle Streak */}
+                {stats.daily_wordle_stats.played > 0 && (
+                  <div className="space-y-3">
+                    <h3 className="text-xs font-semibold uppercase tracking-wider text-text-secondary/70">
+                      Daily Wordle
+                    </h3>
+                    <div className="rounded-xl bg-background px-4 py-4 space-y-4">
+                      {/* Stats row */}
+                      <div className="flex items-center gap-6">
+                        <div>
+                          <p className="text-xs text-text-secondary">Played</p>
+                          <p className="text-base font-semibold text-text-primary">{stats.daily_wordle_stats.played}</p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-text-secondary">Win %</p>
+                          <p className="text-base font-semibold text-text-primary">
+                            {Math.round((stats.daily_wordle_stats.won / stats.daily_wordle_stats.played) * 100)}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-text-secondary">Streak</p>
+                          <p className="text-base font-semibold text-accent">
+                            {stats.daily_wordle_stats.current_streak}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-text-secondary">Best</p>
+                          <p className="text-base font-semibold text-text-primary">
+                            {stats.daily_wordle_stats.best_streak}
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Guess distribution */}
+                      {stats.daily_wordle_stats.won > 0 && (
+                        <div className="space-y-1.5">
+                          <p className="text-xs text-text-secondary font-medium">Guess Distribution</p>
+                          <GuessDistribution distribution={stats.daily_wordle_stats.guess_distribution} />
+                        </div>
+                      )}
+
+                      {/* Recent history */}
+                      {stats.daily_wordle_stats.history.length > 0 && (
+                        <div className="space-y-1.5">
+                          <p className="text-xs text-text-secondary font-medium">Recent</p>
+                          <div className="flex flex-wrap gap-1.5">
+                            {stats.daily_wordle_stats.history.slice(0, 14).map((entry) => (
+                              <div
+                                key={entry.date}
+                                className={`w-7 h-7 rounded-md flex items-center justify-center text-xs font-bold ${
+                                  entry.won
+                                    ? 'bg-green-500/20 text-green-400'
+                                    : 'bg-red-500/20 text-red-400'
+                                }`}
+                                title={`${entry.date}: ${entry.won ? `Solved in ${entry.guesses}` : 'Failed'}`}
+                              >
+                                {entry.won ? entry.guesses : 'X'}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
                 {/* Reset button */}
                 <div className="pt-2">
                   <button
@@ -251,6 +325,28 @@ function GameStat({ label, ricky, lilian, draws }: { label: string; ricky: numbe
           </>
         )}
       </div>
+    </div>
+  );
+}
+
+function GuessDistribution({ distribution }: { distribution: [number, number, number, number, number, number] }) {
+  const max = Math.max(...distribution, 1);
+
+  return (
+    <div className="space-y-1">
+      {distribution.map((count, i) => (
+        <div key={i} className="flex items-center gap-2">
+          <span className="text-xs text-text-secondary w-3 text-right">{i + 1}</span>
+          <div className="flex-1 h-5 relative">
+            <div
+              className="h-full rounded-sm bg-green-500/30 flex items-center justify-end px-1.5 min-w-[1.25rem]"
+              style={{ width: `${Math.max((count / max) * 100, 8)}%` }}
+            >
+              <span className="text-xs font-semibold text-green-300">{count}</span>
+            </div>
+          </div>
+        </div>
+      ))}
     </div>
   );
 }

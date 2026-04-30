@@ -216,6 +216,8 @@ export function useWordleGame(gameId: string): UseWordleGameReturn {
           // Record after successful retry if game ended
           if ((retryWon || retryLost) && !matchRecorded.current) {
             matchRecorded.current = true;
+            const isDaily = currentGame.answer_index === -1;
+            const etDate = new Date().toLocaleDateString('en-CA', { timeZone: 'America/New_York' });
             recordMatchResult({
               game_type: 'wordle',
               winner_id: null,
@@ -223,7 +225,7 @@ export function useWordleGame(gameId: string): UseWordleGameReturn {
               loser_id: null,
               loser_name: null,
               is_draw: false,
-              metadata: { guessCount: retryCount, won: retryWon },
+              metadata: { guessCount: retryCount, won: retryWon, isDaily, date: etDate },
               player1_id: currentGame.player1_id!,
               player1_name: currentGame.player1_name!,
               player2_id: currentGame.player2_id!,
@@ -238,6 +240,8 @@ export function useWordleGame(gameId: string): UseWordleGameReturn {
     // Record match result when game ends (won or lost)
     if ((won || lost) && !matchRecorded.current) {
       matchRecorded.current = true;
+      const isDaily = currentGame.answer_index === -1;
+      const etDate = new Date().toLocaleDateString('en-CA', { timeZone: 'America/New_York' });
       recordMatchResult({
         game_type: 'wordle',
         winner_id: null,
@@ -245,7 +249,7 @@ export function useWordleGame(gameId: string): UseWordleGameReturn {
         loser_id: null,
         loser_name: null,
         is_draw: false,
-        metadata: { guessCount: newGuessCount, won },
+        metadata: { guessCount: newGuessCount, won, isDaily, date: etDate },
         player1_id: currentGame.player1_id!,
         player1_name: currentGame.player1_name!,
         player2_id: currentGame.player2_id!,
