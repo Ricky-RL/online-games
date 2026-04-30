@@ -8,17 +8,19 @@ import { Grid } from '@/components/word-search/Grid';
 import { WordList } from '@/components/word-search/WordList';
 import { Timer, getElapsedSeconds } from '@/components/word-search/Timer';
 import { Results } from '@/components/word-search/Results';
+import { EndGameDialog } from '@/components/EndGameDialog';
 import { SettingsButton } from '@/components/SettingsButton';
 import type { WordSearchBoardState } from '@/lib/word-search-types';
 
 export default function WordSearchGamePage({ params }: { params: Promise<{ gameId: string }> }) {
   const { gameId } = use(params);
   const router = useRouter();
-  const { game, loading, deleted, submitResult, myResult, opponentResult, bothSubmitted } = useWordSearchGame(gameId);
+  const { game, loading, deleted, submitResult, resetGame, myResult, opponentResult, bothSubmitted } = useWordSearchGame(gameId);
 
   const [foundWords, setFoundWords] = useState<string[]>([]);
   const [timerStarted, setTimerStarted] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [showEndDialog, setShowEndDialog] = useState(false);
   const startTimeRef = useRef<number | null>(null);
 
   const playerName = typeof window !== 'undefined'
@@ -56,6 +58,11 @@ export default function WordSearchGamePage({ params }: { params: Promise<{ gameI
   const handleTimeUp = useCallback(() => {
     handleSubmit();
   }, [handleSubmit]);
+
+  const handleEndGame = useCallback(async () => {
+    await resetGame();
+    router.push('/');
+  }, [resetGame, router]);
 
   if (deleted) {
     router.push('/');
@@ -173,9 +180,22 @@ export default function WordSearchGamePage({ params }: { params: Promise<{ gameI
         Done ({foundWords.length}/{allWords.length})
       </motion.button>
 
+      <button
+        onClick={() => setShowEndDialog(true)}
+        className="mt-2 px-4 py-2 text-sm font-medium rounded-xl border border-player1/20 bg-player1/5 text-player1/80 hover:bg-player1/10 hover:border-player1/40 hover:text-player1 shadow-sm hover:shadow transition-all cursor-pointer"
+      >
+        End Game
+      </button>
+
       {!timerStarted && (
         <p className="text-xs text-text-secondary">Click letters to select them</p>
       )}
+
+      <EndGameDialog
+        open={showEndDialog}
+        onConfirm={handleEndGame}
+        onCancel={() => setShowEndDialog(false)}
+      />
     </div>
   );
 }

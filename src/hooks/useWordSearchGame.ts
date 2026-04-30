@@ -14,6 +14,7 @@ interface UseWordSearchGameReturn {
   error: string | null;
   deleted: boolean;
   submitResult: (result: PlayerResult) => Promise<void>;
+  resetGame: () => Promise<void>;
   myResult: PlayerResult | null;
   opponentResult: PlayerResult | null;
   bothSubmitted: boolean;
@@ -174,6 +175,40 @@ export function useWordSearchGame(gameId: string): UseWordSearchGameReturn {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [game, gameId]);
 
+  const resetGame = useCallback(async () => {
+    const { error: resetError } = await supabase
+      .from('games')
+      .update({
+        game_type: 'ended',
+        board: {},
+        current_turn: 1,
+        winner: null,
+        player1_name: null,
+        player2_name: null,
+        player1_id: null,
+        player2_id: null,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', gameId);
+
+    if (resetError) {
+      console.error('Error resetting game:', resetError);
+      setError(resetError.message);
+      return;
+    }
+
+    const { error: deleteError } = await supabase
+      .from('games')
+      .delete()
+      .eq('id', gameId);
+
+    if (deleteError) {
+      console.error('Error deleting game:', deleteError);
+    }
+
+    setDeleted(true);
+  }, [gameId]);
+
   const playerNumber = getMyPlayerNumber();
   const board = game?.board as WordSearchBoardState | undefined;
 
@@ -188,5 +223,5 @@ export function useWordSearchGame(gameId: string): UseWordSearchGameReturn {
     ? (playerNumber === 1 ? board.player2Result : board.player1Result)
     : null;
 
-  return { game, loading, error, deleted, submitResult, myResult, opponentResult, bothSubmitted };
+  return { game, loading, error, deleted, submitResult, resetGame, myResult, opponentResult, bothSubmitted };
 }
