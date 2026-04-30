@@ -41,15 +41,10 @@ export function JengaBlockComponent({
   const hh = blockHeight / 2;
   const hd = blockDepth / 2;
 
-  // Each face is sized exactly to cover that side of the rectangular prism,
-  // positioned at the center of the button, then translated outward by half
-  // the perpendicular dimension. backface-visibility:hidden ensures we never
-  // see through the back of any face.
   const faceBase: React.CSSProperties = {
     position: 'absolute',
     top: '50%',
     left: '50%',
-    backfaceVisibility: 'hidden',
     pointerEvents: 'none',
   };
 
