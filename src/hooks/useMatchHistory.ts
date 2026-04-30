@@ -60,14 +60,15 @@ function computeStats(results: MatchResult[]): LeaderboardStats {
   let lilian_wins = 0;
   let draws = 0;
 
-  const by_game = {
+  const by_game: Record<string, { ricky: number; lilian: number; draws: number }> = {
     'connect-four': { ricky: 0, lilian: 0, draws: 0 },
     'tic-tac-toe': { ricky: 0, lilian: 0, draws: 0 },
+    'checkers': { ricky: 0, lilian: 0, draws: 0 },
+    'battleship': { ricky: 0, lilian: 0, draws: 0 },
     'mini-golf': { ricky: 0, lilian: 0, draws: 0 },
     'jenga': { ricky: 0, lilian: 0, draws: 0 },
     'snakes-and-ladders': { ricky: 0, lilian: 0, draws: 0 },
     'monopoly': { ricky: 0, lilian: 0, draws: 0 },
-    'battleship': { ricky: 0, lilian: 0, draws: 0 },
   };
 
   let wordle_played = 0;
@@ -104,7 +105,10 @@ function computeStats(results: MatchResult[]): LeaderboardStats {
       continue;
     }
 
-    const gameKey = r.game_type as 'connect-four' | 'tic-tac-toe' | 'mini-golf' | 'jenga' | 'snakes-and-ladders' | 'monopoly' | 'battleship';
+    const gameKey = r.game_type;
+    if (!by_game[gameKey]) {
+      by_game[gameKey] = { ricky: 0, lilian: 0, draws: 0 };
+    }
 
     if (r.is_draw) {
       draws++;
