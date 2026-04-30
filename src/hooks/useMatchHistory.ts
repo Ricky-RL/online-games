@@ -7,7 +7,7 @@ const POLL_INTERVAL_MS = 5000;
 
 export interface MatchResult {
   id: string;
-  game_type: 'connect-four' | 'tic-tac-toe' | 'wordle' | 'mini-golf' | 'jenga' | 'snakes-and-ladders' | 'word-search' | 'monopoly';
+  game_type: 'connect-four' | 'tic-tac-toe' | 'wordle' | 'mini-golf' | 'jenga' | 'snakes-and-ladders' | 'word-search' | 'monopoly' | 'battleship';
   winner_id: string | null;
   winner_name: string | null;
   loser_id: string | null;
@@ -32,6 +32,7 @@ export interface LeaderboardStats {
     'jenga': { ricky: number; lilian: number; draws: number };
     'snakes-and-ladders': { ricky: number; lilian: number; draws: number };
     'monopoly': { ricky: number; lilian: number; draws: number };
+    'battleship': { ricky: number; lilian: number; draws: number };
   };
   streaks: {
     ricky_current: number;
@@ -66,6 +67,7 @@ function computeStats(results: MatchResult[]): LeaderboardStats {
     'jenga': { ricky: 0, lilian: 0, draws: 0 },
     'snakes-and-ladders': { ricky: 0, lilian: 0, draws: 0 },
     'monopoly': { ricky: 0, lilian: 0, draws: 0 },
+    'battleship': { ricky: 0, lilian: 0, draws: 0 },
   };
 
   let wordle_played = 0;
@@ -102,7 +104,7 @@ function computeStats(results: MatchResult[]): LeaderboardStats {
       continue;
     }
 
-    const gameKey = r.game_type as 'connect-four' | 'tic-tac-toe' | 'mini-golf' | 'jenga' | 'snakes-and-ladders' | 'monopoly';
+    const gameKey = r.game_type as 'connect-four' | 'tic-tac-toe' | 'mini-golf' | 'jenga' | 'snakes-and-ladders' | 'monopoly' | 'battleship';
 
     if (r.is_draw) {
       draws++;

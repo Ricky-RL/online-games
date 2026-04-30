@@ -8,6 +8,7 @@ import {
   checkWinner,
   totalAttacks,
 } from '@/lib/battleship-logic';
+import { recordMatchResult } from '@/lib/match-results';
 import type { Player, BattleshipGame, BattleshipBoardState, Attack } from '@/lib/types';
 
 const POLL_INTERVAL_MS = 1500;
@@ -35,6 +36,7 @@ export function useBattleshipGame(gameId: string): UseBattleshipGameReturn {
   const [deleted, setDeleted] = useState(false);
   const optimisticBoard = useRef<BattleshipBoardState | null>(null);
   const gameRef = useRef<BattleshipGame | null>(null);
+  const matchRecordedRef = useRef(false);
 
   const updateGame = useCallback(
     (updater: BattleshipGame | null | ((prev: BattleshipGame | null) => BattleshipGame | null)) => {
@@ -224,6 +226,28 @@ export function useBattleshipGame(gameId: string): UseBattleshipGameReturn {
           .single();
         if (freshGame) updateGame(freshGame as BattleshipGame);
         setError(updateError.message);
+      }
+
+      // Record match result when a winner is determined (only once)
+      if (winner && !updateError && !matchRecordedRef.current) {
+        matchRecordedRef.current = true;
+        const winnerPlayer = winner === 1 ? currentGame.player1_name : currentGame.player2_name;
+        const loserPlayer = winner === 1 ? currentGame.player2_name : currentGame.player1_name;
+        const winnerId = winner === 1 ? currentGame.player1_id : currentGame.player2_id;
+        const loserId = winner === 1 ? currentGame.player2_id : currentGame.player1_id;
+        recordMatchResult({
+          game_type: 'battleship',
+          winner_id: winnerId,
+          winner_name: winnerPlayer,
+          loser_id: loserId,
+          loser_name: loserPlayer,
+          is_draw: false,
+          metadata: null,
+          player1_id: currentGame.player1_id!,
+          player1_name: currentGame.player1_name!,
+          player2_id: currentGame.player2_id!,
+          player2_name: currentGame.player2_name!,
+        });
       }
     },
     [gameId, updateGame]
