@@ -32,43 +32,47 @@ declare
   _payload jsonb;
   _service_role_key text;
 begin
-  -- Only fire when current_turn actually changed and game is not over
   if NEW.current_turn is distinct from OLD.current_turn and NEW.winner is null then
 
-    -- Resolve player name from current_turn (1 or 2)
+    -- Skip if the target player slot hasn't been filled yet (async play)
+    if NEW.current_turn = 1 and NEW.player1_id is null then
+      return NEW;
+    end if;
+    if NEW.current_turn = 2 and NEW.player2_id is null then
+      return NEW;
+    end if;
+
     if NEW.current_turn = 1 then
-      _player_name := NEW.player1_name;
-      _opponent_name := NEW.player2_name;
+      _player_name := coalesce(NEW.player1_name,
+        case NEW.player1_id
+          when '00000000-0000-0000-0000-000000000001'::uuid then 'Ricky'
+          when '00000000-0000-0000-0000-000000000002'::uuid then 'Lilian'
+          else 'Unknown'
+        end);
+      _opponent_name := coalesce(NEW.player2_name,
+        case NEW.player2_id
+          when '00000000-0000-0000-0000-000000000001'::uuid then 'Ricky'
+          when '00000000-0000-0000-0000-000000000002'::uuid then 'Lilian'
+          else 'Unknown'
+        end);
     else
-      _player_name := NEW.player2_name;
-      _opponent_name := NEW.player1_name;
+      _player_name := coalesce(NEW.player2_name,
+        case NEW.player2_id
+          when '00000000-0000-0000-0000-000000000001'::uuid then 'Ricky'
+          when '00000000-0000-0000-0000-000000000002'::uuid then 'Lilian'
+          else 'Unknown'
+        end);
+      _opponent_name := coalesce(NEW.player1_name,
+        case NEW.player1_id
+          when '00000000-0000-0000-0000-000000000001'::uuid then 'Ricky'
+          when '00000000-0000-0000-0000-000000000002'::uuid then 'Lilian'
+          else 'Unknown'
+        end);
     end if;
 
-    -- Fallback: resolve from player IDs if names are null
-    if _player_name is null then
-      case
-        when NEW.current_turn = 1 and NEW.player1_id = '00000000-0000-0000-0000-000000000001'::uuid then _player_name := 'Ricky';
-        when NEW.current_turn = 1 and NEW.player1_id = '00000000-0000-0000-0000-000000000002'::uuid then _player_name := 'Lilian';
-        when NEW.current_turn = 2 and NEW.player2_id = '00000000-0000-0000-0000-000000000001'::uuid then _player_name := 'Ricky';
-        when NEW.current_turn = 2 and NEW.player2_id = '00000000-0000-0000-0000-000000000002'::uuid then _player_name := 'Lilian';
-        else _player_name := 'Unknown';
-      end case;
-    end if;
-
-    if _opponent_name is null then
-      case
-        when NEW.current_turn = 1 and NEW.player2_id = '00000000-0000-0000-0000-000000000001'::uuid then _opponent_name := 'Ricky';
-        when NEW.current_turn = 1 and NEW.player2_id = '00000000-0000-0000-0000-000000000002'::uuid then _opponent_name := 'Lilian';
-        when NEW.current_turn = 2 and NEW.player1_id = '00000000-0000-0000-0000-000000000001'::uuid then _opponent_name := 'Ricky';
-        when NEW.current_turn = 2 and NEW.player1_id = '00000000-0000-0000-0000-000000000002'::uuid then _opponent_name := 'Lilian';
-        else _opponent_name := 'Unknown';
-      end case;
-    end if;
-
-    -- Build the Edge Function URL
+    select value into _service_role_key from app_config where key = 'service_role_key';
     _edge_function_url := 'https://orsntrqzhilmoomleqgg.supabase.co/functions/v1/notify-telegram';
 
-    -- Build payload
     _payload := jsonb_build_object(
       'player_name', _player_name,
       'opponent_name', _opponent_name,
@@ -77,10 +81,6 @@ begin
       'updated_at', NEW.updated_at
     );
 
-    -- Read service role key from config table
-    select value into _service_role_key from app_config where key = 'service_role_key';
-
-    -- Call Edge Function via pg_net
     perform net.http_post(
       url := _edge_function_url,
       headers := jsonb_build_object(
@@ -102,3 +102,74 @@ create trigger on_turn_change
   for each row
   when (OLD.current_turn is distinct from NEW.current_turn)
   execute function notify_turn_change();
+
+-- Trigger function: notify player when opponent joins and it's already their turn
+create or replace function notify_on_player_join()
+returns trigger as $$
+declare
+  _player_name text;
+  _opponent_name text;
+  _payload jsonb;
+  _service_role_key text;
+  _edge_function_url text;
+begin
+  -- Fire when player2 joins and it's already their turn
+  if OLD.player2_id is null and NEW.player2_id is not null and NEW.current_turn = 2 and NEW.winner is null then
+    _player_name := coalesce(NEW.player2_name,
+      case NEW.player2_id
+        when '00000000-0000-0000-0000-000000000001'::uuid then 'Ricky'
+        when '00000000-0000-0000-0000-000000000002'::uuid then 'Lilian'
+        else 'Unknown'
+      end);
+    _opponent_name := coalesce(NEW.player1_name,
+      case NEW.player1_id
+        when '00000000-0000-0000-0000-000000000001'::uuid then 'Ricky'
+        when '00000000-0000-0000-0000-000000000002'::uuid then 'Lilian'
+        else 'Unknown'
+      end);
+  -- Fire when player1 joins and it's already their turn
+  elsif OLD.player1_id is null and NEW.player1_id is not null and NEW.current_turn = 1 and NEW.winner is null then
+    _player_name := coalesce(NEW.player1_name,
+      case NEW.player1_id
+        when '00000000-0000-0000-0000-000000000001'::uuid then 'Ricky'
+        when '00000000-0000-0000-0000-000000000002'::uuid then 'Lilian'
+        else 'Unknown'
+      end);
+    _opponent_name := coalesce(NEW.player2_name,
+      case NEW.player2_id
+        when '00000000-0000-0000-0000-000000000001'::uuid then 'Ricky'
+        when '00000000-0000-0000-0000-000000000002'::uuid then 'Lilian'
+        else 'Unknown'
+      end);
+  else
+    return NEW;
+  end if;
+
+  select value into _service_role_key from app_config where key = 'service_role_key';
+  _edge_function_url := 'https://orsntrqzhilmoomleqgg.supabase.co/functions/v1/notify-telegram';
+
+  perform net.http_post(
+    url := _edge_function_url,
+    headers := jsonb_build_object(
+      'Content-Type', 'application/json',
+      'Authorization', 'Bearer ' || _service_role_key
+    ),
+    body := jsonb_build_object(
+      'player_name', _player_name,
+      'opponent_name', _opponent_name,
+      'game_type', NEW.game_type,
+      'game_id', NEW.id,
+      'updated_at', NEW.updated_at
+    )
+  );
+
+  return NEW;
+end;
+$$ language plpgsql security definer;
+
+-- Attach trigger for player join
+create trigger on_player_join
+  after update on games
+  for each row
+  when (OLD.player1_id is distinct from NEW.player1_id or OLD.player2_id is distinct from NEW.player2_id)
+  execute function notify_on_player_join();
