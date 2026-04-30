@@ -1,8 +1,9 @@
 'use client';
 
-import { motion, useAnimationControls } from 'framer-motion';
+import { motion, useAnimationControls, AnimatePresence } from 'framer-motion';
 import { useColors } from '@/contexts/PlayerColorsContext';
 import { useEffect, useRef } from 'react';
+import { POWERUP_INFO } from './PowerupToast';
 import type { SnakesAndLaddersState } from '@/lib/types';
 import type { LastMoveInfo } from '@/hooks/useSnakesAndLaddersGame';
 
@@ -201,6 +202,8 @@ export function Board({ board, lastMove }: BoardProps) {
           const gridCol = col + 1;
           const isSnakeHead = board.snakes[num] !== undefined;
           const isLadderBottom = board.ladders[num] !== undefined;
+          const powerupType = board.powerups?.[num];
+          const powerupInfo = powerupType ? POWERUP_INFO[powerupType] : null;
 
           return (
             <div
@@ -215,6 +218,17 @@ export function Board({ board, lastMove }: BoardProps) {
               )}
               {isLadderBottom && (
                 <div className="absolute inset-0 bg-emerald-500/8 rounded-sm" />
+              )}
+              {powerupInfo && (
+                <motion.div
+                  key={`powerup-${num}-${powerupType}`}
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                  transition={{ type: 'spring', stiffness: 400, damping: 15 }}
+                  className="absolute inset-0 flex items-center justify-center text-lg bg-amber-500/10 rounded-sm"
+                >
+                  {powerupInfo.icon}
+                </motion.div>
               )}
             </div>
           );
