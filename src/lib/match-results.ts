@@ -4,6 +4,7 @@ export type GameType = 'connect-four' | 'tic-tac-toe' | 'wordle' | 'mini-golf' |
 
 export interface MatchResultInsert {
   game_type: GameType;
+  game_id: string;
   winner_id: string | null;
   winner_name: string | null;
   loser_id: string | null;

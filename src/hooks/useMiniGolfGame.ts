@@ -161,6 +161,7 @@ export function useMiniGolfGame(gameId: string): UseMiniGolfGameReturn {
           const loserId = winner === 1 ? current.player2_id : current.player1_id;
           recordMatchResult({
             game_type: 'mini-golf',
+            game_id: gameId,
             winner_id: winnerId,
             winner_name: winnerName,
             loser_id: loserId,
@@ -175,6 +176,7 @@ export function useMiniGolfGame(gameId: string): UseMiniGolfGameReturn {
         } else {
           recordMatchResult({
             game_type: 'mini-golf',
+            game_id: gameId,
             winner_id: null,
             winner_name: null,
             loser_id: null,

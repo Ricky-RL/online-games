@@ -23,6 +23,7 @@ interface TurnPayload {
   updated_at: string;
   whiteboard_action?: string;
   whiteboard_preview?: string;
+  notification_type?: "turn" | "game_won" | "game_lost" | "game_draw";
 }
 
 Deno.serve(async (req) => {
@@ -43,7 +44,7 @@ Deno.serve(async (req) => {
   }
 
   const payload: TurnPayload = await req.json();
-  const { player_name, opponent_name, game_type, game_id, updated_at, whiteboard_action, whiteboard_preview } =
+  const { player_name, opponent_name, game_type, game_id, updated_at, whiteboard_action, whiteboard_preview, notification_type } =
     payload;
 
   if (!player_name || !game_type || !game_id) {
@@ -96,6 +97,30 @@ Deno.serve(async (req) => {
       `*${opponent_name}* ${actionLabel} the whiteboard${previewLine}\n` +
       `*Time:* ${timestamp}\n\n` +
       `[View whiteboard](${playLink})`;
+  } else if (notification_type === "game_won") {
+    const playLink = `${appUrl}/${game_type}/${game_id}`;
+    message =
+      `🏆 *You won!*\n\n` +
+      `*Game:* ${gameLabel}\n` +
+      `*Opponent:* ${opponent_name}\n` +
+      `*Time:* ${timestamp}\n\n` +
+      `[View game](${playLink})`;
+  } else if (notification_type === "game_lost") {
+    const playLink = `${appUrl}/${game_type}/${game_id}`;
+    message =
+      `😢 *You lost*\n\n` +
+      `*Game:* ${gameLabel}\n` +
+      `*Opponent:* ${opponent_name}\n` +
+      `*Time:* ${timestamp}\n\n` +
+      `[View game](${playLink})`;
+  } else if (notification_type === "game_draw") {
+    const playLink = `${appUrl}/${game_type}/${game_id}`;
+    message =
+      `🤝 *It's a draw!*\n\n` +
+      `*Game:* ${gameLabel}\n` +
+      `*Opponent:* ${opponent_name}\n` +
+      `*Time:* ${timestamp}\n\n` +
+      `[View game](${playLink})`;
   } else {
     const playLink = `${appUrl}/${game_type}/${game_id}`;
     message =
