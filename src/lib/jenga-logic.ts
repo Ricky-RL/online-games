@@ -54,9 +54,9 @@ export function pullBlock(
   const effectiveRisk = Math.min(95, blockRisk + state.wobble_score);
   const toppled = randomValue * 100 < effectiveRisk;
 
-  // Increase wobble (riskier pulls add more wobble)
-  const wobbleIncrease = 2 + (blockRisk / 30) * 3;
-  const newWobble = Math.min(100, state.wobble_score + wobbleIncrease);
+  // Wobble: riskier pulls add more, but safe pulls let the tower settle
+  const wobbleIncrease = blockRisk > 10 ? 2 + (blockRisk / 30) * 3 : -3;
+  const newWobble = Math.max(0, Math.min(100, state.wobble_score + wobbleIncrease));
 
   // Place block on top (if not toppled)
   if (!toppled) {
