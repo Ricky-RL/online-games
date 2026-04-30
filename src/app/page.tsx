@@ -277,7 +277,6 @@ function GameSelection({ playerName, onChangePlayer }: { playerName: PlayerName;
       import('@/lib/game-logic'),
     ]);
 
-    const isRicky = playerName === 'Ricky';
     const myId = PLAYER_IDS[playerName];
 
     async function findGames() {
@@ -296,30 +295,22 @@ function GameSelection({ playerName, onChangePlayer }: { playerName: PlayerName;
       if (!games) return { activeGame: null, joinableGame: null };
 
       const activeGame = games.find((g) => {
-        if (isRicky) return g.player1_name === 'Ricky';
-        return g.player2_name === 'Lilian';
+        return g.player1_name === playerName || g.player2_name === playerName;
       }) || null;
 
       const joinableGame = games.find((g) => {
-        if (isRicky) {
-          return g.player1_name === null && g.player2_name === 'Lilian';
-        } else {
-          return g.player2_name === null && g.player1_name === 'Ricky';
-        }
+        return g.player2_name === null && g.player1_name !== null && g.player1_name !== playerName;
       }) || null;
 
       return { activeGame, joinableGame };
     }
 
     async function joinGame(gameId: string) {
-      const updateField = isRicky
-        ? { player1_id: myId, player1_name: playerName }
-        : { player2_id: myId, player2_name: playerName };
-
       const { error: joinError } = await supabase
         .from('games')
         .update({
-          ...updateField,
+          player2_id: myId,
+          player2_name: playerName,
           updated_at: new Date().toISOString(),
         })
         .eq('id', gameId)
@@ -368,28 +359,17 @@ function GameSelection({ playerName, onChangePlayer }: { playerName: PlayerName;
       return;
     }
 
-    // No game found -- create one
-    const insertData = isRicky
-      ? {
-          game_type: 'connect-four',
-          board: createEmptyBoard(),
-          current_turn: 1 as const,
-          winner: null,
-          player1_id: myId,
-          player1_name: playerName,
-          player2_id: null,
-          player2_name: null,
-        }
-      : {
-          game_type: 'connect-four',
-          board: createEmptyBoard(),
-          current_turn: 2 as const,
-          winner: null,
-          player1_id: null,
-          player1_name: null,
-          player2_id: myId,
-          player2_name: playerName,
-        };
+    // No game found -- create one. Creator is always player1 and goes first.
+    const insertData = {
+      game_type: 'connect-four',
+      board: createEmptyBoard(),
+      current_turn: 1 as const,
+      winner: null,
+      player1_id: myId,
+      player1_name: playerName,
+      player2_id: null,
+      player2_name: null,
+    };
 
     const { data, error } = await supabase
       .from('games')
@@ -414,7 +394,6 @@ function GameSelection({ playerName, onChangePlayer }: { playerName: PlayerName;
       import('@/lib/wordle-logic'),
     ]);
 
-    const isRicky = playerName === 'Ricky';
     const myId = PLAYER_IDS[playerName];
 
     async function findGames() {
@@ -433,30 +412,22 @@ function GameSelection({ playerName, onChangePlayer }: { playerName: PlayerName;
       if (!games) return { activeGame: null, joinableGame: null };
 
       const activeGame = games.find((g) => {
-        if (isRicky) return g.player1_name === 'Ricky';
-        return g.player2_name === 'Lilian';
+        return g.player1_name === playerName || g.player2_name === playerName;
       }) || null;
 
       const joinableGame = games.find((g) => {
-        if (isRicky) {
-          return g.player1_name === null && g.player2_name === 'Lilian';
-        } else {
-          return g.player2_name === null && g.player1_name === 'Ricky';
-        }
+        return g.player2_name === null && g.player1_name !== null && g.player1_name !== playerName;
       }) || null;
 
       return { activeGame, joinableGame };
     }
 
     async function joinGame(gameId: string) {
-      const updateField = isRicky
-        ? { player1_id: myId, player1_name: playerName }
-        : { player2_id: myId, player2_name: playerName };
-
       const { error: joinError } = await supabase
         .from('wordle_games')
         .update({
-          ...updateField,
+          player2_id: myId,
+          player2_name: playerName,
           updated_at: new Date().toISOString(),
         })
         .eq('id', gameId)
@@ -503,31 +474,19 @@ function GameSelection({ playerName, onChangePlayer }: { playerName: PlayerName;
       return;
     }
 
-    const insertData = isRicky
-      ? {
-          game_type: 'wordle',
-          answer_index: generateAnswerIndex(),
-          guesses: [],
-          guess_count: 0,
-          status: 'playing',
-          winner: null,
-          player1_id: myId,
-          player1_name: playerName,
-          player2_id: null,
-          player2_name: null,
-        }
-      : {
-          game_type: 'wordle',
-          answer_index: generateAnswerIndex(),
-          guesses: [],
-          guess_count: 0,
-          status: 'playing',
-          winner: null,
-          player1_id: null,
-          player1_name: null,
-          player2_id: myId,
-          player2_name: playerName,
-        };
+    // Creator is always player1 and goes first
+    const insertData = {
+      game_type: 'wordle',
+      answer_index: generateAnswerIndex(),
+      guesses: [],
+      guess_count: 0,
+      status: 'playing',
+      winner: null,
+      player1_id: myId,
+      player1_name: playerName,
+      player2_id: null,
+      player2_name: null,
+    };
 
     const { data, error } = await supabase
       .from('wordle_games')
@@ -552,7 +511,6 @@ function GameSelection({ playerName, onChangePlayer }: { playerName: PlayerName;
       import('@/lib/battleship-logic'),
     ]);
 
-    const isRicky = playerName === 'Ricky';
     const myId = PLAYER_IDS[playerName];
 
     async function findGames() {
@@ -571,30 +529,23 @@ function GameSelection({ playerName, onChangePlayer }: { playerName: PlayerName;
       if (!games) return { activeGame: null, joinableGame: null };
 
       const activeGame = games.find((g) => {
-        if (isRicky) return g.player1_name === 'Ricky';
-        return g.player2_name === 'Lilian';
+        return g.player1_name === playerName || g.player2_name === playerName;
       }) || null;
 
       const joinableGame = games.find((g) => {
-        if (isRicky) {
-          return g.player1_name === null && g.player2_name === 'Lilian';
-        } else {
-          return g.player2_name === null && g.player1_name === 'Ricky';
-        }
+        // Join any game created by the other player where player2 slot is empty
+        return g.player2_name === null && g.player1_name !== null && g.player1_name !== playerName;
       }) || null;
 
       return { activeGame, joinableGame };
     }
 
     async function joinGame(gameId: string) {
-      const updateField = isRicky
-        ? { player1_id: myId, player1_name: playerName }
-        : { player2_id: myId, player2_name: playerName };
-
       const { error: joinError } = await supabase
         .from('games')
         .update({
-          ...updateField,
+          player2_id: myId,
+          player2_name: playerName,
           updated_at: new Date().toISOString(),
         })
         .eq('id', gameId)
@@ -649,27 +600,17 @@ function GameSelection({ playerName, onChangePlayer }: { playerName: PlayerName;
       phase: 'playing',
     };
 
-    const insertData = isRicky
-      ? {
-          game_type: 'battleship',
-          board,
-          current_turn: 1 as const,
-          winner: null,
-          player1_id: myId,
-          player1_name: playerName,
-          player2_id: null,
-          player2_name: null,
-        }
-      : {
-          game_type: 'battleship',
-          board,
-          current_turn: 2 as const,
-          winner: null,
-          player1_id: null,
-          player1_name: null,
-          player2_id: myId,
-          player2_name: playerName,
-        };
+    // Creator is always player1 and goes first
+    const insertData = {
+      game_type: 'battleship',
+      board,
+      current_turn: 1 as const,
+      winner: null,
+      player1_id: myId,
+      player1_name: playerName,
+      player2_id: null,
+      player2_name: null,
+    };
 
     const { data, error } = await supabase
       .from('games')
@@ -692,21 +633,20 @@ function GameSelection({ playerName, onChangePlayer }: { playerName: PlayerName;
       import('@/lib/supabase'),
       import('@/lib/monopoly/logic'),
     ]);
-    const isRicky = playerName === 'Ricky';
     const myId = PLAYER_IDS[playerName];
     async function findGames() {
       const { data } = await supabase.from('games').select('*').eq('game_type', 'monopoly').is('winner', null).order('created_at', { ascending: false }).limit(10);
       return data;
     }
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     function findMyGame(games: any[] | null) {
       if (!games) return { activeGame: null, joinableGame: null };
-      const activeGame = games.find((g) => { if (isRicky) return g.player1_name === 'Ricky'; return g.player2_name === 'Lilian'; }) || null;
-      const joinableGame = games.find((g) => { if (isRicky) return g.player1_name === null && g.player2_name === 'Lilian'; return g.player2_name === null && g.player1_name === 'Ricky'; }) || null;
+      const activeGame = games.find((g) => g.player1_name === playerName || g.player2_name === playerName) || null;
+      const joinableGame = games.find((g) => g.player2_name === null && g.player1_name !== null && g.player1_name !== playerName) || null;
       return { activeGame, joinableGame };
     }
     async function joinGame(gameId: string) {
-      const updateField = isRicky ? { player1_id: myId, player1_name: playerName } : { player2_id: myId, player2_name: playerName };
-      const { error: joinError } = await supabase.from('games').update({ ...updateField, updated_at: new Date().toISOString() }).eq('id', gameId).select().single();
+      const { error: joinError } = await supabase.from('games').update({ player2_id: myId, player2_name: playerName, updated_at: new Date().toISOString() }).eq('id', gameId).select().single();
       if (joinError) { setConnecting(null); return false; }
       return true;
     }
@@ -719,9 +659,8 @@ function GameSelection({ playerName, onChangePlayer }: { playerName: PlayerName;
     ({ activeGame, joinableGame } = findMyGame(retryGames));
     if (activeGame) { router.push(`/monopoly/${activeGame.id}`); return; }
     if (joinableGame) { if (await joinGame(joinableGame.id)) router.push(`/monopoly/${joinableGame.id}`); return; }
-    const insertData = isRicky
-      ? { game_type: 'monopoly', board: createInitialBoard(1), current_turn: 1 as const, winner: null, player1_id: myId, player1_name: playerName, player2_id: null, player2_name: null }
-      : { game_type: 'monopoly', board: createInitialBoard(2), current_turn: 2 as const, winner: null, player1_id: null, player1_name: null, player2_id: myId, player2_name: playerName };
+    // Creator is always player1 and goes first
+    const insertData = { game_type: 'monopoly', board: createInitialBoard(1), current_turn: 1 as const, winner: null, player1_id: myId, player1_name: playerName, player2_id: null, player2_name: null };
     const { data, error } = await supabase.from('games').insert(insertData).select('id').single();
     if (error || !data) { setConnecting(null); return; }
     router.push(`/monopoly/${data.id}`);

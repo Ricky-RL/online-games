@@ -29,7 +29,6 @@ export default function SnakesAndLaddersLobby() {
     if (!playerName) return;
     setConnecting(true);
 
-    const isRicky = playerName === 'Ricky';
     const myId = PLAYER_IDS[playerName];
 
     async function findGames() {
@@ -47,31 +46,23 @@ export default function SnakesAndLaddersLobby() {
     function findMyGame(games: any[] | null) {
       if (!games) return { activeGame: null, joinableGame: null };
 
-      const activeGame = games.find((g) => {
-        if (isRicky) return g.player1_name === 'Ricky';
-        return g.player2_name === 'Lilian';
-      }) || null;
+      const activeGame = games.find((g) =>
+        g.player1_name === playerName || g.player2_name === playerName
+      ) || null;
 
-      const joinableGame = games.find((g) => {
-        if (isRicky) {
-          return g.player1_name === null && g.player2_name === 'Lilian';
-        } else {
-          return g.player2_name === null && g.player1_name === 'Ricky';
-        }
-      }) || null;
+      const joinableGame = games.find((g) =>
+        g.player2_name === null && g.player1_name !== null && g.player1_name !== playerName
+      ) || null;
 
       return { activeGame, joinableGame };
     }
 
     async function joinGame(gameId: string) {
-      const updateField = isRicky
-        ? { player1_id: myId, player1_name: playerName }
-        : { player2_id: myId, player2_name: playerName };
-
       const { error: joinError } = await supabase
         .from('games')
         .update({
-          ...updateField,
+          player2_id: myId,
+          player2_name: playerName,
           updated_at: new Date().toISOString(),
         })
         .eq('id', gameId)
@@ -120,29 +111,18 @@ export default function SnakesAndLaddersLobby() {
       return;
     }
 
-    // Create new game
+    // Create new game. Creator is always player1 and goes first.
     const board = generateBoard();
-    const insertData = isRicky
-      ? {
-          game_type: 'snakes-and-ladders',
-          board,
-          current_turn: 1 as const,
-          winner: null,
-          player1_id: myId,
-          player1_name: playerName,
-          player2_id: null,
-          player2_name: null,
-        }
-      : {
-          game_type: 'snakes-and-ladders',
-          board,
-          current_turn: 2 as const,
-          winner: null,
-          player1_id: null,
-          player1_name: null,
-          player2_id: myId,
-          player2_name: playerName,
-        };
+    const insertData = {
+      game_type: 'snakes-and-ladders',
+      board,
+      current_turn: 1 as const,
+      winner: null,
+      player1_id: myId,
+      player1_name: playerName,
+      player2_id: null,
+      player2_name: null,
+    };
 
     const { data, error } = await supabase
       .from('games')

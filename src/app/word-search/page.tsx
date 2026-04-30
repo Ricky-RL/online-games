@@ -21,7 +21,6 @@ export default function WordSearchLobby() {
     setCreating(themeId);
 
     const { supabase } = await import('@/lib/supabase');
-    const isRicky = playerName === 'Ricky';
     const myId = PLAYER_IDS[playerName as PlayerName];
 
     // Check for existing active word-search game
@@ -36,27 +35,25 @@ export default function WordSearchLobby() {
     if (existing) {
       // Resume my game
       const myGame = existing.find((g) =>
-        isRicky ? g.player1_name === 'Ricky' : g.player2_name === 'Lilian'
+        g.player1_name === playerName || g.player2_name === playerName
       );
       if (myGame) {
         router.push(`/word-search/${myGame.id}`);
         return;
       }
 
-      // Join opponent's game
+      // Join opponent's game (player2 slot is open)
       const joinable = existing.find((g) =>
-        isRicky
-          ? g.player1_name === null && g.player2_name === 'Lilian'
-          : g.player2_name === null && g.player1_name === 'Ricky'
+        g.player2_name === null && g.player1_name !== null && g.player1_name !== playerName
       );
       if (joinable) {
-        const updateField = isRicky
-          ? { player1_id: myId, player1_name: playerName }
-          : { player2_id: myId, player2_name: playerName };
-
         await supabase
           .from('games')
-          .update({ ...updateField, updated_at: new Date().toISOString() })
+          .update({
+            player2_id: myId,
+            player2_name: playerName,
+            updated_at: new Date().toISOString(),
+          })
           .eq('id', joinable.id);
 
         router.push(`/word-search/${joinable.id}`);
@@ -64,31 +61,20 @@ export default function WordSearchLobby() {
       }
     }
 
-    // Create new game
+    // Create new game. Creator is always player1 and goes first.
     const pack = THEME_PACKS.find((p) => p.id === themeId)!;
     const board = createWordSearchBoard(themeId, pack.words);
 
-    const insertData = isRicky
-      ? {
-          game_type: 'word-search',
-          board,
-          current_turn: 1 as const,
-          winner: null,
-          player1_id: myId,
-          player1_name: playerName,
-          player2_id: null,
-          player2_name: null,
-        }
-      : {
-          game_type: 'word-search',
-          board,
-          current_turn: 2 as const,
-          winner: null,
-          player1_id: null,
-          player1_name: null,
-          player2_id: myId,
-          player2_name: playerName,
-        };
+    const insertData = {
+      game_type: 'word-search',
+      board,
+      current_turn: 1 as const,
+      winner: null,
+      player1_id: myId,
+      player1_name: playerName,
+      player2_id: null,
+      player2_name: null,
+    };
 
     const { data, error } = await supabase
       .from('games')

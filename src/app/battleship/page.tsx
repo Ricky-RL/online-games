@@ -18,7 +18,6 @@ export default function BattleshipLobby() {
       sessionStorage.setItem('player-name', name);
       localStorage.setItem('player-name', name);
 
-      const isRicky = name === 'Ricky';
       const myId = PLAYER_IDS[name];
 
       async function findGames() {
@@ -41,25 +40,19 @@ export default function BattleshipLobby() {
         }) || null;
 
         const joinableGame = games.find((g) => {
-          if (isRicky) {
-            return g.player1_name === null && g.player2_name === 'Lilian';
-          } else {
-            return g.player2_name === null && g.player1_name === 'Ricky';
-          }
+          // Join any game created by the other player where player2 slot is empty
+          return g.player2_name === null && g.player1_name !== null && g.player1_name !== name;
         }) || null;
 
         return { activeGame, joinableGame };
       }
 
       async function joinGame(gameId: string) {
-        const updateField = isRicky
-          ? { player1_id: myId, player1_name: name }
-          : { player2_id: myId, player2_name: name };
-
         const { error: joinError } = await supabase
           .from('games')
           .update({
-            ...updateField,
+            player2_id: myId,
+            player2_name: name,
             updated_at: new Date().toISOString(),
           })
           .eq('id', gameId)
@@ -114,27 +107,17 @@ export default function BattleshipLobby() {
         phase: 'playing',
       };
 
-      const insertData = isRicky
-        ? {
-            game_type: 'battleship',
-            board,
-            current_turn: 1 as const,
-            winner: null,
-            player1_id: myId,
-            player1_name: name,
-            player2_id: null,
-            player2_name: null,
-          }
-        : {
-            game_type: 'battleship',
-            board,
-            current_turn: 2 as const,
-            winner: null,
-            player1_id: null,
-            player1_name: null,
-            player2_id: myId,
-            player2_name: name,
-          };
+      // Creator is always player1 and goes first
+      const insertData = {
+        game_type: 'battleship',
+        board,
+        current_turn: 1 as const,
+        winner: null,
+        player1_id: myId,
+        player1_name: name,
+        player2_id: null,
+        player2_name: null,
+      };
 
       const { data, error } = await supabase
         .from('games')
