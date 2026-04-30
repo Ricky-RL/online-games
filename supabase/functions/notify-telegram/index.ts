@@ -11,6 +11,7 @@ const GAME_LABELS: Record<string, string> = {
   "snakes-and-ladders": "Snakes & Ladders",
   "word-search": "Word Search",
   whiteboard: "Whiteboard",
+  wordle: "Wordle",
 };
 
 interface TurnPayload {
