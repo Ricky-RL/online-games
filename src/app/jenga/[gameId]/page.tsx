@@ -4,7 +4,7 @@ import { use, useMemo, useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useJengaGame, type JengaGame } from '@/hooks/useJengaGame';
 import { useGameSounds } from '@/hooks/useSound';
-import { getJengaGameStatus, calculateBlockRisk } from '@/lib/jenga-logic';
+import { getJengaGameStatus, calculateBlockRisk, getPlayerScores, getMinimumRiskThreshold } from '@/lib/jenga-logic';
 import { JengaTower } from '@/components/jenga/JengaTower';
 import { JengaWobbleMeter } from '@/components/jenga/JengaWobbleMeter';
 import { TurnIndicator } from '@/components/TurnIndicator';
@@ -63,6 +63,16 @@ export default function JengaGamePage({ params }: { params: Promise<{ gameId: st
     return calculateBlockRisk(game.board, selectedBlock[0], selectedBlock[1]);
   }, [game, selectedBlock]);
 
+  const scores = useMemo(() => {
+    if (!game) return { player1: 0, player2: 0 };
+    return getPlayerScores(game.board);
+  }, [game]);
+
+  const riskThreshold = useMemo(() => {
+    if (!game) return 0;
+    return getMinimumRiskThreshold(game.board);
+  }, [game]);
+
   const handleBlockClick = useCallback((row: number, col: number) => {
     if (selectedBlock && selectedBlock[0] === row && selectedBlock[1] === col) {
       setSelectedBlock(null);
@@ -114,6 +124,7 @@ export default function JengaGamePage({ params }: { params: Promise<{ gameId: st
   if (gameStatus === 'won' && game.winner) {
     const winnerName = game.winner === 1 ? game.player1_name : game.player2_name;
     const isMe = game.winner === myPlayerNumber;
+    const finalScores = getPlayerScores(game.board);
     return (
       <div className="flex-1 flex flex-col items-center justify-center gap-8 p-8">
         <WinCelebration
@@ -123,6 +134,11 @@ export default function JengaGamePage({ params }: { params: Promise<{ gameId: st
           onPlayAgain={handleReset}
           onHome={handleReset}
         />
+        <div className="flex items-center gap-4 text-sm text-text-secondary">
+          <span>{game.player1_name}: <strong className="text-text-primary">{finalScores.player1} pts</strong></span>
+          <span className="text-text-secondary/40">vs</span>
+          <span>{game.player2_name}: <strong className="text-text-primary">{finalScores.player2} pts</strong></span>
+        </div>
       </div>
     );
   }
@@ -130,6 +146,20 @@ export default function JengaGamePage({ params }: { params: Promise<{ gameId: st
   return (
     <>
       <div className="flex-1 flex flex-col items-center justify-center gap-4 p-4">
+        {/* Scoreboard */}
+        <div className="flex items-center gap-5 text-sm">
+          <div className="flex items-center gap-1.5">
+            <span className="w-2.5 h-2.5 rounded-full bg-player1" />
+            <span className="font-medium text-text-primary">{scores.player1}</span>
+            <span className="text-text-secondary text-xs">{game.player1_name}</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <span className="w-2.5 h-2.5 rounded-full bg-player2" />
+            <span className="font-medium text-text-primary">{scores.player2}</span>
+            <span className="text-text-secondary text-xs">{game.player2_name}</span>
+          </div>
+        </div>
+
         <div className="flex flex-col items-center gap-2">
           <TurnIndicator
             currentPlayer={game.current_turn}
@@ -137,6 +167,9 @@ export default function JengaGamePage({ params }: { params: Promise<{ gameId: st
             playerName={opponentName}
           />
           <JengaWobbleMeter wobble={game.board.wobble_score} />
+          <div className="text-xs font-medium text-amber-600">
+            Min risk: {riskThreshold}%
+          </div>
         </div>
 
         {gameStatus === 'waiting' && (
@@ -150,6 +183,7 @@ export default function JengaGamePage({ params }: { params: Promise<{ gameId: st
           pullingBlock={pullingBlock}
           onBlockClick={handleBlockClick}
           disabled={!isMyTurn || gameStatus === 'won'}
+          riskThreshold={riskThreshold}
         />
 
         {/* Pull confirmation */}
@@ -157,6 +191,8 @@ export default function JengaGamePage({ params }: { params: Promise<{ gameId: st
           <div className="flex items-center gap-3">
             <span className="text-sm text-text-secondary">
               Risk: <strong className="text-text-primary">{selectedRisk}%</strong>
+              {' · '}
+              <span className="text-emerald-500 font-medium">+{selectedRisk} pts</span>
             </span>
             <button
               onClick={handleConfirmPull}

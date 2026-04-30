@@ -108,6 +108,39 @@ export function getPlayableBlocks(state: JengaGameState): [number, number][] {
   return playable;
 }
 
+export function getPlayerScores(state: JengaGameState): { player1: number; player2: number } {
+  let player1 = 0;
+  let player2 = 0;
+  for (const move of state.move_history) {
+    if (!move.toppled) {
+      if (move.player === 1) player1 += move.risk;
+      else player2 += move.risk;
+    }
+  }
+  return { player1, player2 };
+}
+
+const THRESHOLD_PATTERN = [0, 5, -3, 8, 2, -2, 7, 3, -1, 6];
+
+export function getMinimumRiskThreshold(state: JengaGameState): number {
+  const moveCount = state.move_history.length;
+  const base = 10;
+  const growth = Math.floor(moveCount / 3) * 5;
+  const oscillation = THRESHOLD_PATTERN[moveCount % THRESHOLD_PATTERN.length];
+  return Math.min(60, Math.max(5, base + growth + oscillation));
+}
+
+export function getPlayableBlocksAboveThreshold(
+  state: JengaGameState,
+  threshold: number,
+): [number, number][] {
+  const allPlayable = getPlayableBlocks(state);
+  const filtered = allPlayable.filter(([row, col]) => {
+    return calculateBlockRisk(state, row, col) >= threshold;
+  });
+  return filtered.length > 0 ? filtered : allPlayable;
+}
+
 export function getJengaGameStatus(game: {
   winner: number | null;
   player1_name: string | null;

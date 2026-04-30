@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
-import { pullBlock, createInitialTower, getPlayableBlocks } from '@/lib/jenga-logic';
+import { pullBlock, createInitialTower, getPlayableBlocksAboveThreshold, getMinimumRiskThreshold, getPlayerScores } from '@/lib/jenga-logic';
 import { recordMatchResult } from '@/lib/match-results';
 import type { Player, JengaGameState } from '@/lib/types';
 
@@ -132,7 +132,8 @@ export function useJengaGame(gameId: string): UseJengaGameReturn {
       if (currentGame.current_turn !== myPlayerNumber) { setError('Not your turn'); return; }
       if (currentGame.winner !== null) { setError('Game is already over'); return; }
 
-      const playable = getPlayableBlocks(currentGame.board);
+      const threshold = getMinimumRiskThreshold(currentGame.board);
+      const playable = getPlayableBlocksAboveThreshold(currentGame.board, threshold);
       if (playable.length === 0) {
         // No blocks left to pull — declare opponent as winner (stalemate = current player loses)
         const winner: Player = (3 - myPlayerNumber) as Player;
@@ -195,7 +196,10 @@ export function useJengaGame(gameId: string): UseJengaGameReturn {
             loser_id: loserNumber === 1 ? currentGame.player1_id : currentGame.player2_id,
             loser_name: loserNumber === 1 ? currentGame.player1_name : currentGame.player2_name,
             is_draw: false,
-            metadata: { totalMoves: newBoard.move_history.length },
+            metadata: {
+              totalMoves: newBoard.move_history.length,
+              ...getPlayerScores(newBoard),
+            },
             player1_id: currentGame.player1_id,
             player1_name: currentGame.player1_name || '',
             player2_id: currentGame.player2_id,

@@ -2,7 +2,7 @@
 
 import { useMemo } from 'react';
 import type { JengaGameState } from '@/lib/types';
-import { calculateBlockRisk, getPlayableBlocks } from '@/lib/jenga-logic';
+import { calculateBlockRisk, getPlayableBlocks, getPlayableBlocksAboveThreshold } from '@/lib/jenga-logic';
 
 interface JengaTowerProps {
   state: JengaGameState;
@@ -11,6 +11,7 @@ interface JengaTowerProps {
   pullingBlock: [number, number] | null;
   onBlockClick: (row: number, col: number) => void;
   disabled: boolean;
+  riskThreshold?: number;
 }
 
 function riskColor(risk: number): { top: string; front: string; side: string } {
@@ -20,8 +21,12 @@ function riskColor(risk: number): { top: string; front: string; side: string } {
   return { top: '#f09080', front: '#c04030', side: '#8a2818' };
 }
 
-export function JengaTower({ state, isMyTurn, selectedBlock, pullingBlock, onBlockClick, disabled }: JengaTowerProps) {
-  const playableBlocks = isMyTurn && !disabled ? getPlayableBlocks(state) : [];
+export function JengaTower({ state, isMyTurn, selectedBlock, pullingBlock, onBlockClick, disabled, riskThreshold }: JengaTowerProps) {
+  const playableBlocks = isMyTurn && !disabled
+    ? (riskThreshold != null
+        ? getPlayableBlocksAboveThreshold(state, riskThreshold)
+        : getPlayableBlocks(state))
+    : [];
   const playableSet = new Set(playableBlocks.map(([r, c]) => `${r}-${c}`));
 
   const BLOCK_FACE_H = 18;
@@ -118,7 +123,7 @@ export function JengaTower({ state, isMyTurn, selectedBlock, pullingBlock, onBlo
                 height: `${BLOCK_FACE_H + BLOCK_TOP_H}px`,
                 cursor: isPlayable ? 'pointer' : 'default',
                 transition: 'transform 0.15s ease, opacity 0.3s ease',
-                opacity: isPulling ? 0 : 1,
+                opacity: isPulling ? 0 : (isMyTurn && !disabled && !isPlayable ? 0.45 : 1),
                 transform: isPulling ? 'scale(0.8) translateY(-8px)' : undefined,
               }}
             >
