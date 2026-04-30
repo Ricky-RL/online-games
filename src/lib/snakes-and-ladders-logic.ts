@@ -136,7 +136,7 @@ export function handleSkipTurn(state: SnakesAndLaddersState, player: Player): Sn
     ...state,
     skipNextTurn: null,
     moveNumber: state.moveNumber + 1,
-    lastMoveEvents: [...state.lastMoveEvents, event],
+    lastMoveEvents: [event],
     lastRoll: state.lastRoll,
   };
 }
@@ -320,7 +320,7 @@ export function makeMove(
     ...workingState,
     lastRoll: { player, value: roll },
     moveNumber: workingState.moveNumber + 1,
-    lastMoveEvents: [...workingState.lastMoveEvents, event],
+    lastMoveEvents: [event],
   };
 }
 

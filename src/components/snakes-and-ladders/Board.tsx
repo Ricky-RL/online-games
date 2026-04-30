@@ -1,6 +1,6 @@
 'use client';
 
-import { motion, useAnimationControls, AnimatePresence } from 'framer-motion';
+import { motion, useAnimationControls } from 'framer-motion';
 import { useColors } from '@/contexts/PlayerColorsContext';
 import { useEffect, useRef } from 'react';
 import { POWERUP_INFO } from './PowerupToast';

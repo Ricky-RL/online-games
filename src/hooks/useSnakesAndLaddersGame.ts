@@ -219,11 +219,17 @@ export function useSnakesAndLaddersGame(gameId: string): UseSnakesAndLaddersGame
       lastSeenMoveNumber.current = skipResult.moveNumber;
       updateGame((prev) => prev ? { ...prev, board: skipResult, current_turn: nextTurn } : null);
 
-      await supabase.from('games').update({
+      const { error: skipError } = await supabase.from('games').update({
         board: skipResult,
         current_turn: nextTurn,
         updated_at: new Date().toISOString(),
       }).eq('id', gameId);
+      if (skipError) {
+        optimisticBoard.current = null;
+        const { data: freshGame } = await supabase.from('games').select('*').eq('id', gameId).single();
+        if (freshGame) updateGame(freshGame as SnakesAndLaddersGame);
+        setError(skipError.message);
+      }
       return;
     }
 
