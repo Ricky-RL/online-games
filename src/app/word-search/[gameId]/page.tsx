@@ -174,7 +174,7 @@ export default function WordSearchGamePage({ params }: { params: Promise<{ gameI
       </motion.button>
 
       {!timerStarted && (
-        <p className="text-xs text-text-secondary">Drag across letters to start</p>
+        <p className="text-xs text-text-secondary">Click letters to select them</p>
       )}
     </div>
   );
