@@ -65,7 +65,8 @@ export function useMonopolyGame(gameId: string): UseMonopolyGameReturn {
     const fresh = data as MonopolyGame;
     const prev = gameRef.current;
 
-    if (prev && fresh.board.turnSequence <= prev.board.turnSequence) return;
+    const isReset = prev && fresh.board.turnSequence === 0 && fresh.board.currentTurn === 1;
+    if (prev && !isReset && fresh.board.turnSequence <= prev.board.turnSequence) return;
 
     gameRef.current = fresh;
     setGame(fresh);
@@ -89,6 +90,7 @@ export function useMonopolyGame(gameId: string): UseMonopolyGameReturn {
 
     recordMatchResult({
       game_type: 'monopoly' as GameType,
+      game_id: gameId,
       winner_id: winner === 1 ? game.player1_id : winner === 2 ? game.player2_id : null,
       winner_name: winner === 1 ? game.player1_name : winner === 2 ? game.player2_name : null,
       loser_id: winner === 1 ? game.player2_id : winner === 2 ? game.player1_id : null,

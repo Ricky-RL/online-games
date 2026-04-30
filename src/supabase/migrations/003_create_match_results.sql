@@ -1,6 +1,7 @@
 create table match_results (
   id uuid primary key default gen_random_uuid(),
   game_type text not null,           -- 'connect-four' | 'tic-tac-toe' | 'wordle'
+  game_id text,                      -- ID of the game row (for linking back to the game board)
   winner_id uuid,                    -- null for draws and wordle
   winner_name text,                  -- null for draws and wordle
   loser_id uuid,                     -- null for draws and wordle (cooperative)

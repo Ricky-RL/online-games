@@ -10,6 +10,23 @@ import { ResetStatsDialog } from '@/components/ResetStatsDialog';
 import { useMatchHistory } from '@/hooks/useMatchHistory';
 import { Inbox } from '@/components/inbox';
 import { type PlayerName, PLAYER_IDS } from '@/lib/players';
+import {
+  DndContext,
+  closestCenter,
+  PointerSensor,
+  TouchSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  SortableContext,
+  rectSortingStrategy,
+  arrayMove,
+} from '@dnd-kit/sortable';
+import { SortableGameCard } from '@/components/SortableGameCard';
+import { useGameOrder } from '@/hooks/useGameOrder';
+import { DEFAULT_GAME_ORDER, DEFAULT_SLUG_ORDER } from '@/lib/game-registry';
 
 interface ClickableGameCardProps {
   title: string;
@@ -264,6 +281,47 @@ function GameSelection({ playerName, onChangePlayer }: { playerName: PlayerName;
   const [showWordleMode, setShowWordleMode] = useState(false);
   const [showResetDialog, setShowResetDialog] = useState(false);
   const { results, stats, loading, clearAll } = useMatchHistory();
+  const { order, loading: orderLoading, saveOrder, resetOrder } = useGameOrder(playerName);
+  const [editMode, setEditMode] = useState(false);
+  const [editOrder, setEditOrder] = useState<string[]>(order);
+
+  useEffect(() => {
+    if (!editMode) {
+      setEditOrder(order);
+    }
+  }, [order, editMode]);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 5 } }),
+  );
+
+  function handleDragEnd(event: DragEndEvent) {
+    const { active, over } = event;
+    if (over && active.id !== over.id) {
+      setEditOrder((prev) => {
+        const oldIndex = prev.indexOf(active.id as string);
+        const newIndex = prev.indexOf(over.id as string);
+        return arrayMove(prev, oldIndex, newIndex);
+      });
+    }
+  }
+
+  function handleEditDone() {
+    saveOrder(editOrder);
+    setEditMode(false);
+  }
+
+  function handleEditCancel() {
+    setEditOrder(order);
+    setEditMode(false);
+  }
+
+  function handleResetOrder() {
+    resetOrder();
+    setEditOrder([...DEFAULT_SLUG_ORDER]);
+    setEditMode(false);
+  }
 
   const handleResetConfirm = async () => {
     await clearAll();
@@ -817,6 +875,20 @@ function GameSelection({ playerName, onChangePlayer }: { playerName: PlayerName;
     router.push(`/monopoly/${data.id}`);
   }, [playerName, router]);
 
+  const gameProps: Record<string, { icon: React.ReactNode; onClick: () => void; loading?: boolean }> = {
+    'connect-four': { icon: <ConnectFourIcon />, onClick: handlePlayConnectFour, loading: connecting === 'connect-four' },
+    'wordle': { icon: <WordleIcon />, onClick: () => setShowWordleMode(true), loading: connecting === 'wordle' },
+    'tic-tac-toe': { icon: <TicTacToeIcon />, onClick: () => router.push('/tic-tac-toe') },
+    'checkers': { icon: <CheckersIcon />, onClick: () => router.push('/checkers') },
+    'whiteboard': { icon: <WhiteboardIcon />, onClick: () => router.push('/whiteboard') },
+    'battleship': { icon: <BattleshipIcon />, onClick: handlePlayBattleship, loading: connecting === 'battleship' },
+    'mini-golf': { icon: <MiniGolfIcon />, onClick: () => router.push('/mini-golf') },
+    'jenga': { icon: <JengaIcon />, onClick: () => router.push('/jenga') },
+    'snakes-and-ladders': { icon: <SnakesAndLaddersIcon />, onClick: () => router.push('/snakes-and-ladders') },
+    'word-search': { icon: <WordSearchIcon />, onClick: () => router.push('/word-search') },
+    'monopoly': { icon: <MonopolyIcon />, onClick: handlePlayMonopolyGame, loading: connecting === 'monopoly' },
+  };
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -824,7 +896,7 @@ function GameSelection({ playerName, onChangePlayer }: { playerName: PlayerName;
       transition={{ duration: 0.4, delay: 0.05, ease: [0.21, 0.47, 0.32, 0.98] }}
       className="w-full"
     >
-      {/* Player greeting and switch */}
+      {/* Player greeting, switch, and edit mode toggle */}
       <div className="flex items-center justify-center gap-3 mb-10">
         <p className="text-lg text-text-secondary">
           Playing as <span className="font-semibold text-text-primary">{playerName}</span>
@@ -835,7 +907,47 @@ function GameSelection({ playerName, onChangePlayer }: { playerName: PlayerName;
         >
           switch
         </button>
+        <button
+          onClick={() => editMode ? handleEditCancel() : setEditMode(true)}
+          disabled={orderLoading}
+          className={`ml-2 p-1.5 rounded-lg transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed ${
+            editMode
+              ? 'bg-player1/10 text-player1'
+              : 'text-text-secondary/60 hover:text-text-primary hover:bg-surface-hover'
+          }`}
+          aria-label={editMode ? 'Cancel reordering' : 'Reorder games'}
+          title={editMode ? 'Cancel reordering' : 'Reorder games'}
+        >
+          <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.5">
+            <path d="M3 5h12M3 9h12M3 13h12" strokeLinecap="round" />
+            <path d="M14 3l2 2-2 2M14 11l2 2-2 2" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </button>
       </div>
+
+      {/* Edit mode controls */}
+      {editMode && (
+        <div className="flex items-center justify-center gap-3 mb-6">
+          <button
+            onClick={handleEditDone}
+            className="px-4 py-2 text-sm font-medium rounded-xl bg-player1 text-white hover:bg-player1/90 transition-colors cursor-pointer"
+          >
+            Done
+          </button>
+          <button
+            onClick={handleEditCancel}
+            className="px-4 py-2 text-sm font-medium rounded-xl border border-border text-text-secondary hover:text-text-primary hover:bg-surface-hover transition-colors cursor-pointer"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={handleResetOrder}
+            className="px-4 py-2 text-sm font-medium rounded-xl border border-border text-text-secondary hover:text-text-primary hover:bg-surface-hover transition-colors cursor-pointer"
+          >
+            Reset to default
+          </button>
+        </div>
+      )}
 
       {/* Leaderboard */}
       {stats && (
@@ -851,135 +963,74 @@ function GameSelection({ playerName, onChangePlayer }: { playerName: PlayerName;
 
       {/* Games grid */}
       <div className="max-w-5xl mx-auto">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-          <ClickableGameCard
-            title="Connect Four"
-            description="Drop pieces, connect four in a row. Classic strategy for two."
-            color="#E63946"
-            icon={<ConnectFourIcon />}
-            delay={0.1}
-            onClick={handlePlayConnectFour}
-            loading={connecting === 'connect-four'}
-          />
-          {!showWordleMode ? (
-            <ClickableGameCard
-              title="Wordle"
-              description="Guess the word together. Share clues, solve as a team."
-              color="#538D4E"
-              icon={<WordleIcon />}
-              delay={0.3}
-              onClick={() => setShowWordleMode(true)}
-              loading={connecting === 'wordle'}
-            />
-          ) : (
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              className="relative rounded-3xl border border-border bg-surface p-6 flex flex-col items-center justify-center gap-4"
-            >
-              <button
-                onClick={() => setShowWordleMode(false)}
-                className="absolute top-3 right-3 text-text-secondary hover:text-text-primary text-lg cursor-pointer"
-              >
-                ✕
-              </button>
-              <div className="text-2xl">
-                <WordleIcon />
-              </div>
-              <p className="text-sm font-medium text-text-secondary">Choose mode</p>
-              <div className="flex gap-3 w-full">
-                <button
-                  onClick={() => { setShowWordleMode(false); handlePlayWordle(); }}
-                  disabled={connecting === 'wordle'}
-                  className="flex-1 px-4 py-2.5 text-sm font-medium rounded-xl border border-border bg-surface text-text-primary hover:bg-surface-hover shadow-sm hover:shadow transition-all cursor-pointer disabled:opacity-50"
-                >
-                  Random
-                </button>
-                <button
-                  onClick={() => { setShowWordleMode(false); handlePlayDailyWordle(); }}
-                  disabled={connecting === 'wordle'}
-                  className="flex-1 px-4 py-2.5 text-sm font-medium rounded-xl border border-[#538D4E]/30 bg-[#538D4E]/10 text-[#538D4E] hover:bg-[#538D4E]/20 shadow-sm hover:shadow transition-all cursor-pointer disabled:opacity-50"
-                >
-                  Daily
-                </button>
-              </div>
-            </motion.div>
-          )}
-          <ClickableGameCard
-            title="Tic Tac Toe"
-            description="X and O, three in a row. Quick rounds, pure fun."
-            color="#FFBE0B"
-            icon={<TicTacToeIcon />}
-            delay={0.15}
-            onClick={() => router.push('/tic-tac-toe')}
-          />
-          <ClickableGameCard
-            title="Checkers"
-            description="Jump and capture across the board. Classic strategy for two."
-            color="#A0724A"
-            icon={<CheckersIcon />}
-            delay={0.2}
-            onClick={() => router.push('/checkers')}
-          />
-          <ClickableGameCard
-            title="Whiteboard"
-            description="Shared sticky notes and doodles. Think together, draw together."
-            color="#FFBE0B"
-            icon={<WhiteboardIcon />}
-            delay={0.25}
-            onClick={() => router.push('/whiteboard')}
-          />
-          <ClickableGameCard
-            title="Battleship"
-            description="Hunt and sink the fleet. Fire shots, track hits, claim the sea."
-            color="#1D3557"
-            icon={<BattleshipIcon />}
-            delay={0.3}
-            onClick={handlePlayBattleship}
-            loading={connecting === 'battleship'}
-          />
-          <ClickableGameCard
-            title="Mini Golf"
-            description="3 holes, lowest score wins. Aim, shoot, and sink it."
-            color="#06D6A0"
-            icon={<MiniGolfIcon />}
-            delay={0.35}
-            onClick={() => router.push('/mini-golf')}
-          />
-          <ClickableGameCard
-            title="Jenga"
-            description="Pull blocks, don't topple the tower. Nerve and strategy for two."
-            color="#D97706"
-            icon={<JengaIcon />}
-            delay={0.4}
-            onClick={() => router.push('/jenga')}
-          />
-          <ClickableGameCard
-            title="Snakes & Ladders"
-            description="Roll the dice, climb ladders, dodge snakes. Race to square 100."
-            color="#538D4E"
-            icon={<SnakesAndLaddersIcon />}
-            delay={0.45}
-            onClick={() => router.push('/snakes-and-ladders')}
-          />
-          <ClickableGameCard
-            title="Word Search"
-            description="Find hidden words in a grid. Race against each other on the same puzzle."
-            color="#6B48FF"
-            icon={<WordSearchIcon />}
-            delay={0.5}
-            onClick={() => router.push('/word-search')}
-          />
-          <ClickableGameCard
-            title="Monopoly"
-            description="Vancouver-themed property trading. Roll, buy, build, and bankrupt."
-            color="#008000"
-            icon={<MonopolyIcon />}
-            delay={0.7}
-            onClick={handlePlayMonopolyGame}
-            loading={connecting === 'monopoly'}
-          />
-        </div>
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          onDragEnd={handleDragEnd}
+        >
+          <SortableContext items={editMode ? editOrder : order} strategy={rectSortingStrategy}>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+              {(editMode ? editOrder : order).map((slug, index) => {
+                const game = DEFAULT_GAME_ORDER.find((g) => g.slug === slug);
+                const props = gameProps[slug];
+                if (!game || !props) return null;
+
+                if (slug === 'wordle' && !editMode && showWordleMode) {
+                  return (
+                    <SortableGameCard key={slug} id={slug} editMode={false}>
+                      <motion.div
+                        initial={{ opacity: 0, scale: 0.95 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        className="relative rounded-3xl border border-border bg-surface p-6 flex flex-col items-center justify-center gap-4"
+                      >
+                        <button
+                          onClick={() => setShowWordleMode(false)}
+                          className="absolute top-3 right-3 text-text-secondary hover:text-text-primary text-lg cursor-pointer"
+                        >
+                          ✕
+                        </button>
+                        <div className="text-2xl">
+                          <WordleIcon />
+                        </div>
+                        <p className="text-sm font-medium text-text-secondary">Choose mode</p>
+                        <div className="flex gap-3 w-full">
+                          <button
+                            onClick={() => { setShowWordleMode(false); handlePlayWordle(); }}
+                            disabled={connecting === 'wordle'}
+                            className="flex-1 px-4 py-2.5 text-sm font-medium rounded-xl border border-border bg-surface text-text-primary hover:bg-surface-hover shadow-sm hover:shadow transition-all cursor-pointer disabled:opacity-50"
+                          >
+                            Random
+                          </button>
+                          <button
+                            onClick={() => { setShowWordleMode(false); handlePlayDailyWordle(); }}
+                            disabled={connecting === 'wordle'}
+                            className="flex-1 px-4 py-2.5 text-sm font-medium rounded-xl border border-[#538D4E]/30 bg-[#538D4E]/10 text-[#538D4E] hover:bg-[#538D4E]/20 shadow-sm hover:shadow transition-all cursor-pointer disabled:opacity-50"
+                          >
+                            Daily
+                          </button>
+                        </div>
+                      </motion.div>
+                    </SortableGameCard>
+                  );
+                }
+
+                return (
+                  <SortableGameCard key={slug} id={slug} editMode={editMode}>
+                    <ClickableGameCard
+                      title={game.title}
+                      description={game.description}
+                      color={game.color}
+                      icon={props.icon}
+                      delay={index * 0.05}
+                      onClick={editMode ? () => {} : props.onClick}
+                      loading={!editMode && props.loading}
+                    />
+                  </SortableGameCard>
+                );
+              })}
+            </div>
+          </SortableContext>
+        </DndContext>
       </div>
 
       {/* Match History */}

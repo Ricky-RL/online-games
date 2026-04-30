@@ -207,6 +207,7 @@ export function useTicTacToeGame(gameId: string): UseTicTacToeGameReturn {
 
       const winner = checkWin(newBoard);
       const nextTurn: Player = myPlayerNumber === 1 ? 2 : 1;
+      const gameOver = !!winner || isDraw(newBoard);
 
       optimisticBoard.current = newBoard;
       setLastMove({ row, col });
@@ -215,7 +216,7 @@ export function useTicTacToeGame(gameId: string): UseTicTacToeGameReturn {
           ? {
               ...prev,
               board: newBoard,
-              current_turn: winner ? prev.current_turn : nextTurn,
+              current_turn: gameOver ? prev.current_turn : nextTurn,
               winner,
             }
           : null
@@ -226,7 +227,7 @@ export function useTicTacToeGame(gameId: string): UseTicTacToeGameReturn {
         .from('games')
         .update({
           board: newBoard,
-          current_turn: winner ? currentGame.current_turn : nextTurn,
+          current_turn: gameOver ? currentGame.current_turn : nextTurn,
           winner,
           updated_at: new Date().toISOString(),
         })
@@ -253,6 +254,7 @@ export function useTicTacToeGame(gameId: string): UseTicTacToeGameReturn {
         const loserId = winner === 1 ? currentGame.player2_id : currentGame.player1_id;
         recordMatchResult({
           game_type: 'tic-tac-toe',
+          game_id: gameId,
           winner_id: winnerId,
           winner_name: winnerName,
           loser_id: loserId,
@@ -271,6 +273,7 @@ export function useTicTacToeGame(gameId: string): UseTicTacToeGameReturn {
         matchRecorded.current = true;
         recordMatchResult({
           game_type: 'tic-tac-toe',
+          game_id: gameId,
           winner_id: null,
           winner_name: null,
           loser_id: null,

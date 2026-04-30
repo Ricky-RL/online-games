@@ -265,6 +265,7 @@ export function useJengaGame(gameId: string): UseJengaGameReturn {
           const winnerNumber: Player = (3 - myPlayerNumber) as Player;
           recordMatchResult({
             game_type: 'jenga',
+            game_id: gameId,
             winner_id: winnerNumber === 1 ? currentGame.player1_id : currentGame.player2_id,
             winner_name: winnerNumber === 1 ? currentGame.player1_name : currentGame.player2_name,
             loser_id: loserNumber === 1 ? currentGame.player1_id : currentGame.player2_id,

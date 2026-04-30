@@ -101,6 +101,7 @@ export function useWordSearchGame(gameId: string): UseWordSearchGameReturn {
     if (game.player1_name && game.player2_name) {
       recordMatchResult({
         game_type: 'word-search',
+        game_id: gameId,
         winner_id: winner === 1 ? p1Id : winner === 2 ? p2Id : null,
         winner_name: winner === 1 ? game.player1_name : winner === 2 ? game.player2_name : null,
         loser_id: winner === 1 ? p2Id : winner === 2 ? p1Id : null,

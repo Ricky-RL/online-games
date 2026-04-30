@@ -20,6 +20,7 @@ export default function WordSearchGamePage({ params }: { params: Promise<{ gameI
   const [timerStarted, setTimerStarted] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [showEndDialog, setShowEndDialog] = useState(false);
+  const [myFoundWords, setMyFoundWords] = useState<string[]>([]);
   const startTimeRef = useRef<number | null>(null);
 
   const playerName = typeof window !== 'undefined'
@@ -31,6 +32,7 @@ export default function WordSearchGamePage({ params }: { params: Promise<{ gameI
       setTimerStarted(true);
       startTimeRef.current = Date.now();
     }
+    setMyFoundWords((prev) => prev.includes(word) ? prev : [...prev, word]);
     findWord(word);
   }, [timerStarted, findWord]);
 
@@ -45,15 +47,14 @@ export default function WordSearchGamePage({ params }: { params: Promise<{ gameI
     if (submitted || !startTimeRef.current || !game) return;
     setSubmitted(true);
 
-    const board = game.board as WordSearchBoardState;
     const timeUsed = getElapsedSeconds(startTimeRef.current);
     await submitResult({
-      foundWords: board.foundWords,
+      foundWords: myFoundWords,
       timeUsed,
       startedAt: new Date(startTimeRef.current).toISOString(),
       submittedAt: new Date().toISOString(),
     });
-  }, [submitted, game, submitResult]);
+  }, [submitted, game, submitResult, myFoundWords]);
 
   const handleTimeUp = useCallback(() => {
     handleSubmit();
@@ -114,7 +115,7 @@ export default function WordSearchGamePage({ params }: { params: Promise<{ gameI
       <div className="flex-1 flex flex-col items-center justify-center min-h-screen px-4 gap-4">
         <SettingsButton />
         <div className="text-2xl font-bold text-text-primary">
-          You found {myResult?.foundWords.length ?? board.foundWords.length}/{allWords.length} words
+          You found {myResult?.foundWords.length ?? myFoundWords.length}/{allWords.length} words
         </div>
         <div className="text-text-secondary">
           {opponentName} hasn&apos;t played yet.
@@ -161,7 +162,7 @@ export default function WordSearchGamePage({ params }: { params: Promise<{ gameI
         disabled={!timerStarted}
         className="mt-4 px-8 py-3 rounded-xl bg-green-600 text-white font-semibold hover:bg-green-500 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
       >
-        Done ({board.foundWords.length}/{allWords.length})
+        Done ({myFoundWords.length}/{allWords.length})
       </motion.button>
 
       <button
