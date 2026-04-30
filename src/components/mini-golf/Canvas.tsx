@@ -341,6 +341,26 @@ export function MiniGolfCanvas({
     return () => cancelAnimationFrame(animFrameRef.current);
   }, [level, aiming, dragStart, dragCurrent, getScale, player1Color, player2Color, playerNumber]);
 
+  // Prevent page scrolling on touch devices during any interaction with the canvas.
+  // React synthetic event listeners are passive by default, so we must register
+  // native non-passive listeners to call preventDefault() on touchstart/touchmove.
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const preventScroll = (e: TouchEvent) => {
+      e.preventDefault();
+    };
+
+    canvas.addEventListener('touchstart', preventScroll, { passive: false });
+    canvas.addEventListener('touchmove', preventScroll, { passive: false });
+
+    return () => {
+      canvas.removeEventListener('touchstart', preventScroll);
+      canvas.removeEventListener('touchmove', preventScroll);
+    };
+  }, []);
+
   return (
     <div
       ref={containerRef}
@@ -353,6 +373,7 @@ export function MiniGolfCanvas({
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
         className="rounded-lg shadow-lg cursor-crosshair"
+        style={{ touchAction: 'none' }}
       />
     </div>
   );
