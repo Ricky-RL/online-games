@@ -5,6 +5,29 @@ import { supabase } from '@/lib/supabase';
 import type { WhiteboardNote, NoteContentType, Stroke, NotePosition, NoteSize } from '@/lib/whiteboard-types';
 
 const POLL_INTERVAL_MS = 1500;
+const ACTIVITY_THROTTLE_MS = 60_000; // 1 notification per note per minute
+
+/**
+ * Tracks last activity insert time per note+action key.
+ * Module-level so it persists across re-renders but resets on page reload.
+ */
+const activityThrottleMap = new Map<string, number>();
+
+/**
+ * Returns true if this note+action combination should be allowed to fire,
+ * i.e., no activity was logged for it within the last ACTIVITY_THROTTLE_MS.
+ * Updates the map timestamp if allowed.
+ */
+function shouldLogActivity(noteId: string, action: string): boolean {
+  const key = `${noteId}:${action}`;
+  const now = Date.now();
+  const lastFired = activityThrottleMap.get(key);
+  if (lastFired !== undefined && now - lastFired < ACTIVITY_THROTTLE_MS) {
+    return false;
+  }
+  activityThrottleMap.set(key, now);
+  return true;
+}
 
 function getMyName(): string | null {
   if (typeof window === 'undefined') return null;
@@ -118,20 +141,22 @@ export function useWhiteboard(): UseWhiteboardReturn {
       setNotes((prev) => [...prev, created]);
       setError(null);
 
-      // Fire-and-forget: log activity after note is created (needs the ID)
-      const preview = params.contentType === 'drawing'
-        ? '[drawing]'
-        : (params.textContent ?? '').slice(0, 50) || null;
-      supabase
-        .from('whiteboard_activity')
-        .insert({
-          note_id: created.id,
-          action: 'created',
-          actor_name: myName,
-          note_preview: preview,
-          note_color: params.color,
-        })
-        .then(() => {});
+      // Fire-and-forget: log activity after note is created (throttled to 1 per note per minute)
+      if (shouldLogActivity(created.id, 'created')) {
+        const preview = params.contentType === 'drawing'
+          ? '[drawing]'
+          : (params.textContent ?? '').slice(0, 50) || null;
+        supabase
+          .from('whiteboard_activity')
+          .insert({
+            note_id: created.id,
+            action: 'created',
+            actor_name: myName,
+            note_preview: preview,
+            note_color: params.color,
+          })
+          .then(() => {});
+      }
 
       return created;
     },
@@ -199,9 +224,9 @@ export function useWhiteboard(): UseWhiteboardReturn {
       } else {
         setError(null);
 
-        // Fire-and-forget: log content update activity
+        // Fire-and-forget: log content update activity (throttled to 1 per note per minute)
         const myName = getMyName();
-        if (myName) {
+        if (myName && shouldLogActivity(noteId, 'updated')) {
           const preview = params.drawingData !== undefined
             ? '[drawing]'
             : (params.textContent ?? '').slice(0, 50) || null;
@@ -269,9 +294,9 @@ export function useWhiteboard(): UseWhiteboardReturn {
       deletedIds.current.add(noteId);
       setNotes((prev) => prev.filter((n) => n.id !== noteId));
 
-      // Fire-and-forget: log delete activity alongside the delete
+      // Fire-and-forget: log delete activity (throttled to 1 per note per minute)
       const myName = getMyName();
-      if (myName && noteToDelete) {
+      if (myName && noteToDelete && shouldLogActivity(noteId, 'deleted')) {
         const preview = noteToDelete.content_type === 'drawing'
           ? '[drawing]'
           : noteToDelete.text_content.slice(0, 50) || null;
