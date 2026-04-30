@@ -16,7 +16,6 @@ interface GridProps {
 
 export function Grid({ grid, words, foundWords, onWordFound, onFirstInteraction, disabled }: GridProps) {
   const [selectedCells, setSelectedCells] = useState<[number, number][]>([]);
-  const [shakeCell, setShakeCell] = useState<[number, number] | null>(null);
   const [interacted, setInteracted] = useState(false);
 
   const foundCellsMap = new Map<string, string>();
@@ -51,12 +50,13 @@ export function Grid({ grid, words, foundWords, onWordFound, onFirstInteraction,
   const handleCellClick = (row: number, col: number) => {
     if (disabled) return;
 
+    const key = `${row},${col}`;
+    if (foundCellsMap.has(key)) return;
+
     if (!interacted) {
       setInteracted(true);
       if (onFirstInteraction) onFirstInteraction();
     }
-
-    const key = `${row},${col}`;
 
     if (selectedSet.has(key)) {
       const updated = selectedCells.filter(([r, c]) => !(r === row && c === col));
@@ -93,10 +93,6 @@ export function Grid({ grid, words, foundWords, onWordFound, onFirstInteraction,
   };
 
   const handleDeselectAll = () => {
-    if (selectedCells.length > 0) {
-      setShakeCell(selectedCells[0]);
-      setTimeout(() => setShakeCell(null), 400);
-    }
     setSelectedCells([]);
   };
 
@@ -111,14 +107,11 @@ export function Grid({ grid, words, foundWords, onWordFound, onFirstInteraction,
             const key = `${rowIdx},${colIdx}`;
             const isFound = foundCellsMap.has(key);
             const isSelected = selectedSet.has(key);
-            const isShaking = shakeCell && shakeCell[0] === rowIdx && shakeCell[1] === colIdx;
 
             return (
               <motion.button
                 key={key}
                 type="button"
-                animate={isShaking ? { x: [-2, 2, -2, 2, 0] } : {}}
-                transition={{ duration: 0.3 }}
                 onClick={() => handleCellClick(rowIdx, colIdx)}
                 disabled={disabled}
                 className={`w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center rounded text-sm sm:text-base font-bold cursor-pointer transition-colors disabled:cursor-not-allowed ${
