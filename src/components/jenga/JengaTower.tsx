@@ -43,9 +43,9 @@ export function JengaTower({ state, isMyTurn, selectedBlock, onBlockClick, disab
     dragStart.current = null;
   }, [isDragging]);
 
-  const BLOCK_WIDTH = 24;
-  const BLOCK_LENGTH = 72;
-  const BLOCK_HEIGHT = 16;
+  const BLOCK_WIDTH = 72;
+  const BLOCK_DEPTH = 24;
+  const BLOCK_HEIGHT = 14;
   const GAP = 1;
   const ROW_HEIGHT = BLOCK_HEIGHT + GAP;
   const towerRows = state.tower.length;
@@ -72,7 +72,7 @@ export function JengaTower({ state, isMyTurn, selectedBlock, onBlockClick, disab
             transform: `rotateX(18deg) rotateY(${rotationY}deg)`,
             transition: isDragging ? 'none' : 'transform 0.3s ease-out',
             position: 'relative',
-            width: `${ROW_WIDTH + 80}px`,
+            width: `${ROW_WIDTH + 40}px`,
             height: `${towerRows * ROW_HEIGHT + 60}px`,
           }}
         >
@@ -81,18 +81,8 @@ export function JengaTower({ state, isMyTurn, selectedBlock, onBlockClick, disab
             const yOffset = (towerRows - 1 - rowIdx) * ROW_HEIGHT;
 
             // Both layers show 3 blocks side-by-side in a flex row.
-            // The alternating direction is conveyed by rotating the entire row
-            // 90 degrees around Y in 3D space. This way, when the tower is viewed
-            // with perspective/rotation, you see the cross-hatch pattern.
-            //
-            // Even rows: blocks run left-right (no extra rotation)
-            //   - Blocks show their NARROW end (BLOCK_WIDTH) side-by-side
-            //   - Block depth = BLOCK_LENGTH (going into screen)
-            //
-            // Odd rows: blocks run front-back (row rotated 90deg Y)
-            //   - Same block arrangement but rotated, so they appear perpendicular
-            //   - Blocks show their NARROW end (BLOCK_WIDTH) side-by-side
-            //   - Block depth = BLOCK_LENGTH (now going left-right due to rotation)
+            // Even rows: blocks run left-right (long face visible, 72px wide x 24px deep)
+            // Odd rows: rotated 90deg Y so blocks run front-back (cross-hatch)
 
             return (
               <div
@@ -119,7 +109,7 @@ export function JengaTower({ state, isMyTurn, selectedBlock, onBlockClick, disab
                     isSelected={selectedBlock?.[0] === rowIdx && selectedBlock?.[1] === colIdx}
                     blockWidth={BLOCK_WIDTH}
                     blockHeight={BLOCK_HEIGHT}
-                    blockDepth={BLOCK_LENGTH}
+                    blockDepth={BLOCK_DEPTH}
                     onClick={() => onBlockClick(rowIdx, colIdx)}
                   />
                 ))}
