@@ -33,6 +33,7 @@ export interface LeaderboardStats {
     'snakes-and-ladders': { ricky: number; lilian: number; draws: number };
     'monopoly': { ricky: number; lilian: number; draws: number };
     'battleship': { ricky: number; lilian: number; draws: number };
+    'word-search': { ricky: number; lilian: number; draws: number };
   };
   streaks: {
     ricky_current: number;
@@ -60,15 +61,15 @@ function computeStats(results: MatchResult[]): LeaderboardStats {
   let lilian_wins = 0;
   let draws = 0;
 
-  const by_game: Record<string, { ricky: number; lilian: number; draws: number }> = {
+  const by_game: LeaderboardStats['by_game'] = {
     'connect-four': { ricky: 0, lilian: 0, draws: 0 },
     'tic-tac-toe': { ricky: 0, lilian: 0, draws: 0 },
-    'checkers': { ricky: 0, lilian: 0, draws: 0 },
     'battleship': { ricky: 0, lilian: 0, draws: 0 },
     'mini-golf': { ricky: 0, lilian: 0, draws: 0 },
     'jenga': { ricky: 0, lilian: 0, draws: 0 },
     'snakes-and-ladders': { ricky: 0, lilian: 0, draws: 0 },
     'monopoly': { ricky: 0, lilian: 0, draws: 0 },
+    'word-search': { ricky: 0, lilian: 0, draws: 0 },
   };
 
   let wordle_played = 0;
@@ -94,21 +95,8 @@ function computeStats(results: MatchResult[]): LeaderboardStats {
       continue;
     }
 
-    if (r.game_type === 'word-search') {
-      if (r.is_draw) {
-        draws++;
-      } else if (r.winner_name?.toLowerCase() === 'ricky') {
-        ricky_wins++;
-      } else if (r.winner_name?.toLowerCase() === 'lilian') {
-        lilian_wins++;
-      }
-      continue;
-    }
-
-    const gameKey = r.game_type;
-    if (!by_game[gameKey]) {
-      by_game[gameKey] = { ricky: 0, lilian: 0, draws: 0 };
-    }
+    const gameKey = r.game_type as keyof typeof by_game;
+    if (!(gameKey in by_game)) continue;
 
     if (r.is_draw) {
       draws++;
