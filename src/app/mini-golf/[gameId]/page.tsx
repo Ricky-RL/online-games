@@ -178,9 +178,9 @@ export default function MiniGolfGamePage({ params }: { params: Promise<{ gameId:
         />
         <button
           onClick={() => setShowForfeitDialog(true)}
-          className="text-sm text-text-secondary hover:text-text-primary transition-colors"
+          className="px-4 py-2 text-sm font-medium rounded-xl border border-player1/20 bg-player1/5 text-player1/80 hover:bg-player1/10 hover:border-player1/40 hover:text-player1 shadow-sm hover:shadow transition-all cursor-pointer"
         >
-          Forfeit
+          End Game
         </button>
       </footer>
 
