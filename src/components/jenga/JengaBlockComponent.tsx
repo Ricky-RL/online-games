@@ -7,9 +7,10 @@ interface JengaBlockComponentProps {
   risk: number;
   isPlayable: boolean;
   isSelected: boolean;
+  blockLength: number;
   blockWidth: number;
   blockHeight: number;
-  blockDepth: number;
+  isPerp: boolean;
   onClick: () => void;
 }
 
@@ -25,9 +26,10 @@ export function JengaBlockComponent({
   risk,
   isPlayable,
   isSelected,
+  blockLength,
   blockWidth,
   blockHeight,
-  blockDepth,
+  isPerp,
   onClick,
 }: JengaBlockComponentProps) {
   if (!exists) {
@@ -35,9 +37,20 @@ export function JengaBlockComponent({
   }
 
   const colors = woodColor(risk);
-  const hw = blockWidth / 2;
-  const hh = blockHeight / 2;
-  const hd = blockDepth / 2;
+
+  // Each block in the 2D layout takes up blockWidth x blockHeight in the flex row.
+  // The 3D cuboid is blockLength (long) x blockHeight (tall) x blockWidth (deep).
+  // Even rows: long axis runs into Z (depth), short axis along X (flex direction).
+  // Odd rows: long axis runs along X, short axis into Z.
+  // We rotate the individual block to achieve cross-hatch.
+
+  const W = blockLength; // cuboid X dimension
+  const H = blockHeight; // cuboid Y dimension
+  const D = blockWidth;  // cuboid Z dimension
+
+  const hw = W / 2;
+  const hh = H / 2;
+  const hd = D / 2;
 
   const faceBase: React.CSSProperties = {
     position: 'absolute',
@@ -46,33 +59,40 @@ export function JengaBlockComponent({
     pointerEvents: 'none',
   };
 
+  const blockTransform = isPerp
+    ? 'rotateY(90deg)' // perpendicular row: rotate block so long axis goes into screen
+    : 'rotateY(0deg)'; // even row: long axis visible facing viewer
+
   return (
     <button
       data-block
       onClick={isPlayable ? onClick : undefined}
-      className="relative jenga-block"
+      className="relative"
       style={{
         width: `${blockWidth}px`,
         height: `${blockHeight}px`,
         transformStyle: 'preserve-3d',
-        transform: 'translateZ(0px)',
+        transform: blockTransform,
         transition: 'transform 0.15s ease',
         cursor: isPlayable ? 'pointer' : 'default',
         pointerEvents: 'auto',
       }}
       onMouseEnter={(e) => {
-        if (isPlayable) (e.currentTarget as HTMLElement).style.transform = 'translateZ(6px)';
+        if (isPlayable) {
+          const base = isPerp ? 'rotateY(90deg)' : 'rotateY(0deg)';
+          (e.currentTarget as HTMLElement).style.transform = `${base} translateZ(6px)`;
+        }
       }}
       onMouseLeave={(e) => {
-        (e.currentTarget as HTMLElement).style.transform = 'translateZ(0px)';
+        (e.currentTarget as HTMLElement).style.transform = blockTransform;
       }}
     >
-      {/* Front face (width x height), pushed forward by half-depth */}
+      {/* Front face */}
       <div
         style={{
           ...faceBase,
-          width: `${blockWidth}px`,
-          height: `${blockHeight}px`,
+          width: `${W}px`,
+          height: `${H}px`,
           marginLeft: `-${hw}px`,
           marginTop: `-${hh}px`,
           backgroundColor: colors.front,
@@ -83,24 +103,24 @@ export function JengaBlockComponent({
             : 'inset 0 1px 0 rgba(255,255,255,0.3), inset 0 -1px 0 rgba(0,0,0,0.1)',
         }}
       />
-      {/* Back face (width x height), pushed back by half-depth */}
+      {/* Back face */}
       <div
         style={{
           ...faceBase,
-          width: `${blockWidth}px`,
-          height: `${blockHeight}px`,
+          width: `${W}px`,
+          height: `${H}px`,
           marginLeft: `-${hw}px`,
           marginTop: `-${hh}px`,
           backgroundColor: colors.dark,
           transform: `rotateY(180deg) translateZ(${hd}px)`,
         }}
       />
-      {/* Top face (width x depth), pushed up by half-height */}
+      {/* Top face */}
       <div
         style={{
           ...faceBase,
-          width: `${blockWidth}px`,
-          height: `${blockDepth}px`,
+          width: `${W}px`,
+          height: `${D}px`,
           marginLeft: `-${hw}px`,
           marginTop: `-${hd}px`,
           backgroundColor: colors.top,
@@ -109,24 +129,24 @@ export function JengaBlockComponent({
           boxShadow: 'inset 0 0 4px rgba(255,255,255,0.3)',
         }}
       />
-      {/* Bottom face (width x depth), pushed down by half-height */}
+      {/* Bottom face */}
       <div
         style={{
           ...faceBase,
-          width: `${blockWidth}px`,
-          height: `${blockDepth}px`,
+          width: `${W}px`,
+          height: `${D}px`,
           marginLeft: `-${hw}px`,
           marginTop: `-${hd}px`,
           backgroundColor: colors.dark,
           transform: `rotateX(-90deg) translateZ(${hh}px)`,
         }}
       />
-      {/* Right face (depth x height), pushed right by half-width */}
+      {/* Right face */}
       <div
         style={{
           ...faceBase,
-          width: `${blockDepth}px`,
-          height: `${blockHeight}px`,
+          width: `${D}px`,
+          height: `${H}px`,
           marginLeft: `-${hd}px`,
           marginTop: `-${hh}px`,
           backgroundColor: colors.side,
@@ -135,12 +155,12 @@ export function JengaBlockComponent({
           boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.15)',
         }}
       />
-      {/* Left face (depth x height), pushed left by half-width */}
+      {/* Left face */}
       <div
         style={{
           ...faceBase,
-          width: `${blockDepth}px`,
-          height: `${blockHeight}px`,
+          width: `${D}px`,
+          height: `${H}px`,
           marginLeft: `-${hd}px`,
           marginTop: `-${hh}px`,
           backgroundColor: colors.side,
@@ -148,7 +168,6 @@ export function JengaBlockComponent({
           border: '1px solid rgba(0,0,0,0.08)',
         }}
       />
-      {/* Risk indicator on selected */}
       {isSelected && (
         <span
           className="absolute -top-5 left-1/2 -translate-x-1/2 text-[10px] font-bold text-white bg-black/80 px-1.5 py-0.5 rounded whitespace-nowrap"
