@@ -186,6 +186,7 @@ export function useGame(gameId: string): UseGameReturn {
       const winner = winPositions ? myPlayerNumber : null;
 
       const nextTurn: Player = myPlayerNumber === 1 ? 2 : 1;
+      const gameOver = !!winner || isDraw(newBoard);
 
       optimisticBoard.current = newBoard;
       setLastMove({ col: column, row });
@@ -194,7 +195,7 @@ export function useGame(gameId: string): UseGameReturn {
           ? {
               ...prev,
               board: newBoard,
-              current_turn: winner ? prev.current_turn : nextTurn,
+              current_turn: gameOver ? prev.current_turn : nextTurn,
               winner,
             }
           : null
@@ -205,7 +206,7 @@ export function useGame(gameId: string): UseGameReturn {
         .from('games')
         .update({
           board: newBoard,
-          current_turn: winner ? currentGame.current_turn : nextTurn,
+          current_turn: gameOver ? currentGame.current_turn : nextTurn,
           winner,
           updated_at: new Date().toISOString(),
         })
@@ -232,6 +233,7 @@ export function useGame(gameId: string): UseGameReturn {
         const loserId = winner === 1 ? currentGame.player2_id : currentGame.player1_id;
         recordMatchResult({
           game_type: 'connect-four',
+          game_id: gameId,
           winner_id: winnerId,
           winner_name: winnerName,
           loser_id: loserId,
@@ -250,6 +252,7 @@ export function useGame(gameId: string): UseGameReturn {
         matchRecorded.current = true;
         recordMatchResult({
           game_type: 'connect-four',
+          game_id: gameId,
           winner_id: null,
           winner_name: null,
           loser_id: null,

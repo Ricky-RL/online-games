@@ -282,6 +282,7 @@ export function useSnakesAndLaddersGame(gameId: string): UseSnakesAndLaddersGame
       const loserId = winner === 1 ? currentGame.player2_id : currentGame.player1_id;
       recordMatchResult({
         game_type: 'snakes-and-ladders',
+        game_id: gameId,
         winner_id: winnerId,
         winner_name: winnerName,
         loser_id: loserId,

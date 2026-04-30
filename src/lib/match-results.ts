@@ -1,9 +1,10 @@
 import { supabase } from '@/lib/supabase';
 
-export type GameType = 'connect-four' | 'tic-tac-toe' | 'wordle' | 'mini-golf' | 'jenga' | 'snakes-and-ladders' | 'word-search' | 'monopoly' | 'battleship';
+export type GameType = 'connect-four' | 'tic-tac-toe' | 'wordle' | 'mini-golf' | 'jenga' | 'snakes-and-ladders' | 'word-search' | 'monopoly' | 'battleship' | 'memory';
 
 export interface MatchResultInsert {
   game_type: GameType;
+  game_id: string;
   winner_id: string | null;
   winner_name: string | null;
   loser_id: string | null;

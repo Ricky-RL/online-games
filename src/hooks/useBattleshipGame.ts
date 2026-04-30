@@ -237,6 +237,7 @@ export function useBattleshipGame(gameId: string): UseBattleshipGameReturn {
         const loserId = winner === 1 ? currentGame.player2_id : currentGame.player1_id;
         recordMatchResult({
           game_type: 'battleship',
+          game_id: gameId,
           winner_id: winnerId,
           winner_name: winnerPlayer,
           loser_id: loserId,

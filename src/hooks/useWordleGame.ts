@@ -220,6 +220,7 @@ export function useWordleGame(gameId: string): UseWordleGameReturn {
             const etDate = new Date().toLocaleDateString('en-CA', { timeZone: 'America/New_York' });
             recordMatchResult({
               game_type: 'wordle',
+              game_id: gameId,
               winner_id: null,
               winner_name: null,
               loser_id: null,
@@ -244,6 +245,7 @@ export function useWordleGame(gameId: string): UseWordleGameReturn {
       const etDate = new Date().toLocaleDateString('en-CA', { timeZone: 'America/New_York' });
       recordMatchResult({
         game_type: 'wordle',
+        game_id: gameId,
         winner_id: null,
         winner_name: null,
         loser_id: null,

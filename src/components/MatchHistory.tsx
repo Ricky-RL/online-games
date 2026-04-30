@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 interface MatchResult {
   id: string;
-  game_type: 'connect-four' | 'tic-tac-toe' | 'wordle' | 'mini-golf' | 'jenga' | 'snakes-and-ladders' | 'word-search' | 'monopoly' | 'battleship';
+  game_type: 'connect-four' | 'tic-tac-toe' | 'wordle' | 'mini-golf' | 'jenga' | 'snakes-and-ladders' | 'word-search' | 'monopoly' | 'battleship' | 'memory';
   winner_id: string | null;
   winner_name: string | null;
   loser_id: string | null;
@@ -45,6 +45,7 @@ function gameIcon(gameType: MatchResult['game_type']): string {
     case 'word-search': return '🔍';
     case 'monopoly': return '🏠';
     case 'battleship': return '🎯';
+    case 'memory': return '🧠';
   }
 }
 function gameLabel(gameType: MatchResult['game_type']): string {
@@ -58,6 +59,7 @@ function gameLabel(gameType: MatchResult['game_type']): string {
     case 'word-search': return 'Word Search';
     case 'monopoly': return 'Monopoly';
     case 'battleship': return 'Battleship';
+    case 'memory': return 'Memory';
   }
 }
 function outcomeText(result: MatchResult): string {

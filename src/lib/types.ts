@@ -78,6 +78,8 @@ export interface CheckersGameState { cells: CheckersBoard; settings: CheckersSet
 export interface CheckersMove { from: [number, number]; to: [number, number]; captured: [number, number][] }
 
 // === Jenga Types ===
+export interface Point { x: number; y: number }
+
 export interface JengaBlock {
   id: string;
   exists: boolean;
@@ -88,6 +90,8 @@ export interface JengaMove {
   row: number;
   col: number;
   risk: number;
+  dragDeviation?: number;
+  effectiveRisk?: number;
   wobble_after: number;
   toppled: boolean;
 }
@@ -96,6 +100,7 @@ export interface JengaGameState {
   tower: JengaBlock[][];
   wobble_score: number;
   move_history: JengaMove[];
+  cascade_risks?: number[][];
 }
 
 // Snakes and Ladders types

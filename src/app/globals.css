@@ -50,3 +50,14 @@ body {
 @utility bg-checkers-light {
   background-color: #F5E6D3;
 }
+
+@keyframes cascade-flash {
+  0% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+@keyframes grade-fade {
+  0% { opacity: 1; transform: translate(-50%, -50%) scale(1.2); }
+  70% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  100% { opacity: 0; transform: translate(-50%, -50%) scale(0.9); }
+}

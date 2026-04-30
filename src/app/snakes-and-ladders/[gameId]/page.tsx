@@ -28,8 +28,10 @@ export default function SnakesAndLaddersGamePage({ params }: { params: Promise<{
   }, []);
 
   const isPlayer1 = game?.player1_name === playerName;
+  const isPlayer2 = game?.player2_name === playerName;
+  const isParticipant = isPlayer1 || isPlayer2;
   const myPlayerNumber = isPlayer1 ? 1 : 2;
-  const isMyTurn = game?.current_turn === myPlayerNumber && !game?.winner;
+  const isMyTurn = isParticipant && game?.current_turn === myPlayerNumber && !game?.winner;
   const opponentName = isPlayer1 ? (game?.player2_name ?? null) : (game?.player1_name ?? null);
 
   useNotifications({
@@ -141,7 +143,7 @@ export default function SnakesAndLaddersGamePage({ params }: { params: Promise<{
         <WinCelebration
           winner={game.winner}
           winnerName={game.winner === 1 ? game.player1_name : game.player2_name}
-          isMe={game.winner === myPlayerNumber}
+          isMe={isParticipant && game.winner === myPlayerNumber}
           onPlayAgain={resetGame}
           onHome={() => router.push('/')}
         />
