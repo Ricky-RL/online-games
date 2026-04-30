@@ -123,6 +123,19 @@ function MonopolyMini() {
   );
 }
 
+function MemoryMini() {
+  return (
+    <div className="w-8 h-8 rounded-lg bg-[#9B59B6]/10 flex items-center justify-center">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+        <rect x="1" y="1" width="6" height="6" rx="1" fill="#9B59B6" opacity="0.7" />
+        <rect x="9" y="1" width="6" height="6" rx="1" fill="#9B59B6" opacity="0.5" />
+        <rect x="1" y="9" width="6" height="6" rx="1" fill="#9B59B6" opacity="0.5" />
+        <rect x="9" y="9" width="6" height="6" rx="1" fill="#9B59B6" opacity="0.7" />
+      </svg>
+    </div>
+  );
+}
+
 function DailyWordleMini() {
   return (
     <div className="w-8 h-8 rounded-lg bg-[#538D4E]/10 flex items-center justify-center">
@@ -149,6 +162,7 @@ function GameIcon({ gameType }: { gameType: InboxGameType }) {
     case 'snakes-and-ladders': return <SnakesAndLaddersMini />;
     case 'word-search': return <WordSearchMini />;
     case 'monopoly': return <MonopolyMini />;
+    case 'memory': return <MemoryMini />;
     case 'daily-wordle': return <DailyWordleMini />;
   }
 }
@@ -164,6 +178,7 @@ function gameLabel(gameType: InboxGameType): string {
     case 'snakes-and-ladders': return 'Snakes & Ladders';
     case 'word-search': return 'Word Search';
     case 'monopoly': return 'Monopoly';
+    case 'memory': return 'Memory';
     case 'daily-wordle': return 'Daily Wordle';
   }
 }
