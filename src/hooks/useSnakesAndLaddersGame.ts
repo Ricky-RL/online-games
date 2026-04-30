@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
 import { makeMove as computeMove, checkWin, rollDice as generateRoll, handleSkipTurn, tickRespawns } from '@/lib/snakes-and-ladders-logic';
 import { recordMatchResult } from '@/lib/match-results';
-import type { Player, SnakesAndLaddersState, MoveEvent } from '@/lib/types';
+import type { Player, SnakesAndLaddersState, MoveEvent, PowerupType } from '@/lib/types';
 
 const POLL_INTERVAL_MS = 1500;
 
@@ -37,9 +37,11 @@ interface UseSnakesAndLaddersGameReturn {
   deleted: boolean;
   replayEvents: MoveEvent[];
   isReplaying: boolean;
+  activePowerup: { type: PowerupType; effect: string } | null;
   rollDice: () => Promise<void>;
   resetGame: () => Promise<void>;
   skipReplay: () => void;
+  dismissPowerup: () => void;
 }
 
 function getMyName(): string | null {
@@ -55,15 +57,21 @@ export function useSnakesAndLaddersGame(gameId: string): UseSnakesAndLaddersGame
   const [deleted, setDeleted] = useState(false);
   const [replayEvents, setReplayEvents] = useState<MoveEvent[]>([]);
   const [isReplaying, setIsReplaying] = useState(false);
+  const [activePowerup, setActivePowerup] = useState<{ type: PowerupType; effect: string } | null>(null);
   const optimisticBoard = useRef<SnakesAndLaddersState | null>(null);
   const gameRef = useRef<SnakesAndLaddersGame | null>(null);
   const matchRecorded = useRef(false);
   const lastUpdatedAt = useRef<string | null>(null);
   const lastSeenMoveNumber = useRef<number>(0);
+  const pendingMoveEvents = useRef<MoveEvent[]>([]);
 
   const skipReplay = useCallback(() => {
     setReplayEvents([]);
     setIsReplaying(false);
+  }, []);
+
+  const dismissPowerup = useCallback(() => {
+    setActivePowerup(null);
   }, []);
 
   const updateGame = useCallback(
@@ -242,10 +250,21 @@ export function useSnakesAndLaddersGame(gameId: string): UseSnakesAndLaddersGame
       ? myPlayerNumber
       : (myPlayerNumber === 1 ? 2 : 1);
 
-    // Clear lastMoveEvents when it's other player's turn (they've seen the replay)
+    // Accumulate events for roll-6 chains
+    const currentEvent = newBoard.lastMoveEvents[newBoard.lastMoveEvents.length - 1];
+    if (currentEvent) {
+      pendingMoveEvents.current = [...pendingMoveEvents.current, currentEvent];
+    }
+
+    // When turn passes to opponent, include all accumulated events for replay
     const boardToSave = nextTurn !== myPlayerNumber
-      ? newBoard
+      ? { ...newBoard, lastMoveEvents: pendingMoveEvents.current }
       : { ...newBoard, lastMoveEvents: [] };
+
+    // Reset pending events when turn passes
+    if (nextTurn !== myPlayerNumber) {
+      pendingMoveEvents.current = [];
+    }
 
     optimisticBoard.current = boardToSave;
     lastSeenMoveNumber.current = boardToSave.moveNumber;
@@ -258,11 +277,9 @@ export function useSnakesAndLaddersGame(gameId: string): UseSnakesAndLaddersGame
     updateGame((prev) => prev ? { ...prev, board: boardToSave, current_turn: winner ? prev.current_turn : nextTurn, winner } : null);
     setError(null);
 
-    // Show powerup toast for own move
-    const lastEvent = newBoard.lastMoveEvents[newBoard.lastMoveEvents.length - 1];
-    if (lastEvent && lastEvent.powerups.length > 0) {
-      setReplayEvents([lastEvent]);
-      setIsReplaying(true);
+    // Show powerup toast for own move (non-blocking)
+    if (currentEvent && currentEvent.powerups.length > 0) {
+      setActivePowerup(currentEvent.powerups[0]);
     }
 
     const { error: updateError } = await supabase.from('games').update({
@@ -349,5 +366,5 @@ export function useSnakesAndLaddersGame(gameId: string): UseSnakesAndLaddersGame
     setDeleted(true);
   }, [gameId]);
 
-  return { game, loading, error, lastMove, deleted, replayEvents, isReplaying, rollDice, resetGame, skipReplay };
+  return { game, loading, error, lastMove, deleted, replayEvents, isReplaying, activePowerup, rollDice, resetGame, skipReplay, dismissPowerup };
 }

@@ -7,6 +7,7 @@ import { useSnakesAndLaddersGame } from '@/hooks/useSnakesAndLaddersGame';
 import { Board } from '@/components/snakes-and-ladders/Board';
 import { DiceRoll } from '@/components/snakes-and-ladders/DiceRoll';
 import { TurnReplay } from '@/components/snakes-and-ladders/TurnReplay';
+import { PowerupToast } from '@/components/snakes-and-ladders/PowerupToast';
 import { TurnIndicator } from '@/components/TurnIndicator';
 import { WinCelebration } from '@/components/WinCelebration';
 import { EndGameDialog } from '@/components/EndGameDialog';
@@ -18,7 +19,7 @@ import { useState, useEffect } from 'react';
 export default function SnakesAndLaddersGamePage({ params }: { params: Promise<{ gameId: string }> }) {
   const { gameId } = use(params);
   const router = useRouter();
-  const { game, loading, error, lastMove, deleted, replayEvents, isReplaying, rollDice, resetGame, skipReplay } = useSnakesAndLaddersGame(gameId);
+  const { game, loading, error, lastMove, deleted, replayEvents, isReplaying, activePowerup, rollDice, resetGame, skipReplay, dismissPowerup } = useSnakesAndLaddersGame(gameId);
   const [showEndDialog, setShowEndDialog] = useState(false);
   const [playerName, setPlayerName] = useState<string | null>(null);
 
@@ -78,6 +79,11 @@ export default function SnakesAndLaddersGamePage({ params }: { params: Promise<{
       {/* Turn replay overlay */}
       {isReplaying && replayEvents.length > 0 && (
         <TurnReplay events={replayEvents} onComplete={skipReplay} />
+      )}
+
+      {/* Own-move powerup toast (non-blocking) */}
+      {!isReplaying && (
+        <PowerupToast powerup={activePowerup} onDismiss={dismissPowerup} />
       )}
 
       {/* Header */}
