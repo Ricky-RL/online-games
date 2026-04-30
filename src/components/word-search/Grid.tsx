@@ -35,10 +35,13 @@ export function Grid({ grid, words, foundWords, onWordFound, onFirstInteraction,
     for (const placement of words) {
       if (foundWords.includes(placement.word)) continue;
       const wordCells = getWordCells(placement);
-      if (wordCells.length !== cells.length) continue;
+      if (wordCells.length > cells.length) continue;
       if (wordCells.every(([r, c]) => cellSet.has(`${r},${c}`))) {
         onWordFound(placement.word);
-        setSelectedCells([]);
+        // Remove matched cells from selection, keep any extras
+        const matchedSet = new Set(wordCells.map(([r, c]) => `${r},${c}`));
+        const remaining = cells.filter(([r, c]) => !matchedSet.has(`${r},${c}`));
+        setSelectedCells(remaining);
         return;
       }
     }
@@ -76,7 +79,6 @@ export function Grid({ grid, words, foundWords, onWordFound, onFirstInteraction,
     if (disabled) return;
 
     const key = `${row},${col}`;
-    if (foundCellsMap.has(key)) return;
 
     if (!interacted) {
       setInteracted(true);
@@ -125,10 +127,10 @@ export function Grid({ grid, words, foundWords, onWordFound, onFirstInteraction,
                 onClick={() => handleCellClick(rowIdx, colIdx)}
                 disabled={disabled}
                 className={`w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center rounded text-sm sm:text-base font-bold cursor-pointer transition-colors disabled:cursor-not-allowed ${
-                  isFound
-                    ? 'bg-green-500/30 text-green-300'
-                    : isSelected
+                  isSelected
                     ? 'bg-blue-500/40 text-blue-100 ring-1 ring-blue-400/60'
+                    : isFound
+                    ? 'bg-green-500/30 text-green-300'
                     : 'bg-surface/50 text-text-primary hover:bg-surface'
                 }`}
               >
