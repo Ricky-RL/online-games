@@ -195,7 +195,7 @@ describe('MoveEvent details', () => {
     expect(event.to).toBe(50);
   });
 
-  it('accumulates multiple events in lastMoveEvents', () => {
+  it('resets lastMoveEvents to only the current move event', () => {
     const state: SnakesAndLaddersState = {
       ...baseState,
       players: { 1: 3, 2: 1 },
@@ -204,9 +204,8 @@ describe('MoveEvent details', () => {
       ],
     };
     const result = makeMove(state, 1, 2);
-    expect(result.lastMoveEvents.length).toBe(2);
-    expect(result.lastMoveEvents[0].player).toBe(2);
-    expect(result.lastMoveEvents[1].player).toBe(1);
+    expect(result.lastMoveEvents.length).toBe(1);
+    expect(result.lastMoveEvents[0].player).toBe(1);
   });
 
   it('MoveEvent from and to are correct for basic move', () => {
