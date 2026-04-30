@@ -1,18 +1,22 @@
-import type { Player, JengaBlock, JengaMove, JengaGameState } from './types';
+import type { Player, JengaBlock, JengaMove, JengaGameState, Point } from './types';
 
 const INITIAL_ROWS = 18;
 const BLOCKS_PER_ROW = 3;
 
 export function createInitialTower(): JengaGameState {
   const tower: JengaBlock[][] = [];
+  const cascade_risks: number[][] = [];
   for (let row = 0; row < INITIAL_ROWS; row++) {
     const blocks: JengaBlock[] = [];
+    const risks: number[] = [];
     for (let col = 0; col < BLOCKS_PER_ROW; col++) {
       blocks.push({ id: `${row}-${col}`, exists: true });
+      risks.push(0);
     }
     tower.push(blocks);
+    cascade_risks.push(risks);
   }
-  return { tower, wobble_score: 0, move_history: [] };
+  return { tower, wobble_score: 0, move_history: [], cascade_risks };
 }
 
 export function calculateBlockRisk(state: JengaGameState, row: number, col: number): number {
@@ -28,13 +32,116 @@ export function calculateBlockRisk(state: JengaGameState, row: number, col: numb
   const isEdge = col === 0 || col === BLOCKS_PER_ROW - 1;
   const edgeBonus = isEdge ? 5 : 0;
 
-  // Gap bonus: adjacent empty slots increase risk
-  let gapBonus = 0;
-  const rowBlocks = state.tower[row];
-  if (col > 0 && !rowBlocks[col - 1].exists) gapBonus += 10;
-  if (col < BLOCKS_PER_ROW - 1 && !rowBlocks[col + 1].exists) gapBonus += 10;
+  // Cascade risk from accumulated effects of previous pulls
+  const cascadeBonus = state.cascade_risks?.[row]?.[col] ?? 0;
 
-  return Math.min(100, Math.round(positionRisk + edgeBonus + gapBonus));
+  return Math.min(100, Math.round(positionRisk + edgeBonus + cascadeBonus));
+}
+
+export function generatePullPath(row: number, col: number, totalRows: number): Point[] {
+  // Determine path length by tower third
+  let pathLength: number;
+  if (row < 6) pathLength = 120;
+  else if (row < 12) pathLength = 90;
+  else pathLength = 60;
+
+  const numPoints = Math.round(pathLength / 2);
+  const points: Point[] = [];
+
+  const isEvenRow = row % 2 === 0;
+
+  if (isEvenRow) {
+    // Wide rows: horizontal paths
+    let dirX: number;
+    if (col === 0) dirX = -1;
+    else if (col === 2) dirX = 1;
+    else dirX = col % 2 === 0 ? -1 : 1; // Use col for determinism on center block
+
+    for (let i = 0; i < numPoints; i++) {
+      const t = i / (numPoints - 1); // 0 to 1
+      const x = dirX * t * pathLength;
+      // Slight downward curve for edge blocks
+      const curveFactor = col === 1 ? 0 : 0.15;
+      const y = curveFactor * pathLength * Math.sin(t * Math.PI * 0.5);
+      points.push({ x, y });
+    }
+  } else {
+    // Odd rows: vertical paths (toward viewer)
+    for (let i = 0; i < numPoints; i++) {
+      const t = i / (numPoints - 1);
+      const y = t * pathLength;
+      // Curve direction based on col
+      let curveFactor: number;
+      if (col === 0) curveFactor = -0.15;
+      else if (col === 2) curveFactor = 0.15;
+      else curveFactor = 0;
+      const x = curveFactor * pathLength * Math.sin(t * Math.PI);
+      points.push({ x, y });
+    }
+  }
+
+  return points;
+}
+
+export function measureDragDeviation(idealPath: Point[], playerTrace: Point[], toleranceZone: number = 20): number {
+  if (playerTrace.length === 0) return 1.0;
+  if (idealPath.length === 0) return 1.0;
+
+  let totalNormalizedDistance = 0;
+
+  for (const tracePoint of playerTrace) {
+    let minDist = Infinity;
+    for (const idealPoint of idealPath) {
+      const dx = tracePoint.x - idealPoint.x;
+      const dy = tracePoint.y - idealPoint.y;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      if (dist < minDist) minDist = dist;
+    }
+    totalNormalizedDistance += minDist / toleranceZone;
+  }
+
+  const average = totalNormalizedDistance / playerTrace.length;
+  return Math.min(1, Math.max(0, average));
+}
+
+export function computeEarlyReleaseDeviation(measuredDeviation: number, pathCompletionRatio: number): number {
+  return measuredDeviation * pathCompletionRatio + 0.7 * (1 - pathCompletionRatio);
+}
+
+export function computeSkillModifier(dragDeviation: number): number {
+  return 0.15 + (dragDeviation * 1.15);
+}
+
+export function computeCascadeEffects(row: number, col: number, tower: JengaBlock[][]): { targetRow: number; targetCol: number; bonus: number }[] {
+  const effects: { targetRow: number; targetCol: number; bonus: number }[] = [];
+
+  // Same-row neighbors: +15
+  if (col > 0 && tower[row]?.[col - 1]?.exists) {
+    effects.push({ targetRow: row, targetCol: col - 1, bonus: 15 });
+  }
+  if (col < BLOCKS_PER_ROW - 1 && tower[row]?.[col + 1]?.exists) {
+    effects.push({ targetRow: row, targetCol: col + 1, bonus: 15 });
+  }
+
+  // Row above: +10
+  if (row + 1 < tower.length) {
+    for (let c = 0; c < BLOCKS_PER_ROW; c++) {
+      if (tower[row + 1]?.[c]?.exists) {
+        effects.push({ targetRow: row + 1, targetCol: c, bonus: 10 });
+      }
+    }
+  }
+
+  // Row below: +5
+  if (row - 1 >= 0) {
+    for (let c = 0; c < BLOCKS_PER_ROW; c++) {
+      if (tower[row - 1]?.[c]?.exists) {
+        effects.push({ targetRow: row - 1, targetCol: c, bonus: 5 });
+      }
+    }
+  }
+
+  return effects;
 }
 
 export function pullBlock(
@@ -43,19 +150,24 @@ export function pullBlock(
   col: number,
   player: Player,
   randomValue: number,
+  dragDeviation?: number,
 ): JengaGameState {
   const tower = state.tower.map(r => r.map(b => ({ ...b })));
+
+  // Default dragDeviation to 0.5 for backwards compatibility
+  const deviation = dragDeviation ?? 0.5;
+
+  // Calculate risk using new skill-weighted formula
+  const baseRisk = calculateBlockRisk(state, row, col);
+  const skillModifier = computeSkillModifier(deviation);
+  const effectiveRisk = Math.min(95, Math.max(5, baseRisk * skillModifier + state.wobble_score * 0.3));
+  const toppled = randomValue * 100 < effectiveRisk;
 
   // Remove the block from its position
   tower[row][col].exists = false;
 
-  // Calculate risk and check topple
-  const blockRisk = calculateBlockRisk(state, row, col);
-  const effectiveRisk = Math.min(95, blockRisk + state.wobble_score);
-  const toppled = randomValue * 100 < effectiveRisk;
-
   // Wobble: riskier pulls add more, but safe pulls let the tower settle
-  const wobbleIncrease = blockRisk > 10 ? 2 + (blockRisk / 30) * 3 : -3;
+  const wobbleIncrease = baseRisk > 10 ? 2 + (baseRisk / 30) * 3 : -3;
   const newWobble = Math.max(0, Math.min(100, state.wobble_score + wobbleIncrease));
 
   // Place block on top (if not toppled)
@@ -78,11 +190,30 @@ export function pullBlock(
     }
   }
 
+  // Compute cascade effects and update cascade_risks
+  const cascadeEffects = computeCascadeEffects(row, col, state.tower);
+  const newCascadeRisks: number[][] = tower.map((r, rIdx) =>
+    r.map((_, cIdx) => {
+      // Use state's cascade_risks as base (match original tower dimensions)
+      if (rIdx < state.tower.length) {
+        return state.cascade_risks?.[rIdx]?.[cIdx] ?? 0;
+      }
+      return 0;
+    }),
+  );
+  for (const effect of cascadeEffects) {
+    if (newCascadeRisks[effect.targetRow]?.[effect.targetCol] !== undefined) {
+      newCascadeRisks[effect.targetRow][effect.targetCol] += effect.bonus;
+    }
+  }
+
   const move: JengaMove = {
     player,
     row,
     col,
-    risk: effectiveRisk,
+    risk: baseRisk,
+    dragDeviation: deviation,
+    effectiveRisk,
     wobble_after: newWobble,
     toppled,
   };
@@ -91,6 +222,7 @@ export function pullBlock(
     tower,
     wobble_score: newWobble,
     move_history: [...state.move_history, move],
+    cascade_risks: newCascadeRisks,
   };
 }
 

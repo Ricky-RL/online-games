@@ -7,6 +7,7 @@ import { recordMatchResult } from '@/lib/match-results';
 import type { Player, JengaGameState } from '@/lib/types';
 
 const POLL_INTERVAL_MS = 1500;
+const DRAG_TIMEOUT_MS = 15000;
 
 export interface JengaGame {
   id: string;
@@ -32,7 +33,12 @@ interface UseJengaGameReturn {
   loading: boolean;
   error: string | null;
   deleted: boolean;
+  pullingInProgress: boolean;
+  dragStartTime: number | null;
   pullBlockAction: (row: number, col: number) => Promise<void>;
+  startDrag: (row: number, col: number) => void;
+  completeDrag: (row: number, col: number, dragDeviation: number) => Promise<void>;
+  cancelDrag: () => void;
   resetGame: () => Promise<void>;
 }
 
@@ -41,7 +47,12 @@ export function useJengaGame(gameId: string): UseJengaGameReturn {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [deleted, setDeleted] = useState(false);
+  const [dragStartTime, setDragStartTime] = useState<number | null>(null);
+  const [isPullingState, setIsPullingState] = useState(false);
   const gameRef = useRef<JengaGame | null>(null);
+  const pullingInProgress = useRef<boolean>(false);
+  const dragTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const dragRowCol = useRef<[number, number] | null>(null);
 
   const updateGame = useCallback(
     (updater: JengaGame | null | ((prev: JengaGame | null) => JengaGame | null)) => {
@@ -102,6 +113,32 @@ export function useJengaGame(gameId: string): UseJengaGameReturn {
 
       updateGame((prev) => {
         if (!prev) return fresh;
+
+        // If game ended (opponent toppled), always update regardless of drag state
+        if (fresh.winner !== null && prev.winner === null) {
+          // Cancel any in-progress drag
+          if (pullingInProgress.current) {
+            pullingInProgress.current = false;
+            setIsPullingState(false);
+            setDragStartTime(null);
+            if (dragTimeoutRef.current) {
+              clearTimeout(dragTimeoutRef.current);
+              dragTimeoutRef.current = null;
+            }
+            dragRowCol.current = null;
+          }
+          return fresh;
+        }
+
+        // When a drag is in progress, skip turn updates from poll
+        if (pullingInProgress.current) {
+          // Still update player names if they joined
+          if (fresh.player2_name && !prev.player2_name) {
+            return { ...prev, player2_name: fresh.player2_name, player2_id: fresh.player2_id };
+          }
+          return prev;
+        }
+
         if (fresh.board.move_history.length > prev.board.move_history.length) {
           return fresh;
         }
@@ -116,8 +153,47 @@ export function useJengaGame(gameId: string): UseJengaGameReturn {
     return () => clearInterval(interval);
   }, [gameId, fetchGame, updateGame, deleted]);
 
-  const pullBlockAction = useCallback(
-    async (row: number, col: number) => {
+  const completeDragInternalRef = useRef<((row: number, col: number, dragDeviation: number) => Promise<void>) | null>(null);
+
+  const startDrag = useCallback((row: number, col: number) => {
+    pullingInProgress.current = true;
+    setIsPullingState(true);
+    dragRowCol.current = [row, col];
+    setDragStartTime(Date.now());
+
+    // Set 15s timeout — auto-complete with high deviation
+    if (dragTimeoutRef.current) clearTimeout(dragTimeoutRef.current);
+    dragTimeoutRef.current = setTimeout(() => {
+      if (pullingInProgress.current && dragRowCol.current) {
+        const [r, c] = dragRowCol.current;
+        completeDragInternalRef.current?.(r, c, 0.8);
+      }
+    }, DRAG_TIMEOUT_MS);
+  }, []);
+
+  const cancelDrag = useCallback(() => {
+    pullingInProgress.current = false;
+    setIsPullingState(false);
+    dragRowCol.current = null;
+    setDragStartTime(null);
+    if (dragTimeoutRef.current) {
+      clearTimeout(dragTimeoutRef.current);
+      dragTimeoutRef.current = null;
+    }
+  }, []);
+
+  const completeDragInternal = useCallback(
+    async (row: number, col: number, dragDeviation: number) => {
+      // Clear drag state
+      pullingInProgress.current = false;
+      setIsPullingState(false);
+      dragRowCol.current = null;
+      setDragStartTime(null);
+      if (dragTimeoutRef.current) {
+        clearTimeout(dragTimeoutRef.current);
+        dragTimeoutRef.current = null;
+      }
+
       const currentGame = gameRef.current;
       if (!currentGame) return;
 
@@ -135,7 +211,6 @@ export function useJengaGame(gameId: string): UseJengaGameReturn {
       const threshold = getMinimumRiskThreshold(currentGame.board);
       const playable = getPlayableBlocksAboveThreshold(currentGame.board, threshold);
       if (playable.length === 0) {
-        // No blocks left to pull — declare opponent as winner (stalemate = current player loses)
         const winner: Player = (3 - myPlayerNumber) as Player;
         updateGame((prev) => prev ? { ...prev, winner } : null);
         await supabase
@@ -151,11 +226,10 @@ export function useJengaGame(gameId: string): UseJengaGameReturn {
       }
 
       const randomValue = Math.random();
-      const newBoard = pullBlock(currentGame.board, row, col, myPlayerNumber, randomValue);
+      const newBoard = pullBlock(currentGame.board, row, col, myPlayerNumber, randomValue, dragDeviation);
       const lastMove = newBoard.move_history[newBoard.move_history.length - 1];
       const toppled = lastMove.toppled;
 
-      // If toppled, the OTHER player wins (current player loses)
       const winner: Player | null = toppled ? ((3 - myPlayerNumber) as Player) : null;
       const nextTurn: Player = toppled ? currentGame.current_turn : ((3 - myPlayerNumber) as Player);
 
@@ -211,6 +285,26 @@ export function useJengaGame(gameId: string): UseJengaGameReturn {
     [gameId, updateGame]
   );
 
+  // Keep ref in sync for timeout callback
+  useEffect(() => {
+    completeDragInternalRef.current = completeDragInternal;
+  }, [completeDragInternal]);
+
+  const completeDrag = useCallback(
+    async (row: number, col: number, dragDeviation: number) => {
+      await completeDragInternal(row, col, dragDeviation);
+    },
+    [completeDragInternal]
+  );
+
+  const pullBlockAction = useCallback(
+    async (row: number, col: number) => {
+      // Backwards-compatible: uses default deviation of 0.5
+      await completeDragInternal(row, col, 0.5);
+    },
+    [completeDragInternal]
+  );
+
   const resetGame = useCallback(async () => {
     const emptyBoard = createInitialTower();
     const { error: resetError } = await supabase
@@ -236,5 +330,24 @@ export function useJengaGame(gameId: string): UseJengaGameReturn {
     setDeleted(true);
   }, [gameId]);
 
-  return { game, loading, error, deleted, pullBlockAction, resetGame };
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (dragTimeoutRef.current) clearTimeout(dragTimeoutRef.current);
+    };
+  }, []);
+
+  return {
+    game,
+    loading,
+    error,
+    deleted,
+    pullingInProgress: isPullingState,
+    dragStartTime,
+    pullBlockAction,
+    startDrag,
+    completeDrag,
+    cancelDrag,
+    resetGame,
+  };
 }
