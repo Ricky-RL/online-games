@@ -28,6 +28,7 @@ export function useMiniGolfGame(gameId: string): UseMiniGolfGameReturn {
   const [deleted, setDeleted] = useState(false);
   const gameRef = useRef<MiniGolfGame | null>(null);
   const matchRecorded = useRef(false);
+  const pendingShotRef = useRef<Promise<void> | null>(null);
 
   const getPlayerNumber = useCallback((): Player | null => {
     const name = sessionStorage.getItem('player-name') || localStorage.getItem('player-name');
@@ -107,19 +108,28 @@ export function useMiniGolfGame(gameId: string): UseMiniGolfGameReturn {
     gameRef.current = optimistic;
     setGame(optimistic);
 
-    const { data: updatedRows, error: updateError } = await supabase
-      .from('games')
-      .update({ board, updated_at: new Date().toISOString() })
-      .eq('id', gameId)
-      .eq('board->>version', current.board.version)
-      .select();
+    const shotPromise = (async () => {
+      const { data: updatedRows, error: updateError } = await supabase
+        .from('games')
+        .update({ board, updated_at: new Date().toISOString() })
+        .eq('id', gameId)
+        .eq('board->>version', current.board.version)
+        .select();
 
-    if (updateError || !updatedRows || updatedRows.length === 0) {
-      await fetchGame();
-    }
+      if (updateError || !updatedRows || updatedRows.length === 0) {
+        await fetchGame();
+      }
+    })();
+
+    pendingShotRef.current = shotPromise;
+    await shotPromise;
+    pendingShotRef.current = null;
   }, [gameId, fetchGame]);
 
   const recordHoleResult = useCallback(async (strokes: number) => {
+    if (pendingShotRef.current) {
+      await pendingShotRef.current;
+    }
     const current = gameRef.current;
     if (!current) return;
     const player = getPlayerNumber();
