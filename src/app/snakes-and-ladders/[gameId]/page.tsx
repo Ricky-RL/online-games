@@ -117,6 +117,14 @@ export default function SnakesAndLaddersGamePage({ params }: { params: Promise<{
         <span>{game.player2_name || 'Player 2'}: square {board.players[2]}</span>
       </div>
 
+      {/* Home button */}
+      <button
+        onClick={() => router.push('/')}
+        className="px-5 py-2 text-sm font-medium rounded-xl border border-border bg-surface text-text-secondary hover:text-text-primary hover:border-text-secondary/30 shadow-sm hover:shadow transition-all cursor-pointer"
+      >
+        Home
+      </button>
+
       {/* Error */}
       {error && (
         <p className="text-sm text-red-500">{error}</p>
