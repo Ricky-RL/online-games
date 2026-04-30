@@ -72,7 +72,7 @@ Deno.serve(async (req) => {
   // Format the message
   const appUrl = Deno.env.get("APP_URL") || "https://online-games-alpha.vercel.app";
   const gameLabel = GAME_LABELS[game_type] || game_type;
-  const playLink = `${appUrl}/${game_type}?game=${game_id}`;
+  const playLink = `${appUrl}/${game_type}/${game_id}`;
   const timestamp = new Date(updated_at).toLocaleString("en-US", {
     timeZone: "America/Los_Angeles",
     month: "short",
