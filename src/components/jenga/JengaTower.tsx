@@ -1,7 +1,6 @@
 'use client';
 
-import { useRef, useState, useCallback } from 'react';
-import { JengaBlockComponent } from './JengaBlockComponent';
+import { useMemo } from 'react';
 import type { JengaGameState } from '@/lib/types';
 import { calculateBlockRisk, getPlayableBlocks } from '@/lib/jenga-logic';
 
@@ -9,117 +8,214 @@ interface JengaTowerProps {
   state: JengaGameState;
   isMyTurn: boolean;
   selectedBlock: [number, number] | null;
+  pullingBlock: [number, number] | null;
   onBlockClick: (row: number, col: number) => void;
   disabled: boolean;
 }
 
-export function JengaTower({ state, isMyTurn, selectedBlock, onBlockClick, disabled }: JengaTowerProps) {
-  const [rotationY, setRotationY] = useState(-30);
-  const [isDragging, setIsDragging] = useState(false);
-  const dragStart = useRef<{ x: number; startRotation: number } | null>(null);
+function riskColor(risk: number): { top: string; front: string; side: string } {
+  if (risk < 15) return { top: '#f0dbb8', front: '#c9935e', side: '#9e6d3a' };
+  if (risk < 30) return { top: '#ecd39e', front: '#be8035', side: '#8f5f28' };
+  if (risk < 50) return { top: '#f7d26a', front: '#cc8a20', side: '#9a6818' };
+  return { top: '#f09080', front: '#c04030', side: '#8a2818' };
+}
 
+export function JengaTower({ state, isMyTurn, selectedBlock, pullingBlock, onBlockClick, disabled }: JengaTowerProps) {
   const playableBlocks = isMyTurn && !disabled ? getPlayableBlocks(state) : [];
   const playableSet = new Set(playableBlocks.map(([r, c]) => `${r}-${c}`));
 
-  const handlePointerDown = useCallback((e: React.PointerEvent) => {
-    if ((e.target as HTMLElement).closest('button[data-block]')) return;
-    e.preventDefault();
-    setIsDragging(true);
-    dragStart.current = { x: e.clientX, startRotation: rotationY };
-    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
-  }, [rotationY]);
+  const BLOCK_FACE_H = 18;
+  const BLOCK_TOP_H = 7;
+  const ROW_HEIGHT = BLOCK_FACE_H + BLOCK_TOP_H + 1;
 
-  const handlePointerMove = useCallback((e: React.PointerEvent) => {
-    if (!isDragging || !dragStart.current) return;
-    e.preventDefault();
-    const dx = e.clientX - dragStart.current.x;
-    setRotationY(dragStart.current.startRotation + dx * 0.5);
-  }, [isDragging]);
+  const WIDE_W = 36;
+  const NARROW_W = 20;
+  const BLOCK_GAP = 2;
 
-  const handlePointerUp = useCallback((e: React.PointerEvent) => {
-    if (!isDragging) return;
-    e.preventDefault();
-    setIsDragging(false);
-    dragStart.current = null;
-  }, [isDragging]);
-
-  const BLOCK_LENGTH = 75;
-  const BLOCK_WIDTH = 25;
-  const BLOCK_HEIGHT = 15;
-
-  const ROW_HEIGHT = BLOCK_HEIGHT;
   const towerRows = state.tower.length;
+  const towerPixelH = towerRows * ROW_HEIGHT + 50;
+  const towerPixelW = 180;
 
-  const towerWidth = BLOCK_WIDTH * 3;
-  const containerW = towerWidth + 60;
-  const containerH = towerRows * ROW_HEIGHT + 80;
+  const blocks = useMemo(() => {
+    const result: Array<{
+      rowIdx: number;
+      colIdx: number;
+      x: number;
+      y: number;
+      w: number;
+      isPerp: boolean;
+      risk: number;
+      exists: boolean;
+      id: string;
+    }> = [];
+
+    for (let rowIdx = 0; rowIdx < state.tower.length; rowIdx++) {
+      const row = state.tower[rowIdx];
+      const isPerp = rowIdx % 2 === 1;
+      const blockW = isPerp ? NARROW_W : WIDE_W;
+      const totalRowW = 3 * blockW + 2 * BLOCK_GAP;
+      const startX = (towerPixelW - totalRowW) / 2;
+      const y = towerPixelH - 40 - (rowIdx + 1) * ROW_HEIGHT;
+
+      for (let colIdx = 0; colIdx < row.length; colIdx++) {
+        const block = row[colIdx];
+        result.push({
+          rowIdx,
+          colIdx,
+          x: startX + colIdx * (blockW + BLOCK_GAP),
+          y,
+          w: blockW,
+          isPerp,
+          risk: calculateBlockRisk(state, rowIdx, colIdx),
+          exists: block.exists,
+          id: block.id,
+        });
+      }
+    }
+    return result;
+  }, [state, towerPixelH, towerPixelW]);
 
   return (
-    <div className="flex flex-col items-center gap-4">
+    <div className="flex flex-col items-center gap-3">
       <div
         className="relative select-none"
-        style={{
-          perspective: '900px',
-          perspectiveOrigin: '50% 40%',
-          cursor: isDragging ? 'grabbing' : 'grab',
-          touchAction: 'none',
-        }}
-        onPointerDown={handlePointerDown}
-        onPointerMove={handlePointerMove}
-        onPointerUp={handlePointerUp}
-        onPointerCancel={handlePointerUp}
+        style={{ width: `${towerPixelW}px`, height: `${towerPixelH}px` }}
       >
+        {/* Base platform */}
         <div
+          className="absolute"
           style={{
-            transformStyle: 'preserve-3d',
-            transform: `rotateX(30deg) rotateY(${rotationY}deg)`,
-            transition: isDragging ? 'none' : 'transform 0.3s ease-out',
-            position: 'relative',
-            width: `${containerW}px`,
-            height: `${containerH}px`,
+            bottom: '8px',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            width: '130px',
+            height: '12px',
+            background: 'linear-gradient(to bottom, #7a6040, #5a4530)',
+            borderRadius: '2px',
+            boxShadow: '0 3px 6px rgba(0,0,0,0.25), inset 0 1px 0 rgba(255,255,255,0.1)',
           }}
-        >
-          {state.tower.map((row, rowIdx) => {
-            const isPerp = rowIdx % 2 === 1;
-            const yOffset = (towerRows - 1 - rowIdx) * ROW_HEIGHT;
+        />
 
-            return (
+        {blocks.map((b) => {
+          if (!b.exists) return null;
+
+          const colors = riskColor(b.risk);
+          const isPlayable = playableSet.has(`${b.rowIdx}-${b.colIdx}`);
+          const isSelected = selectedBlock?.[0] === b.rowIdx && selectedBlock?.[1] === b.colIdx;
+          const isPulling = pullingBlock?.[0] === b.rowIdx && pullingBlock?.[1] === b.colIdx;
+
+          return (
+            <button
+              key={b.id}
+              data-block
+              aria-label={`Block row ${b.rowIdx + 1}, column ${b.colIdx + 1}${isPlayable ? `, ${b.risk}% risk` : ''}`}
+              onClick={isPlayable ? () => onBlockClick(b.rowIdx, b.colIdx) : undefined}
+              className="absolute group"
+              style={{
+                left: `${b.x}px`,
+                top: `${b.y}px`,
+                width: `${b.w}px`,
+                height: `${BLOCK_FACE_H + BLOCK_TOP_H}px`,
+                cursor: isPlayable ? 'pointer' : 'default',
+                transition: 'transform 0.15s ease, opacity 0.3s ease',
+                opacity: isPulling ? 0 : 1,
+                transform: isPulling ? 'scale(0.8) translateY(-8px)' : undefined,
+              }}
+            >
+              {/* Top face - lighter, gives depth */}
               <div
-                key={rowIdx}
+                className="absolute left-0 top-0"
                 style={{
-                  position: 'absolute',
-                  bottom: `${yOffset}px`,
-                  left: '50%',
-                  transform: 'translateX(-50%)',
-                  transformStyle: 'preserve-3d',
-                  display: 'flex',
-                  justifyContent: 'center',
-                  gap: '0px',
+                  width: `${b.w}px`,
+                  height: `${BLOCK_TOP_H}px`,
+                  background: `linear-gradient(180deg, ${colors.top}, ${adjustBrightness(colors.top, -10)})`,
+                  borderTopLeftRadius: '2px',
+                  borderTopRightRadius: '2px',
+                  borderLeft: '1px solid rgba(0,0,0,0.05)',
+                  borderTop: '1px solid rgba(0,0,0,0.03)',
+                  borderRight: '1px solid rgba(0,0,0,0.07)',
                 }}
-              >
-                {row.map((block, colIdx) => (
-                  <JengaBlockComponent
-                    key={block.id}
-                    row={rowIdx}
-                    col={colIdx}
-                    exists={block.exists}
-                    risk={calculateBlockRisk(state, rowIdx, colIdx)}
-                    isPlayable={playableSet.has(`${rowIdx}-${colIdx}`)}
-                    isSelected={selectedBlock?.[0] === rowIdx && selectedBlock?.[1] === colIdx}
-                    blockLength={BLOCK_LENGTH}
-                    blockWidth={BLOCK_WIDTH}
-                    blockHeight={BLOCK_HEIGHT}
-                    isPerp={isPerp}
-                    onClick={() => onBlockClick(rowIdx, colIdx)}
-                  />
-                ))}
-              </div>
-            );
-          })}
-        </div>
-      </div>
+              />
 
-      <p className="text-xs text-text-secondary">Drag to rotate</p>
+              {/* Front face */}
+              <div
+                className="absolute left-0"
+                style={{
+                  top: `${BLOCK_TOP_H}px`,
+                  width: `${b.w}px`,
+                  height: `${BLOCK_FACE_H}px`,
+                  background: b.isPerp
+                    ? `linear-gradient(90deg, ${adjustBrightness(colors.front, -5)}, ${colors.front} 30%, ${colors.front} 70%, ${adjustBrightness(colors.front, -5)})`
+                    : `linear-gradient(180deg, ${colors.front}, ${adjustBrightness(colors.front, -12)})`,
+                  borderBottomLeftRadius: '2px',
+                  borderBottomRightRadius: '2px',
+                  borderLeft: `1px solid rgba(0,0,0,0.1)`,
+                  borderRight: `1px solid rgba(0,0,0,0.12)`,
+                  borderBottom: `1px solid rgba(0,0,0,0.15)`,
+                  boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.15), 0 1px 2px rgba(0,0,0,0.08)',
+                }}
+              />
+
+              {/* Subtle wood grain for wide (non-perp) blocks */}
+              {!b.isPerp && (
+                <>
+                  <div className="absolute pointer-events-none" style={{
+                    top: `${BLOCK_TOP_H + 5}px`, left: '4px', right: '4px', height: '1px',
+                    background: 'rgba(0,0,0,0.04)', borderRadius: '1px',
+                  }} />
+                  <div className="absolute pointer-events-none" style={{
+                    top: `${BLOCK_TOP_H + 11}px`, left: '6px', right: '5px', height: '1px',
+                    background: 'rgba(0,0,0,0.03)', borderRadius: '1px',
+                  }} />
+                </>
+              )}
+
+              {/* End-grain dot pattern for perpendicular blocks */}
+              {b.isPerp && (
+                <div className="absolute pointer-events-none" style={{
+                  top: `${BLOCK_TOP_H + 6}px`, left: '50%', transform: 'translateX(-50%)',
+                  width: '4px', height: '4px', borderRadius: '50%',
+                  border: '1px solid rgba(0,0,0,0.06)',
+                }} />
+              )}
+
+              {/* Selection highlight */}
+              {isSelected && (
+                <div
+                  className="absolute inset-0 rounded-[2px] z-10 pointer-events-none"
+                  style={{
+                    boxShadow: '0 0 0 2px #fff, 0 0 14px 3px rgba(255,255,255,0.5), inset 0 0 4px rgba(255,255,255,0.3)',
+                  }}
+                />
+              )}
+
+              {/* Playable hover highlight */}
+              {isPlayable && !isSelected && (
+                <div className="absolute inset-0 rounded-[2px] opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none"
+                  style={{
+                    boxShadow: '0 0 0 1.5px rgba(245,180,50,0.7), 0 0 8px rgba(245,180,50,0.25)',
+                  }}
+                />
+              )}
+
+              {/* Risk tooltip on selection */}
+              {isSelected && (
+                <span className="absolute -top-6 left-1/2 -translate-x-1/2 text-[10px] font-bold text-white bg-black/85 px-2 py-0.5 rounded-md whitespace-nowrap z-20 shadow-lg">
+                  {b.risk}% risk
+                </span>
+              )}
+            </button>
+          );
+        })}
+      </div>
     </div>
   );
+}
+
+function adjustBrightness(hex: string, amount: number): string {
+  const num = parseInt(hex.replace('#', ''), 16);
+  const r = Math.min(255, Math.max(0, ((num >> 16) & 0xff) + amount));
+  const g = Math.min(255, Math.max(0, ((num >> 8) & 0xff) + amount));
+  const b = Math.min(255, Math.max(0, (num & 0xff) + amount));
+  return `#${((r << 16) | (g << 8) | b).toString(16).padStart(6, '0')}`;
 }

@@ -63,14 +63,15 @@ export function pullBlock(
     const topRow = tower[tower.length - 1];
     const existingCount = topRow.filter(b => b.exists).length;
     if (existingCount < BLOCKS_PER_ROW) {
-      // Fill next empty slot in top row
-      const emptyIdx = topRow.findIndex(b => !b.exists);
+      // Fill from center outward: 1, 0, 2
+      const fillOrder = [1, 0, 2];
+      const emptyIdx = fillOrder.find(i => !topRow[i].exists) ?? topRow.findIndex(b => !b.exists);
       topRow[emptyIdx] = { id: `${tower.length - 1}-${emptyIdx}`, exists: true };
     } else {
-      // Create new row with one block
+      // Create new row with one block in the center
       const newRow: JengaBlock[] = [
-        { id: `${tower.length}-0`, exists: true },
-        { id: `${tower.length}-1`, exists: false },
+        { id: `${tower.length}-0`, exists: false },
+        { id: `${tower.length}-1`, exists: true },
         { id: `${tower.length}-2`, exists: false },
       ];
       tower.push(newRow);

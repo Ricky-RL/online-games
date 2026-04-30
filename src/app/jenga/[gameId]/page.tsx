@@ -26,6 +26,7 @@ export default function JengaGamePage({ params }: { params: Promise<{ gameId: st
   const [myName, setMyName] = useState<string | null>(null);
   const [showEndDialog, setShowEndDialog] = useState(false);
   const [selectedBlock, setSelectedBlock] = useState<[number, number] | null>(null);
+  const [pullingBlock, setPullingBlock] = useState<[number, number] | null>(null);
 
   useEffect(() => { setMyName(getMyName()); }, []);
   useEffect(() => { if (deleted) router.push('/'); }, [deleted, router]);
@@ -75,6 +76,9 @@ export default function JengaGamePage({ params }: { params: Promise<{ gameId: st
     play('drop');
     const [row, col] = selectedBlock;
     setSelectedBlock(null);
+    setPullingBlock([row, col]);
+    await new Promise(r => setTimeout(r, 300));
+    setPullingBlock(null);
     await pullBlockAction(row, col);
   }, [selectedBlock, pullBlockAction, play]);
 
@@ -143,6 +147,7 @@ export default function JengaGamePage({ params }: { params: Promise<{ gameId: st
           state={game.board}
           isMyTurn={isMyTurn}
           selectedBlock={selectedBlock}
+          pullingBlock={pullingBlock}
           onBlockClick={handleBlockClick}
           disabled={!isMyTurn || gameStatus === 'won'}
         />
