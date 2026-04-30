@@ -39,6 +39,7 @@ export function StickyNote({ note, onMove, onSave, onDelete, onResize, onColorCh
   const dragStart = useRef<{ pointerX: number; pointerY: number; noteX: number; noteY: number } | null>(null);
   const resizeStart = useRef<{ pointerX: number; pointerY: number; width: number; height: number } | null>(null);
   const drawingRef = useRef(false);
+  const currentStrokeRef = useRef<Stroke | null>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -226,25 +227,30 @@ export function StickyNote({ note, onMove, onSave, onDelete, onResize, onColorCh
     drawingRef.current = true;
     const strokeColor = drawTool === 'eraser' ? '__eraser__' : penColor;
     const strokeWidth = drawTool === 'eraser' ? 12 : 3;
-    setCurrentStroke({ points: [point], color: strokeColor, width: strokeWidth });
+    const stroke = { points: [point], color: strokeColor, width: strokeWidth };
+    currentStrokeRef.current = stroke;
+    setCurrentStroke(stroke);
     (e.target as HTMLElement).setPointerCapture(e.pointerId);
   }
 
   function handleCanvasPointerMove(e: React.PointerEvent) {
-    if (!drawingRef.current || !currentStroke) return;
+    if (!drawingRef.current || !currentStrokeRef.current) return;
     const rect = canvasRef.current!.getBoundingClientRect();
     const point = { x: e.clientX - rect.left, y: e.clientY - rect.top };
-    setCurrentStroke((prev) => prev ? { ...prev, points: [...prev.points, point] } : null);
+    const updated = { ...currentStrokeRef.current, points: [...currentStrokeRef.current.points, point] };
+    currentStrokeRef.current = updated;
+    setCurrentStroke(updated);
   }
 
   function handleCanvasPointerUp() {
-    if (!drawingRef.current || !currentStroke) return;
+    if (!drawingRef.current || !currentStrokeRef.current) return;
     drawingRef.current = false;
-    if (currentStroke.points.length > 1) {
-      const newStrokes = [...strokes, currentStroke];
+    if (currentStrokeRef.current.points.length > 1) {
+      const newStrokes = [...strokes, currentStrokeRef.current];
       setStrokes(newStrokes);
       onSave({ textContent: text, drawingData: newStrokes });
     }
+    currentStrokeRef.current = null;
     setCurrentStroke(null);
   }
 
@@ -479,7 +485,7 @@ export function StickyNote({ note, onMove, onSave, onDelete, onResize, onColorCh
           {/* Drawing canvas layer (overlays text) */}
           <canvas
             ref={canvasRef}
-            className={`absolute inset-0 z-20 rounded-lg ${isDrawing ? 'border border-dashed border-black/15' : ''}`}
+            className={`absolute inset-0 z-20 rounded-lg touch-none ${isDrawing ? 'border border-dashed border-black/15' : ''}`}
             style={{
               width: localSize.width - 24,
               height: localSize.height - 36,

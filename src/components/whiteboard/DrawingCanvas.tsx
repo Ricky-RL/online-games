@@ -19,6 +19,7 @@ export function DrawingCanvas({ initialStrokes, width, height, onSave, onCancel,
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [strokes, setStrokes] = useState<Stroke[]>(initialStrokes ?? []);
   const [currentStroke, setCurrentStroke] = useState<Stroke | null>(null);
+  const currentStrokeRef = useRef<Stroke | null>(null);
   const [penColor, setPenColor] = useState('#333333');
   const [penWidth, setPenWidth] = useState(4);
   const isDrawing = useRef(false);
@@ -61,26 +62,31 @@ export function DrawingCanvas({ initialStrokes, width, height, onSave, onCancel,
   }
 
   function handlePointerDown(e: React.PointerEvent) {
+    e.preventDefault();
     isDrawing.current = true;
     const point = getCanvasPoint(e);
-    setCurrentStroke({ points: [point], color: penColor, width: penWidth });
+    const stroke = { points: [point], color: penColor, width: penWidth };
+    currentStrokeRef.current = stroke;
+    setCurrentStroke(stroke);
     (e.target as HTMLElement).setPointerCapture(e.pointerId);
   }
 
   function handlePointerMove(e: React.PointerEvent) {
-    if (!isDrawing.current || !currentStroke) return;
+    if (!isDrawing.current || !currentStrokeRef.current) return;
+    e.preventDefault();
     const point = getCanvasPoint(e);
-    setCurrentStroke((prev) =>
-      prev ? { ...prev, points: [...prev.points, point] } : null
-    );
+    const updated = { ...currentStrokeRef.current, points: [...currentStrokeRef.current.points, point] };
+    currentStrokeRef.current = updated;
+    setCurrentStroke(updated);
   }
 
   function handlePointerUp() {
-    if (!isDrawing.current || !currentStroke) return;
+    if (!isDrawing.current || !currentStrokeRef.current) return;
     isDrawing.current = false;
-    if (currentStroke.points.length > 1) {
-      setStrokes((prev) => [...prev, currentStroke]);
+    if (currentStrokeRef.current.points.length > 1) {
+      setStrokes((prev) => [...prev, currentStrokeRef.current!]);
     }
+    currentStrokeRef.current = null;
     setCurrentStroke(null);
   }
 
