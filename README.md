@@ -1,20 +1,36 @@
-# Connect Four
+# Game Night
 
-A real-time multiplayer Connect Four game with satisfying micro-interactions — spring physics piece drops, sounds, and confetti celebrations. Built for two players to share a link and play from separate devices.
+A collection of real-time multiplayer two-player games with satisfying micro-interactions — spring physics, sounds, and confetti celebrations. Built for two players to share a link and play from separate devices.
+
+## Games
+
+| Game | Description |
+|------|-------------|
+| **Connect Four** | Drop pieces, connect four in a row |
+| **Tic Tac Toe** | X and O, three in a row |
+| **Wordle** | Guess the word together (random or daily mode) |
+| **Checkers** | Jump and capture across the board |
+| **Battleship** | Hunt and sink the fleet |
+| **Mini Golf** | 3 holes, lowest score wins |
+| **Jenga** | Pull blocks, don't topple the tower |
+| **Snakes & Ladders** | Roll the dice, race to square 100 |
+| **Word Search** | Find hidden words, race against each other |
+| **Monopoly** | Vancouver-themed property trading |
+| **Whiteboard** | Shared sticky notes and doodles |
 
 ## How It Works
 
-1. One player clicks "New Game" and shares the URL
-2. The other player opens the link on their device
-3. Play Connect Four in real-time — moves sync instantly via Supabase Realtime
+1. Open the app and pick your player name
+2. Choose a game — matchmaking pairs you with the other player automatically
+3. Play in real-time — moves sync instantly via Supabase Realtime
 
-No accounts, no sign-up. Player identity is a random UUID in localStorage.
+No accounts, no sign-up. Player identity is stored in localStorage.
 
 ## Tech Stack
 
 - **Next.js** (App Router) — framework
 - **Supabase** — Postgres database + Realtime subscriptions for live sync
-- **Framer Motion** — spring physics for piece drop animations
+- **Framer Motion** — spring physics for animations
 - **canvas-confetti** — win celebrations
 - **Tailwind CSS** — styling
 
@@ -40,13 +56,9 @@ No accounts, no sign-up. Player identity is a random UUID in localStorage.
    NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
    ```
 
-3. Run the migration in your Supabase SQL editor:
+3. Run the migrations in your Supabase SQL editor (see `supabase/migrations/`).
 
-   ```sql
-   -- See supabase/migrations/001_create_games.sql
-   ```
-
-4. Enable Realtime on the `games` table in Supabase Dashboard.
+4. Enable Realtime on the `games` and `wordle_games` tables in Supabase Dashboard.
 
 5. Start the dev server:
 
@@ -67,23 +79,13 @@ No accounts, no sign-up. Player identity is a random UUID in localStorage.
 | `npm test` | Run tests in watch mode |
 | `npm run test:run` | Run tests once |
 
-## Project Structure
+## Features
 
-```
-src/
-  app/
-    connect-four/[gameId]/page.tsx   # Game page (dynamic route per game)
-    page.tsx                          # Landing page
-  components/                         # Board, Cell, Piece, UI components
-  hooks/                              # useGame (Supabase sync), useSound
-  lib/
-    game-logic.ts                     # Win detection, move validation
-    supabase.ts                       # Supabase client
-    types.ts                          # TypeScript types
-    player-id.ts                      # localStorage player identity
-supabase/
-  migrations/                         # Database schema
-```
+- **Async matchmaking** — Player 1 can start and take their turn immediately; Player 2 joins when ready
+- **Inbox notifications** — See pending games and whose turn it is
+- **Telegram notifications** — Get notified when it's your turn
+- **Leaderboard & match history** — Track wins across all games
+- **Daily Wordle streaks** — Compete on the same daily word
 
 ## Deployment
 
