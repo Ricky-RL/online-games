@@ -338,6 +338,12 @@ export function calculateNetWorth(board: MonopolyBoard): [number, number] {
   return worth;
 }
 
+export function forfeit(board: MonopolyBoard, player: Player): MonopolyBoard {
+  const opponent: Player = player === 1 ? 2 : 1;
+  const finalNetWorth = calculateNetWorth(board);
+  return { ...board, winner: opponent, phase: 'game-over', finalNetWorth };
+}
+
 export function performRoll(board: MonopolyBoard, player: Player, dice: [number, number]): MonopolyBoard {
   const newDoublesCount = isDoubles(dice) ? board.doublesCount + 1 : 0;
 

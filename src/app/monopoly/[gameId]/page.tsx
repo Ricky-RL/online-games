@@ -21,7 +21,7 @@ export default function MonopolyGamePage({ params }: { params: Promise<{ gameId:
   const {
     game, loading, error, myPlayer, isMyTurn,
     roll, buy, pass, build, endMyTurn, payJailFee, rollForDoubles,
-    buildableProperties, resetGame,
+    buildableProperties, resetGame, forfeitGame,
   } = useMonopolyGame(gameId);
   const { play } = useGameSounds();
 
@@ -147,6 +147,16 @@ export default function MonopolyGamePage({ params }: { params: Promise<{ gameId:
               <p className="text-center text-sm text-text-secondary py-4">
                 Waiting for opponent...
               </p>
+            )}
+
+            {board.phase !== 'game-over' && myPlayer && (
+              <motion.button
+                onClick={forfeitGame}
+                className="w-full mt-4 px-4 py-2 rounded-xl border border-red-500/30 text-red-400 text-sm font-medium hover:bg-red-500/10 transition-colors cursor-pointer"
+                whileTap={{ scale: 0.95 }}
+              >
+                Forfeit Game
+              </motion.button>
             )}
           </div>
         </div>
