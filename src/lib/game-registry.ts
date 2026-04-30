@@ -72,6 +72,12 @@ export const DEFAULT_GAME_ORDER: GameDefinition[] = [
     description: 'Vancouver-themed property trading. Roll, buy, build, and bankrupt.',
     color: '#008000',
   },
+  {
+    slug: 'memory',
+    title: 'Memory',
+    description: 'Flip cards, find pairs. Best memory wins the match.',
+    color: '#9B59B6',
+  },
 ];
 
 export const DEFAULT_SLUG_ORDER = DEFAULT_GAME_ORDER.map((g) => g.slug);

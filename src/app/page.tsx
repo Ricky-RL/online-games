@@ -242,6 +242,19 @@ function MonopolyIcon() {
   );
 }
 
+function MemoryIcon() {
+  return (
+    <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
+      <rect x="3" y="3" width="10" height="10" rx="2" stroke="#9B59B6" strokeWidth="2" opacity="0.9" />
+      <rect x="15" y="3" width="10" height="10" rx="2" stroke="#9B59B6" strokeWidth="2" opacity="0.6" />
+      <rect x="3" y="15" width="10" height="10" rx="2" stroke="#9B59B6" strokeWidth="2" opacity="0.6" />
+      <rect x="15" y="15" width="10" height="10" rx="2" stroke="#9B59B6" strokeWidth="2" opacity="0.9" />
+      <circle cx="8" cy="8" r="2" fill="#9B59B6" opacity="0.5" />
+      <circle cx="20" cy="20" r="2" fill="#9B59B6" opacity="0.5" />
+    </svg>
+  );
+}
+
 
 function PlayerSelector({ onSelect }: { onSelect: (name: PlayerName) => void }) {
   return (
@@ -887,6 +900,7 @@ function GameSelection({ playerName, onChangePlayer }: { playerName: PlayerName;
     'snakes-and-ladders': { icon: <SnakesAndLaddersIcon />, onClick: () => router.push('/snakes-and-ladders') },
     'word-search': { icon: <WordSearchIcon />, onClick: () => router.push('/word-search') },
     'monopoly': { icon: <MonopolyIcon />, onClick: handlePlayMonopolyGame, loading: connecting === 'monopoly' },
+    'memory': { icon: <MemoryIcon />, onClick: () => router.push('/memory') },
   };
 
   return (
