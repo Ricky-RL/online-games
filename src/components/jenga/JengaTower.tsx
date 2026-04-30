@@ -14,7 +14,7 @@ interface JengaTowerProps {
 }
 
 export function JengaTower({ state, isMyTurn, selectedBlock, onBlockClick, disabled }: JengaTowerProps) {
-  const [rotationY, setRotationY] = useState(-45);
+  const [rotationY, setRotationY] = useState(-25);
   const [isDragging, setIsDragging] = useState(false);
   const dragStart = useRef<{ x: number; startRotation: number } | null>(null);
 
@@ -43,10 +43,10 @@ export function JengaTower({ state, isMyTurn, selectedBlock, onBlockClick, disab
     dragStart.current = null;
   }, [isDragging]);
 
-  const BLOCK_WIDTH = 24;
-  const BLOCK_DEPTH = 72;
+  const BLOCK_WIDTH = 72;
+  const BLOCK_DEPTH = 24;
   const BLOCK_HEIGHT = 14;
-  const GAP = 1;
+  const GAP = 2;
   const ROW_HEIGHT = BLOCK_HEIGHT + GAP;
   const towerRows = state.tower.length;
   const ROW_WIDTH = BLOCK_WIDTH * 3 + GAP * 2;
@@ -69,7 +69,7 @@ export function JengaTower({ state, isMyTurn, selectedBlock, onBlockClick, disab
         <div
           style={{
             transformStyle: 'preserve-3d',
-            transform: `rotateX(30deg) rotateY(${rotationY}deg)`,
+            transform: `rotateX(20deg) rotateY(${rotationY}deg)`,
             transition: isDragging ? 'none' : 'transform 0.3s ease-out',
             position: 'relative',
             width: `${ROW_WIDTH + 80}px`,
