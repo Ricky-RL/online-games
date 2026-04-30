@@ -163,6 +163,7 @@ export function useMemoryGame(gameId: string): UseMemoryGameReturn {
 
     if (draw) {
       recordMatchResult({
+        game_id: currentGame.id,
         game_type: 'memory',
         winner_id: null,
         winner_name: null,
@@ -185,6 +186,7 @@ export function useMemoryGame(gameId: string): UseMemoryGameReturn {
       const winnerId = winner === 1 ? currentGame.player1_id : currentGame.player2_id;
       const loserId = winner === 1 ? currentGame.player2_id : currentGame.player1_id;
       recordMatchResult({
+        game_id: currentGame.id,
         game_type: 'memory',
         winner_id: winnerId,
         winner_name: winnerName,
