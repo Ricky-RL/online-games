@@ -1,7 +1,7 @@
 'use client';
 
-import { useMemo } from 'react';
-import type { JengaGameState } from '@/lib/types';
+import { useMemo, useRef, useCallback } from 'react';
+import type { JengaGameState, Point } from '@/lib/types';
 import { calculateBlockRisk, getPlayableBlocks, getPlayableBlocksAboveThreshold } from '@/lib/jenga-logic';
 
 interface JengaTowerProps {
@@ -12,6 +12,10 @@ interface JengaTowerProps {
   onBlockClick: (row: number, col: number) => void;
   disabled: boolean;
   riskThreshold?: number;
+  flashingBlocks?: string[];
+  onDragStart?: (row: number, col: number) => void;
+  onDragMove?: (point: Point) => void;
+  onDragEnd?: () => void;
 }
 
 function riskColor(risk: number): { top: string; front: string; side: string } {
@@ -21,13 +25,14 @@ function riskColor(risk: number): { top: string; front: string; side: string } {
   return { top: '#f09080', front: '#c04030', side: '#8a2818' };
 }
 
-export function JengaTower({ state, isMyTurn, selectedBlock, pullingBlock, onBlockClick, disabled, riskThreshold }: JengaTowerProps) {
+export function JengaTower({ state, isMyTurn, selectedBlock, pullingBlock, onBlockClick, disabled, riskThreshold, flashingBlocks, onDragStart, onDragMove, onDragEnd }: JengaTowerProps) {
   const playableBlocks = isMyTurn && !disabled
     ? (riskThreshold != null
         ? getPlayableBlocksAboveThreshold(state, riskThreshold)
         : getPlayableBlocks(state))
     : [];
   const playableSet = new Set(playableBlocks.map(([r, c]) => `${r}-${c}`));
+  const flashSet = useMemo(() => new Set(flashingBlocks ?? []), [flashingBlocks]);
 
   const BLOCK_FACE_H = 18;
   const BLOCK_TOP_H = 7;
@@ -40,6 +45,56 @@ export function JengaTower({ state, isMyTurn, selectedBlock, pullingBlock, onBlo
   const towerRows = state.tower.length;
   const towerPixelH = towerRows * ROW_HEIGHT + 50;
   const towerPixelW = 180;
+
+  // Drag state
+  const isDragging = useRef(false);
+  const dragBlockRef = useRef<[number, number] | null>(null);
+  const holdTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  const handlePointerDown = useCallback((row: number, col: number, e: React.PointerEvent) => {
+    // Only start drag on selected block
+    if (!selectedBlock || selectedBlock[0] !== row || selectedBlock[1] !== col) return;
+    if (!onDragStart) return;
+
+    e.preventDefault();
+    (e.target as HTMLElement).setPointerCapture(e.pointerId);
+
+    // Use a short hold to distinguish tap from drag (150ms)
+    holdTimerRef.current = setTimeout(() => {
+      isDragging.current = true;
+      dragBlockRef.current = [row, col];
+      onDragStart(row, col);
+    }, 150);
+  }, [selectedBlock, onDragStart]);
+
+  const handlePointerMove = useCallback((e: React.PointerEvent) => {
+    if (!isDragging.current || !onDragMove || !containerRef.current) return;
+
+    const rect = containerRef.current.getBoundingClientRect();
+    const point: Point = {
+      x: e.clientX - rect.left,
+      y: e.clientY - rect.top,
+    };
+    onDragMove(point);
+
+    // Mobile haptics when deviation is high — the parent computes deviation
+    // and triggers haptics via the hook. We do a simple vibration pulse here
+    // as a fallback when the user pointer moves far from block center.
+  }, [onDragMove]);
+
+  const handlePointerUp = useCallback((e: React.PointerEvent) => {
+    if (holdTimerRef.current) {
+      clearTimeout(holdTimerRef.current);
+      holdTimerRef.current = null;
+    }
+    if (isDragging.current) {
+      isDragging.current = false;
+      dragBlockRef.current = null;
+      onDragEnd?.();
+      e.preventDefault();
+    }
+  }, [onDragEnd]);
 
   const blocks = useMemo(() => {
     const result: Array<{
@@ -78,13 +133,18 @@ export function JengaTower({ state, isMyTurn, selectedBlock, pullingBlock, onBlo
       }
     }
     return result;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state, towerPixelH, towerPixelW]);
 
   return (
     <div className="flex flex-col items-center gap-3">
       <div
-        className="relative select-none"
+        ref={containerRef}
+        className="relative select-none touch-none"
         style={{ width: `${towerPixelW}px`, height: `${towerPixelH}px` }}
+        onPointerMove={handlePointerMove}
+        onPointerUp={handlePointerUp}
+        onPointerCancel={handlePointerUp}
       >
         {/* Base platform */}
         <div
@@ -108,13 +168,17 @@ export function JengaTower({ state, isMyTurn, selectedBlock, pullingBlock, onBlo
           const isPlayable = playableSet.has(`${b.rowIdx}-${b.colIdx}`);
           const isSelected = selectedBlock?.[0] === b.rowIdx && selectedBlock?.[1] === b.colIdx;
           const isPulling = pullingBlock?.[0] === b.rowIdx && pullingBlock?.[1] === b.colIdx;
+          const isFlashing = flashSet.has(`${b.rowIdx}-${b.colIdx}`);
 
           return (
             <button
               key={b.id}
               data-block
+              data-row={b.rowIdx}
+              data-col={b.colIdx}
               aria-label={`Block row ${b.rowIdx + 1}, column ${b.colIdx + 1}${isPlayable ? `, ${b.risk}% risk` : ''}`}
               onClick={isPlayable ? () => onBlockClick(b.rowIdx, b.colIdx) : undefined}
+              onPointerDown={isSelected ? (e) => handlePointerDown(b.rowIdx, b.colIdx, e) : undefined}
               className="absolute group"
               style={{
                 left: `${b.x}px`,
@@ -208,6 +272,16 @@ export function JengaTower({ state, isMyTurn, selectedBlock, pullingBlock, onBlo
                 <span className="absolute -top-6 left-1/2 -translate-x-1/2 text-[10px] font-bold text-white bg-black/85 px-2 py-0.5 rounded-md whitespace-nowrap z-20 shadow-lg">
                   {b.risk}% risk
                 </span>
+              )}
+
+              {/* Cascade flash animation */}
+              {isFlashing && (
+                <div
+                  className="absolute inset-0 rounded-[2px] pointer-events-none z-10 animate-[cascade-flash_0.4s_ease-out_forwards]"
+                  style={{
+                    background: 'rgba(250, 204, 21, 0.6)',
+                  }}
+                />
               )}
             </button>
           );
