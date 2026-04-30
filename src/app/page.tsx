@@ -726,8 +726,8 @@ function GameSelection({ playerName, onChangePlayer }: { playerName: PlayerName;
     if (activeGame) { router.push(`/monopoly/${activeGame.id}`); return; }
     if (joinableGame) { if (await joinGame(joinableGame.id)) router.push(`/monopoly/${joinableGame.id}`); return; }
     const insertData = isRicky
-      ? { game_type: 'monopoly', board: createInitialBoard(), current_turn: 1 as const, winner: null, player1_id: myId, player1_name: playerName, player2_id: null, player2_name: null }
-      : { game_type: 'monopoly', board: createInitialBoard(), current_turn: 1 as const, winner: null, player1_id: null, player1_name: null, player2_id: myId, player2_name: playerName };
+      ? { game_type: 'monopoly', board: createInitialBoard(1), current_turn: 1 as const, winner: null, player1_id: myId, player1_name: playerName, player2_id: null, player2_name: null }
+      : { game_type: 'monopoly', board: createInitialBoard(2), current_turn: 2 as const, winner: null, player1_id: null, player1_name: null, player2_id: myId, player2_name: playerName };
     const { data, error } = await supabase.from('games').insert(insertData).select('id').single();
     if (error || !data) { setConnecting(null); return; }
     router.push(`/monopoly/${data.id}`);

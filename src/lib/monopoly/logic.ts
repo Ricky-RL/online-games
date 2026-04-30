@@ -6,7 +6,7 @@ import {
 } from './types';
 import { BOARD, getPropertiesInGroup, getRailroadIndices, getUtilityIndices } from './board-data';
 
-export function createInitialBoard(): MonopolyBoard {
+export function createInitialBoard(startingPlayer: Player = 1): MonopolyBoard {
   return {
     players: [
       { position: 0, cash: STARTING_CASH, inJail: false, jailTurns: 0 },
@@ -15,7 +15,7 @@ export function createInitialBoard(): MonopolyBoard {
     properties: {},
     currentTurn: 1,
     turnSequence: 0,
-    activePlayer: 1,
+    activePlayer: startingPlayer,
     phase: 'roll',
     lastRoll: null,
     doublesCount: 0,
