@@ -67,9 +67,11 @@ Pulling a block actively destabilizes neighboring blocks, changing their display
 
 When a block is pulled from position (row, col):
 
-- **Same-row neighbors (left/right):** +15% risk per adjacent gap
+- **Same-row neighbors (left/right):** +15% risk per adjacent gap (replaces the existing +10% gap bonus in `calculateBlockRisk`)
 - **Row above:** blocks directly above gain +10% risk (less support)
 - **Row below:** blocks below gain +5% risk (weight shift)
+
+These cascade effects are cumulative across multiple pulls and persist for the rest of the game.
 
 ### Changes from Current System
 
