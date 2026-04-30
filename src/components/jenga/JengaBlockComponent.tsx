@@ -37,8 +37,20 @@ export function JengaBlockComponent({
   }
 
   const colors = woodColor(risk);
-  const halfDepth = blockDepth / 2;
-  const halfWidth = blockWidth / 2;
+  const hw = blockWidth / 2;
+  const hh = blockHeight / 2;
+  const hd = blockDepth / 2;
+
+  // Each face is sized exactly to cover that side of the rectangular prism,
+  // positioned at the center of the button, then translated outward by half
+  // the perpendicular dimension. backface-visibility:hidden ensures we never
+  // see through the back of any face.
+  const faceBase: React.CSSProperties = {
+    position: 'absolute',
+    top: '50%',
+    left: '50%',
+    backfaceVisibility: 'hidden',
+  };
 
   return (
     <motion.button
@@ -53,94 +65,84 @@ export function JengaBlockComponent({
       }}
       whileHover={isPlayable ? { z: 6, transition: { duration: 0.15 } } : undefined}
     >
-      {/* Front face */}
+      {/* Front face (width x height), pushed forward by half-depth */}
       <div
         style={{
-          position: 'absolute',
+          ...faceBase,
           width: `${blockWidth}px`,
           height: `${blockHeight}px`,
-          top: 0,
-          left: 0,
+          marginLeft: `-${hw}px`,
+          marginTop: `-${hh}px`,
           backgroundColor: colors.front,
-          transform: `translateZ(${halfDepth}px)`,
+          transform: `translateZ(${hd}px)`,
           border: isSelected ? '2px solid #fff' : '1px solid rgba(0,0,0,0.12)',
           boxShadow: isSelected
             ? '0 0 10px rgba(255,255,255,0.7)'
             : 'inset 0 1px 0 rgba(255,255,255,0.3), inset 0 -1px 0 rgba(0,0,0,0.1)',
-          borderRadius: '1px',
         }}
       />
-      {/* Back face */}
+      {/* Back face (width x height), pushed back by half-depth */}
       <div
         style={{
-          position: 'absolute',
+          ...faceBase,
           width: `${blockWidth}px`,
           height: `${blockHeight}px`,
-          top: 0,
-          left: 0,
+          marginLeft: `-${hw}px`,
+          marginTop: `-${hh}px`,
           backgroundColor: colors.dark,
-          transform: `translateZ(-${halfDepth}px) rotateY(180deg)`,
-          borderRadius: '1px',
+          transform: `rotateY(180deg) translateZ(${hd}px)`,
         }}
       />
-      {/* Top face */}
+      {/* Top face (width x depth), pushed up by half-height */}
       <div
         style={{
-          position: 'absolute',
+          ...faceBase,
           width: `${blockWidth}px`,
           height: `${blockDepth}px`,
-          top: 0,
-          left: 0,
+          marginLeft: `-${hw}px`,
+          marginTop: `-${hd}px`,
           backgroundColor: colors.top,
-          transformOrigin: 'top center',
-          transform: `rotateX(90deg) translateZ(0px)`,
-          borderRadius: '1px',
+          transform: `rotateX(90deg) translateZ(${hh}px)`,
           border: '1px solid rgba(0,0,0,0.06)',
           boxShadow: 'inset 0 0 4px rgba(255,255,255,0.3)',
         }}
       />
-      {/* Bottom face */}
+      {/* Bottom face (width x depth), pushed down by half-height */}
       <div
         style={{
-          position: 'absolute',
+          ...faceBase,
           width: `${blockWidth}px`,
           height: `${blockDepth}px`,
-          bottom: 0,
-          left: 0,
+          marginLeft: `-${hw}px`,
+          marginTop: `-${hd}px`,
           backgroundColor: colors.dark,
-          transformOrigin: 'bottom center',
-          transform: `rotateX(-90deg) translateZ(0px)`,
-          borderRadius: '1px',
+          transform: `rotateX(-90deg) translateZ(${hh}px)`,
         }}
       />
-      {/* Right face */}
+      {/* Right face (depth x height), pushed right by half-width */}
       <div
         style={{
-          position: 'absolute',
+          ...faceBase,
           width: `${blockDepth}px`,
           height: `${blockHeight}px`,
-          top: 0,
-          left: `${halfWidth}px`,
+          marginLeft: `-${hd}px`,
+          marginTop: `-${hh}px`,
           backgroundColor: colors.side,
-          transformOrigin: 'left center',
-          transform: `rotateY(90deg)`,
-          borderRadius: '1px',
+          transform: `rotateY(90deg) translateZ(${hw}px)`,
           border: '1px solid rgba(0,0,0,0.08)',
           boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.15)',
         }}
       />
-      {/* Left face */}
+      {/* Left face (depth x height), pushed left by half-width */}
       <div
         style={{
-          position: 'absolute',
+          ...faceBase,
           width: `${blockDepth}px`,
           height: `${blockHeight}px`,
-          top: 0,
-          left: `-${halfWidth}px`,
+          marginLeft: `-${hd}px`,
+          marginTop: `-${hh}px`,
           backgroundColor: colors.side,
-          transformOrigin: 'right center',
-          transform: `rotateY(-90deg)`,
-          borderRadius: '1px',
+          transform: `rotateY(-90deg) translateZ(${hw}px)`,
           border: '1px solid rgba(0,0,0,0.08)',
         }}
       />
@@ -150,7 +152,7 @@ export function JengaBlockComponent({
           initial={{ opacity: 0, y: -5 }}
           animate={{ opacity: 1, y: 0 }}
           className="absolute -top-5 left-1/2 -translate-x-1/2 text-[10px] font-bold text-white bg-black/80 px-1.5 py-0.5 rounded whitespace-nowrap"
-          style={{ transform: `translateX(-50%) translateZ(${halfDepth + 4}px)` }}
+          style={{ transform: `translateX(-50%) translateZ(${hd + 4}px)` }}
         >
           {risk}% risk
         </motion.span>
