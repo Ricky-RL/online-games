@@ -50,6 +50,7 @@ export function JengaBlockComponent({
     top: '50%',
     left: '50%',
     backfaceVisibility: 'hidden',
+    pointerEvents: 'none',
   };
 
   return (
@@ -62,6 +63,7 @@ export function JengaBlockComponent({
         height: `${blockHeight}px`,
         transformStyle: 'preserve-3d',
         cursor: isPlayable ? 'pointer' : 'default',
+        pointerEvents: 'auto',
       }}
       whileHover={isPlayable ? { z: 6, transition: { duration: 0.15 } } : undefined}
     >
