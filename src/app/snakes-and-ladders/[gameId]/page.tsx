@@ -99,7 +99,7 @@ export default function SnakesAndLaddersGamePage({ params }: { params: Promise<{
       )}
 
       {/* Board */}
-      <Board board={board} />
+      <Board board={board} lastMove={lastMove} />
 
       {/* Dice */}
       {!game.winner && (

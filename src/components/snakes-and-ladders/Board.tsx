@@ -1,11 +1,14 @@
 'use client';
 
-import { motion } from 'framer-motion';
+import { motion, useAnimationControls } from 'framer-motion';
 import { useColors } from '@/contexts/PlayerColorsContext';
+import { useEffect, useRef } from 'react';
 import type { SnakesAndLaddersState } from '@/lib/types';
+import type { LastMoveInfo } from '@/hooks/useSnakesAndLaddersGame';
 
 interface BoardProps {
   board: SnakesAndLaddersState;
+  lastMove: LastMoveInfo | null;
 }
 
 function getSquarePosition(square: number): { row: number; col: number } {
@@ -68,7 +71,108 @@ function ladderRungs(from: number, to: number, spacing: number = 6): { x1: numbe
   return rungs;
 }
 
-export function Board({ board }: BoardProps) {
+function getSteppingSquares(from: number, roll: number): number[] {
+  const squares: number[] = [];
+  let pos = from;
+  let direction = 1;
+  for (let i = 0; i < roll; i++) {
+    pos += direction;
+    if (pos > 100) {
+      pos = 99;
+      direction = -1;
+    }
+    squares.push(pos);
+  }
+  return squares;
+}
+
+function PlayerPiece({
+  player,
+  square,
+  color,
+  lastMove,
+}: {
+  player: 1 | 2;
+  square: number;
+  color: string;
+  lastMove: LastMoveInfo | null;
+}) {
+  const controls = useAnimationControls();
+  const posRef = useRef(getCenter(square));
+  const lastAnimatedMove = useRef<string | null>(null);
+  const isAnimating = useRef(false);
+
+  useEffect(() => {
+    if (
+      lastMove &&
+      lastMove.player === player &&
+      !isAnimating.current
+    ) {
+      const moveKey = `${lastMove.from}-${lastMove.to}-${lastMove.roll}`;
+      if (moveKey === lastAnimatedMove.current) return;
+      lastAnimatedMove.current = moveKey;
+
+      const steppingSquares = getSteppingSquares(lastMove.from, lastMove.roll);
+      const landingSquare = steppingSquares[steppingSquares.length - 1];
+      const finalSquare = lastMove.to;
+      const hasSnakeOrLadder = landingSquare !== finalSquare;
+
+      isAnimating.current = true;
+
+      (async () => {
+        for (const sq of steppingSquares) {
+          const pos = getCenter(sq);
+          await controls.start({
+            x: pos.x,
+            y: pos.y,
+            transition: { duration: 0.15, ease: 'easeInOut' },
+          });
+        }
+
+        if (hasSnakeOrLadder) {
+          await new Promise((r) => setTimeout(r, 200));
+          const finalPos = getCenter(finalSquare);
+          await controls.start({
+            x: finalPos.x,
+            y: finalPos.y,
+            transition: { duration: 0.4, ease: [0.4, 0, 0.2, 1] },
+          });
+        }
+
+        posRef.current = getCenter(finalSquare);
+        isAnimating.current = false;
+      })();
+
+      return;
+    }
+
+    if (!isAnimating.current) {
+      const pos = getCenter(square);
+      if (pos.x !== posRef.current.x || pos.y !== posRef.current.y) {
+        posRef.current = pos;
+        controls.set({ x: pos.x, y: pos.y });
+      }
+    }
+  }, [lastMove, square, player, controls]);
+
+  const initialPos = getCenter(square);
+
+  return (
+    <motion.circle
+      cx={0}
+      cy={0}
+      r={7}
+      fill={color}
+      stroke="white"
+      strokeWidth={2}
+      style={{ filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.3))' }}
+      animate={controls}
+      initial={{ x: initialPos.x, y: initialPos.y }}
+    />
+  );
+}
+
+export function Board({ board, lastMove }: BoardProps) {
   const { player1Color, player2Color } = useColors();
 
   const squares: number[] = [];
@@ -84,6 +188,9 @@ export function Board({ board }: BoardProps) {
     to: top as number,
   }));
 
+  const p1Offset = board.players[1] === board.players[2] ? -5 : 0;
+  const p2Offset = board.players[1] === board.players[2] ? 5 : 0;
+
   return (
     <div className="relative w-full max-w-[500px] aspect-square">
       {/* Grid */}
@@ -94,8 +201,6 @@ export function Board({ board }: BoardProps) {
           const gridCol = col + 1;
           const isSnakeHead = board.snakes[num] !== undefined;
           const isLadderBottom = board.ladders[num] !== undefined;
-          const hasPlayer1 = board.players[1] === num;
-          const hasPlayer2 = board.players[2] === num;
 
           return (
             <div
@@ -111,34 +216,14 @@ export function Board({ board }: BoardProps) {
               {isLadderBottom && (
                 <div className="absolute inset-0 bg-emerald-500/8 rounded-sm" />
               )}
-
-              {/* Player pieces */}
-              <div className="flex gap-0.5">
-                {hasPlayer1 && (
-                  <motion.div
-                    className="w-4 h-4 rounded-full border-2 border-white shadow-md z-10"
-                    style={{ backgroundColor: player1Color }}
-                    layoutId="player1-piece"
-                    transition={{ type: 'spring', stiffness: 200, damping: 15 }}
-                  />
-                )}
-                {hasPlayer2 && (
-                  <motion.div
-                    className="w-4 h-4 rounded-full border-2 border-white shadow-md z-10"
-                    style={{ backgroundColor: player2Color }}
-                    layoutId="player2-piece"
-                    transition={{ type: 'spring', stiffness: 200, damping: 15 }}
-                  />
-                )}
-              </div>
             </div>
           );
         })}
       </div>
 
-      {/* Snake/Ladder overlay */}
+      {/* Snake/Ladder/Player overlay */}
       <svg className="absolute inset-0 w-full h-full pointer-events-none" viewBox="0 0 500 500">
-        {/* Ladders: two rails + rungs, solid green */}
+        {/* Ladders */}
         {ladderEntries.map(({ from, to }) => {
           const start = getCenter(from);
           const end = getCenter(to);
@@ -151,19 +236,16 @@ export function Board({ board }: BoardProps) {
 
           return (
             <g key={`ladder-${from}`} opacity="0.55">
-              {/* Left rail */}
               <line
                 x1={start.x - perpX} y1={start.y - perpY}
                 x2={end.x - perpX} y2={end.y - perpY}
                 stroke="#16a34a" strokeWidth="2.5" strokeLinecap="round"
               />
-              {/* Right rail */}
               <line
                 x1={start.x + perpX} y1={start.y + perpY}
                 x2={end.x + perpX} y2={end.y + perpY}
                 stroke="#16a34a" strokeWidth="2.5" strokeLinecap="round"
               />
-              {/* Rungs */}
               {rungs.map((r, i) => (
                 <line
                   key={i}
@@ -175,7 +257,7 @@ export function Board({ board }: BoardProps) {
           );
         })}
 
-        {/* Snakes: wavy red paths with head dot */}
+        {/* Snakes */}
         {snakeEntries.map(({ from, to }) => {
           const start = getCenter(from);
           return (
@@ -185,11 +267,28 @@ export function Board({ board }: BoardProps) {
                 stroke="#dc2626" strokeWidth="3.5" fill="none"
                 strokeLinecap="round" strokeLinejoin="round"
               />
-              {/* Snake head */}
               <circle cx={start.x} cy={start.y} r="4" fill="#dc2626" />
             </g>
           );
         })}
+
+        {/* Player pieces */}
+        <g transform={`translate(${p1Offset}, 0)`}>
+          <PlayerPiece
+            player={1}
+            square={board.players[1]}
+            color={player1Color}
+            lastMove={lastMove}
+          />
+        </g>
+        <g transform={`translate(${p2Offset}, 0)`}>
+          <PlayerPiece
+            player={2}
+            square={board.players[2]}
+            color={player2Color}
+            lastMove={lastMove}
+          />
+        </g>
       </svg>
     </div>
   );
