@@ -1,7 +1,5 @@
 'use client';
 
-import { motion } from 'framer-motion';
-
 interface JengaBlockComponentProps {
   row: number;
   col: number;
@@ -49,18 +47,25 @@ export function JengaBlockComponent({
   };
 
   return (
-    <motion.button
+    <button
       data-block
       onClick={isPlayable ? onClick : undefined}
-      className="relative"
+      className="relative jenga-block"
       style={{
         width: `${blockWidth}px`,
         height: `${blockHeight}px`,
         transformStyle: 'preserve-3d',
+        transform: 'translateZ(0px)',
+        transition: 'transform 0.15s ease',
         cursor: isPlayable ? 'pointer' : 'default',
         pointerEvents: 'auto',
       }}
-      whileHover={isPlayable ? { z: 6, transition: { duration: 0.15 } } : undefined}
+      onMouseEnter={(e) => {
+        if (isPlayable) (e.currentTarget as HTMLElement).style.transform = 'translateZ(6px)';
+      }}
+      onMouseLeave={(e) => {
+        (e.currentTarget as HTMLElement).style.transform = 'translateZ(0px)';
+      }}
     >
       {/* Front face (width x height), pushed forward by half-depth */}
       <div
@@ -145,15 +150,13 @@ export function JengaBlockComponent({
       />
       {/* Risk indicator on selected */}
       {isSelected && (
-        <motion.span
-          initial={{ opacity: 0, y: -5 }}
-          animate={{ opacity: 1, y: 0 }}
+        <span
           className="absolute -top-5 left-1/2 -translate-x-1/2 text-[10px] font-bold text-white bg-black/80 px-1.5 py-0.5 rounded whitespace-nowrap"
-          style={{ transform: `translateX(-50%) translateZ(${hd + 4}px)` }}
+          style={{ transform: `translateX(-50%) translateZ(${hd + 4}px)`, pointerEvents: 'none' }}
         >
           {risk}% risk
-        </motion.span>
+        </span>
       )}
-    </motion.button>
+    </button>
   );
 }
