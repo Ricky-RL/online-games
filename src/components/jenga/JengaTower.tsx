@@ -40,20 +40,21 @@ export function JengaTower({ state, isMyTurn, selectedBlock, onBlockClick, disab
     dragStart.current = null;
   }, []);
 
-  const BLOCK_W = 54;
-  const BLOCK_H = 14;
-  const BLOCK_D = 18;
-  const GAP = 0;
-  const ROW_HEIGHT = BLOCK_H + 1;
+  // Real Jenga proportions: block is 3x longer than it is wide
+  // A layer of 3 blocks side-by-side = a square footprint
+  const BLOCK_LENGTH = 48;   // long dimension of a block
+  const BLOCK_WIDTH = 16;    // short dimension (width/depth)
+  const BLOCK_HEIGHT = 12;   // thickness
+  const GAP = 1;
+  const ROW_HEIGHT = BLOCK_HEIGHT + 1;
   const towerRows = state.tower.length;
-  const towerWidth = BLOCK_W * 3 + GAP * 2;
 
   return (
     <div className="flex flex-col items-center gap-4">
       <div
         className="relative select-none"
         style={{
-          perspective: '800px',
+          perspective: '600px',
           perspectiveOrigin: '50% 40%',
           cursor: isDragging ? 'grabbing' : 'grab',
         }}
@@ -67,10 +68,10 @@ export function JengaTower({ state, isMyTurn, selectedBlock, onBlockClick, disab
           transition={isDragging ? { duration: 0 } : { type: 'spring', stiffness: 100, damping: 20 }}
           style={{
             transformStyle: 'preserve-3d',
-            transform: `rotateX(15deg) rotateY(${rotationY}deg)`,
+            transform: `rotateX(12deg) rotateY(${rotationY}deg)`,
             position: 'relative',
-            width: `${towerWidth + 40}px`,
-            height: `${towerRows * ROW_HEIGHT + 40}px`,
+            width: `${BLOCK_LENGTH * 3 + GAP * 2 + 60}px`,
+            height: `${towerRows * ROW_HEIGHT + 60}px`,
           }}
         >
           {state.tower.map((row, rowIdx) => {
@@ -78,6 +79,9 @@ export function JengaTower({ state, isMyTurn, selectedBlock, onBlockClick, disab
             const yOffset = (towerRows - 1 - rowIdx) * ROW_HEIGHT;
 
             if (isPerp) {
+              // Perpendicular row: blocks run front-to-back (Z axis)
+              // Visible from front: you see the short end (BLOCK_WIDTH wide)
+              // 3 blocks side by side showing their ends = 3 * BLOCK_WIDTH wide
               return (
                 <div
                   key={rowIdx}
@@ -87,42 +91,32 @@ export function JengaTower({ state, isMyTurn, selectedBlock, onBlockClick, disab
                     left: '50%',
                     transform: 'translateX(-50%)',
                     transformStyle: 'preserve-3d',
-                    width: `${BLOCK_W}px`,
-                    height: `${BLOCK_H}px`,
+                    display: 'flex',
+                    justifyContent: 'center',
+                    gap: `${GAP}px`,
                   }}
                 >
-                  {row.map((block, colIdx) => {
-                    const zOffset = (colIdx - 1) * (BLOCK_D + GAP);
-                    return (
-                      <div
-                        key={block.id}
-                        style={{
-                          position: 'absolute',
-                          top: 0,
-                          left: 0,
-                          transformStyle: 'preserve-3d',
-                          transform: `translateZ(${zOffset}px)`,
-                        }}
-                      >
-                        <JengaBlockComponent
-                          row={rowIdx}
-                          col={colIdx}
-                          exists={block.exists}
-                          risk={calculateBlockRisk(state, rowIdx, colIdx)}
-                          isPlayable={playableSet.has(`${rowIdx}-${colIdx}`)}
-                          isSelected={selectedBlock?.[0] === rowIdx && selectedBlock?.[1] === colIdx}
-                          blockWidth={BLOCK_W}
-                          blockHeight={BLOCK_H}
-                          blockDepth={BLOCK_D}
-                          onClick={() => onBlockClick(rowIdx, colIdx)}
-                        />
-                      </div>
-                    );
-                  })}
+                  {row.map((block, colIdx) => (
+                    <JengaBlockComponent
+                      key={block.id}
+                      row={rowIdx}
+                      col={colIdx}
+                      exists={block.exists}
+                      risk={calculateBlockRisk(state, rowIdx, colIdx)}
+                      isPlayable={playableSet.has(`${rowIdx}-${colIdx}`)}
+                      isSelected={selectedBlock?.[0] === rowIdx && selectedBlock?.[1] === colIdx}
+                      blockWidth={BLOCK_WIDTH}
+                      blockHeight={BLOCK_HEIGHT}
+                      blockDepth={BLOCK_LENGTH}
+                      onClick={() => onBlockClick(rowIdx, colIdx)}
+                    />
+                  ))}
                 </div>
               );
             }
 
+            // Normal row: blocks run left-to-right (X axis)
+            // Visible from front: you see the long face (BLOCK_LENGTH wide)
             return (
               <div
                 key={rowIdx}
@@ -146,9 +140,9 @@ export function JengaTower({ state, isMyTurn, selectedBlock, onBlockClick, disab
                     risk={calculateBlockRisk(state, rowIdx, colIdx)}
                     isPlayable={playableSet.has(`${rowIdx}-${colIdx}`)}
                     isSelected={selectedBlock?.[0] === rowIdx && selectedBlock?.[1] === colIdx}
-                    blockWidth={BLOCK_W}
-                    blockHeight={BLOCK_H}
-                    blockDepth={BLOCK_D}
+                    blockWidth={BLOCK_LENGTH}
+                    blockHeight={BLOCK_HEIGHT}
+                    blockDepth={BLOCK_WIDTH}
                     onClick={() => onBlockClick(rowIdx, colIdx)}
                   />
                 ))}
