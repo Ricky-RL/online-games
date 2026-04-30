@@ -1,0 +1,1 @@
+ALTER TABLE player_preferences ADD COLUMN IF NOT EXISTS game_order TEXT[] DEFAULT NULL;
