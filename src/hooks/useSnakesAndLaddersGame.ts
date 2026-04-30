@@ -126,11 +126,8 @@ export function useSnakesAndLaddersGame(gameId: string): UseSnakesAndLaddersGame
             optimisticBoard.current = null;
             return fresh;
           }
-          // Guard: don't regress if server is behind our optimistic state
-          if (lastUpdatedAt.current && fresh.updated_at < lastUpdatedAt.current) {
-            return prev;
-          }
-          optimisticBoard.current = null;
+          // Server hasn't confirmed our move yet — keep local state
+          return prev;
         }
 
         if (JSON.stringify(fresh) === JSON.stringify(prev)) return prev;
@@ -138,16 +135,20 @@ export function useSnakesAndLaddersGame(gameId: string): UseSnakesAndLaddersGame
         // Guard against out-of-order responses
         if (fresh.updated_at < prev.updated_at) return prev;
 
-        // Detect opponent's move
+        // Detect opponent's move (compare by value to avoid re-triggering on every poll)
         const freshBoard = fresh.board as SnakesAndLaddersState;
         const prevBoard = prev.board as SnakesAndLaddersState;
-        if (freshBoard.lastRoll && freshBoard.lastRoll !== prevBoard.lastRoll) {
-          const movedPlayer = freshBoard.lastRoll.player;
+        const rollChanged = freshBoard.lastRoll &&
+          (freshBoard.lastRoll.player !== prevBoard.lastRoll?.player ||
+           freshBoard.lastRoll.value !== prevBoard.lastRoll?.value ||
+           freshBoard.players[freshBoard.lastRoll.player] !== prevBoard.players[freshBoard.lastRoll.player]);
+        if (rollChanged) {
+          const movedPlayer = freshBoard.lastRoll!.player;
           setLastMove({
             player: movedPlayer,
             from: prevBoard.players[movedPlayer],
             to: freshBoard.players[movedPlayer],
-            roll: freshBoard.lastRoll.value,
+            roll: freshBoard.lastRoll!.value,
           });
         }
 
