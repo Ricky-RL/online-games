@@ -15,9 +15,8 @@ import type { WordSearchBoardState } from '@/lib/word-search-types';
 export default function WordSearchGamePage({ params }: { params: Promise<{ gameId: string }> }) {
   const { gameId } = use(params);
   const router = useRouter();
-  const { game, loading, deleted, submitResult, resetGame, myResult, opponentResult, bothSubmitted } = useWordSearchGame(gameId);
+  const { game, loading, deleted, findWord, submitResult, resetGame, myResult, opponentResult, bothSubmitted } = useWordSearchGame(gameId);
 
-  const [foundWords, setFoundWords] = useState<string[]>([]);
   const [timerStarted, setTimerStarted] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [showEndDialog, setShowEndDialog] = useState(false);
@@ -32,8 +31,8 @@ export default function WordSearchGamePage({ params }: { params: Promise<{ gameI
       setTimerStarted(true);
       startTimeRef.current = Date.now();
     }
-    setFoundWords((prev) => prev.includes(word) ? prev : [...prev, word]);
-  }, [timerStarted]);
+    findWord(word);
+  }, [timerStarted, findWord]);
 
   const handleFirstInteraction = useCallback(() => {
     if (!timerStarted) {
@@ -43,17 +42,18 @@ export default function WordSearchGamePage({ params }: { params: Promise<{ gameI
   }, [timerStarted]);
 
   const handleSubmit = useCallback(async () => {
-    if (submitted || !startTimeRef.current) return;
+    if (submitted || !startTimeRef.current || !game) return;
     setSubmitted(true);
 
+    const board = game.board as WordSearchBoardState;
     const timeUsed = getElapsedSeconds(startTimeRef.current);
     await submitResult({
-      foundWords,
+      foundWords: board.foundWords,
       timeUsed,
       startedAt: new Date(startTimeRef.current).toISOString(),
       submittedAt: new Date().toISOString(),
     });
-  }, [submitted, foundWords, submitResult]);
+  }, [submitted, game, submitResult]);
 
   const handleTimeUp = useCallback(() => {
     handleSubmit();
@@ -78,8 +78,8 @@ export default function WordSearchGamePage({ params }: { params: Promise<{ gameI
   }
 
   const board = game.board as WordSearchBoardState;
+  if (!board.foundWords) board.foundWords = [];
   const myPlayerNumber = game.player1_name === playerName ? 1 : 2;
-  const isMyTurn = game.current_turn === myPlayerNumber;
   const allWords = board.words.map((w) => w.word);
 
   // Already submitted — show waiting or results
@@ -114,27 +114,11 @@ export default function WordSearchGamePage({ params }: { params: Promise<{ gameI
       <div className="flex-1 flex flex-col items-center justify-center min-h-screen px-4 gap-4">
         <SettingsButton />
         <div className="text-2xl font-bold text-text-primary">
-          You found {myResult?.foundWords.length ?? foundWords.length}/{allWords.length} words
+          You found {myResult?.foundWords.length ?? board.foundWords.length}/{allWords.length} words
         </div>
         <div className="text-text-secondary">
           {opponentName} hasn&apos;t played yet.
         </div>
-        <button
-          onClick={() => router.push('/')}
-          className="mt-4 px-6 py-3 rounded-xl bg-surface border border-border text-text-primary font-medium hover:bg-background transition-colors cursor-pointer"
-        >
-          Home
-        </button>
-      </div>
-    );
-  }
-
-  // Not my turn (Player 2 viewing before Player 1 submits)
-  if (!isMyTurn) {
-    return (
-      <div className="flex-1 flex flex-col items-center justify-center min-h-screen px-4 gap-4">
-        <SettingsButton />
-        <div className="text-xl text-text-secondary">Waiting for opponent to play first...</div>
         <button
           onClick={() => router.push('/')}
           className="mt-4 px-6 py-3 rounded-xl bg-surface border border-border text-text-primary font-medium hover:bg-background transition-colors cursor-pointer"
@@ -160,14 +144,14 @@ export default function WordSearchGamePage({ params }: { params: Promise<{ gameI
       <Grid
         grid={board.grid}
         words={board.words}
-        foundWords={foundWords}
+        foundWords={board.foundWords}
         onWordFound={handleWordFound}
         onFirstInteraction={handleFirstInteraction}
         disabled={submitted}
       />
 
       {/* Word list */}
-      <WordList words={allWords} foundWords={foundWords} />
+      <WordList words={allWords} foundWords={board.foundWords} />
 
       {/* Submit button */}
       <motion.button
@@ -177,7 +161,7 @@ export default function WordSearchGamePage({ params }: { params: Promise<{ gameI
         disabled={!timerStarted}
         className="mt-4 px-8 py-3 rounded-xl bg-green-600 text-white font-semibold hover:bg-green-500 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
       >
-        Done ({foundWords.length}/{allWords.length})
+        Done ({board.foundWords.length}/{allWords.length})
       </motion.button>
 
       <button

@@ -21,6 +21,7 @@ export interface WordSearchBoardState {
   words: WordPlacement[];
   theme: string;
   timeLimit: number; // seconds (300)
+  foundWords: string[]; // shared between both players
   player1Result: PlayerResult | null;
   player2Result: PlayerResult | null;
 }

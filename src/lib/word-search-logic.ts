@@ -111,6 +111,7 @@ export function createWordSearchBoard(themeId: string, themeWords: string[]): Wo
     words,
     theme: themeId,
     timeLimit: TIME_LIMIT,
+    foundWords: [],
     player1Result: null,
     player2Result: null,
   };
