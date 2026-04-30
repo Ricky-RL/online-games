@@ -261,6 +261,7 @@ function PlayerSelector({ onSelect }: { onSelect: (name: PlayerName) => void }) 
 function GameSelection({ playerName, onChangePlayer }: { playerName: PlayerName; onChangePlayer: () => void }) {
   const router = useRouter();
   const [connecting, setConnecting] = useState<string | null>(null);
+  const [showWordleMode, setShowWordleMode] = useState(false);
   const [showResetDialog, setShowResetDialog] = useState(false);
   const { results, stats, loading, clearAll } = useMatchHistory();
 
@@ -544,6 +545,65 @@ function GameSelection({ playerName, onChangePlayer }: { playerName: PlayerName;
     router.push(`/wordle/${data.id}`);
   }, [playerName, router]);
 
+  const handlePlayDailyWordle = useCallback(async () => {
+    setConnecting('wordle');
+
+    const res = await fetch('/api/daily-wordle');
+    if (!res.ok) {
+      alert("Couldn't fetch today's word. Try again or use Random.");
+      setConnecting(null);
+      return;
+    }
+    const { word: dailyWord } = await res.json();
+
+    const { supabase } = await import('@/lib/supabase');
+
+    const isRicky = playerName === 'Ricky';
+    const myId = PLAYER_IDS[playerName];
+
+    const insertData = isRicky
+      ? {
+          game_type: 'wordle',
+          answer_index: -1,
+          answer_word: dailyWord,
+          guesses: [],
+          guess_count: 0,
+          status: 'playing',
+          winner: null,
+          player1_id: myId,
+          player1_name: playerName,
+          player2_id: null,
+          player2_name: null,
+        }
+      : {
+          game_type: 'wordle',
+          answer_index: -1,
+          answer_word: dailyWord,
+          guesses: [],
+          guess_count: 0,
+          status: 'playing',
+          winner: null,
+          player1_id: null,
+          player1_name: null,
+          player2_id: myId,
+          player2_name: playerName,
+        };
+
+    const { data, error } = await supabase
+      .from('wordle_games')
+      .insert(insertData)
+      .select('id')
+      .single();
+
+    if (error || !data) {
+      console.error('Error creating daily wordle game:', error);
+      setConnecting(null);
+      return;
+    }
+
+    router.push(`/wordle/${data.id}`);
+  }, [playerName, router]);
+
   const handlePlayBattleship = useCallback(async () => {
     setConnecting('battleship');
 
@@ -771,15 +831,50 @@ function GameSelection({ playerName, onChangePlayer }: { playerName: PlayerName;
             onClick={handlePlayConnectFour}
             loading={connecting === 'connect-four'}
           />
-          <ClickableGameCard
-            title="Wordle"
-            description="Guess the word together. Share clues, solve as a team."
-            color="#538D4E"
-            icon={<WordleIcon />}
-            delay={0.3}
-            onClick={handlePlayWordle}
-            loading={connecting === 'wordle'}
-          />
+          {!showWordleMode ? (
+            <ClickableGameCard
+              title="Wordle"
+              description="Guess the word together. Share clues, solve as a team."
+              color="#538D4E"
+              icon={<WordleIcon />}
+              delay={0.3}
+              onClick={() => setShowWordleMode(true)}
+              loading={connecting === 'wordle'}
+            />
+          ) : (
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="relative rounded-3xl border border-border bg-surface p-6 flex flex-col items-center justify-center gap-4"
+            >
+              <button
+                onClick={() => setShowWordleMode(false)}
+                className="absolute top-3 right-3 text-text-secondary hover:text-text-primary text-lg cursor-pointer"
+              >
+                ✕
+              </button>
+              <div className="text-2xl">
+                <WordleIcon />
+              </div>
+              <p className="text-sm font-medium text-text-secondary">Choose mode</p>
+              <div className="flex gap-3 w-full">
+                <button
+                  onClick={() => { setShowWordleMode(false); handlePlayWordle(); }}
+                  disabled={connecting === 'wordle'}
+                  className="flex-1 px-4 py-2.5 text-sm font-medium rounded-xl border border-border bg-surface text-text-primary hover:bg-surface-hover shadow-sm hover:shadow transition-all cursor-pointer disabled:opacity-50"
+                >
+                  Random
+                </button>
+                <button
+                  onClick={() => { setShowWordleMode(false); handlePlayDailyWordle(); }}
+                  disabled={connecting === 'wordle'}
+                  className="flex-1 px-4 py-2.5 text-sm font-medium rounded-xl border border-[#538D4E]/30 bg-[#538D4E]/10 text-[#538D4E] hover:bg-[#538D4E]/20 shadow-sm hover:shadow transition-all cursor-pointer disabled:opacity-50"
+                >
+                  Daily
+                </button>
+              </div>
+            </motion.div>
+          )}
           <ClickableGameCard
             title="Tic Tac Toe"
             description="X and O, three in a row. Quick rounds, pure fun."

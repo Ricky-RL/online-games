@@ -66,7 +66,8 @@ export function isGameLost(guesses: WordleGuess[]): boolean {
   return guesses.length >= 6;
 }
 
-export function getAnswer(index: number): string {
+export function getAnswer(index: number, answerWord?: string | null): string {
+  if (answerWord) return answerWord.toUpperCase();
   return WORDLE_ANSWERS[index];
 }
 

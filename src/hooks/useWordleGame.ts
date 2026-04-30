@@ -139,7 +139,7 @@ export function useWordleGame(gameId: string): UseWordleGameReturn {
     }
 
     const myPlayerNumber: 1 | 2 = isPlayer1 ? 1 : 2;
-    const answer = getAnswer(currentGame.answer_index);
+    const answer = getAnswer(currentGame.answer_index, currentGame.answer_word);
 
     if (isGameWon(currentGame.guesses, answer) || isGameLost(currentGame.guesses)) {
       setError('Game is already over');
@@ -188,7 +188,7 @@ export function useWordleGame(gameId: string): UseWordleGameReturn {
       const freshGame = await fetchGame();
       if (freshGame) {
         updateGame(freshGame);
-        const freshAnswer = getAnswer(freshGame.answer_index);
+        const freshAnswer = getAnswer(freshGame.answer_index, freshGame.answer_word);
         if (!isGameWon(freshGame.guesses, freshAnswer) && !isGameLost(freshGame.guesses)) {
           const retryGuesses = [...freshGame.guesses, newGuess];
           const retryCount = freshGame.guess_count + 1;
