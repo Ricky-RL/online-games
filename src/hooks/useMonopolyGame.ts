@@ -65,7 +65,8 @@ export function useMonopolyGame(gameId: string): UseMonopolyGameReturn {
     const fresh = data as MonopolyGame;
     const prev = gameRef.current;
 
-    if (prev && fresh.board.turnSequence <= prev.board.turnSequence) return;
+    const isReset = prev && fresh.board.turnSequence === 0 && fresh.board.currentTurn === 1;
+    if (prev && !isReset && fresh.board.turnSequence <= prev.board.turnSequence) return;
 
     gameRef.current = fresh;
     setGame(fresh);
