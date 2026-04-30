@@ -150,9 +150,8 @@ export function useWordSearchGame(gameId: string): UseWordSearchGameReturn {
       updated_at: new Date().toISOString(),
     };
 
-    // If player 1 just submitted, switch turn to player 2
-    if (playerNumber === 1 && !bothDone) {
-      updateData.current_turn = 2;
+    if (!bothDone) {
+      updateData.current_turn = playerNumber === 1 ? 2 : 1;
     }
 
     if (bothDone) {
