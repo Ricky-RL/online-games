@@ -14,7 +14,7 @@ interface JengaTowerProps {
 }
 
 export function JengaTower({ state, isMyTurn, selectedBlock, onBlockClick, disabled }: JengaTowerProps) {
-  const [rotationY, setRotationY] = useState(-35);
+  const [rotationY, setRotationY] = useState(-45);
   const [isDragging, setIsDragging] = useState(false);
   const dragStart = useRef<{ x: number; startRotation: number } | null>(null);
 
@@ -43,8 +43,8 @@ export function JengaTower({ state, isMyTurn, selectedBlock, onBlockClick, disab
     dragStart.current = null;
   }, [isDragging]);
 
-  const BLOCK_WIDTH = 72;
-  const BLOCK_DEPTH = 24;
+  const BLOCK_WIDTH = 24;
+  const BLOCK_DEPTH = 72;
   const BLOCK_HEIGHT = 14;
   const GAP = 1;
   const ROW_HEIGHT = BLOCK_HEIGHT + GAP;
@@ -57,7 +57,7 @@ export function JengaTower({ state, isMyTurn, selectedBlock, onBlockClick, disab
         className="relative select-none"
         style={{
           perspective: '800px',
-          perspectiveOrigin: '50% 35%',
+          perspectiveOrigin: '50% 30%',
           cursor: isDragging ? 'grabbing' : 'grab',
           touchAction: 'none',
         }}
@@ -69,10 +69,10 @@ export function JengaTower({ state, isMyTurn, selectedBlock, onBlockClick, disab
         <div
           style={{
             transformStyle: 'preserve-3d',
-            transform: `rotateX(18deg) rotateY(${rotationY}deg)`,
+            transform: `rotateX(30deg) rotateY(${rotationY}deg)`,
             transition: isDragging ? 'none' : 'transform 0.3s ease-out',
             position: 'relative',
-            width: `${ROW_WIDTH + 40}px`,
+            width: `${ROW_WIDTH + 80}px`,
             height: `${towerRows * ROW_HEIGHT + 60}px`,
           }}
         >
