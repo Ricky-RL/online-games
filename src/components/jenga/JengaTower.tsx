@@ -14,7 +14,7 @@ interface JengaTowerProps {
 }
 
 export function JengaTower({ state, isMyTurn, selectedBlock, onBlockClick, disabled }: JengaTowerProps) {
-  const [rotationY, setRotationY] = useState(-25);
+  const [rotationY, setRotationY] = useState(-30);
   const [isDragging, setIsDragging] = useState(false);
   const dragStart = useRef<{ x: number; startRotation: number } | null>(null);
 
@@ -43,21 +43,24 @@ export function JengaTower({ state, isMyTurn, selectedBlock, onBlockClick, disab
     dragStart.current = null;
   }, [isDragging]);
 
-  const BLOCK_WIDTH = 72;
-  const BLOCK_DEPTH = 24;
-  const BLOCK_HEIGHT = 14;
-  const GAP = 2;
-  const ROW_HEIGHT = BLOCK_HEIGHT + GAP;
+  const BLOCK_LENGTH = 75;
+  const BLOCK_WIDTH = 25;
+  const BLOCK_HEIGHT = 15;
+
+  const ROW_HEIGHT = BLOCK_HEIGHT;
   const towerRows = state.tower.length;
-  const ROW_WIDTH = BLOCK_WIDTH * 3 + GAP * 2;
+
+  const towerWidth = BLOCK_WIDTH * 3;
+  const containerW = towerWidth + 60;
+  const containerH = towerRows * ROW_HEIGHT + 80;
 
   return (
     <div className="flex flex-col items-center gap-4">
       <div
         className="relative select-none"
         style={{
-          perspective: '800px',
-          perspectiveOrigin: '50% 30%',
+          perspective: '900px',
+          perspectiveOrigin: '50% 40%',
           cursor: isDragging ? 'grabbing' : 'grab',
           touchAction: 'none',
         }}
@@ -69,20 +72,16 @@ export function JengaTower({ state, isMyTurn, selectedBlock, onBlockClick, disab
         <div
           style={{
             transformStyle: 'preserve-3d',
-            transform: `rotateX(20deg) rotateY(${rotationY}deg)`,
+            transform: `rotateX(30deg) rotateY(${rotationY}deg)`,
             transition: isDragging ? 'none' : 'transform 0.3s ease-out',
             position: 'relative',
-            width: `${ROW_WIDTH + 80}px`,
-            height: `${towerRows * ROW_HEIGHT + 60}px`,
+            width: `${containerW}px`,
+            height: `${containerH}px`,
           }}
         >
           {state.tower.map((row, rowIdx) => {
             const isPerp = rowIdx % 2 === 1;
             const yOffset = (towerRows - 1 - rowIdx) * ROW_HEIGHT;
-
-            // Both layers show 3 blocks side-by-side in a flex row.
-            // Even rows: blocks run left-right (long face visible, 72px wide x 24px deep)
-            // Odd rows: rotated 90deg Y so blocks run front-back (cross-hatch)
 
             return (
               <div
@@ -91,11 +90,11 @@ export function JengaTower({ state, isMyTurn, selectedBlock, onBlockClick, disab
                   position: 'absolute',
                   bottom: `${yOffset}px`,
                   left: '50%',
-                  transform: `translateX(-50%)${isPerp ? ' rotateY(90deg)' : ''}`,
+                  transform: 'translateX(-50%)',
                   transformStyle: 'preserve-3d',
                   display: 'flex',
                   justifyContent: 'center',
-                  gap: `${GAP}px`,
+                  gap: '0px',
                 }}
               >
                 {row.map((block, colIdx) => (
@@ -107,9 +106,10 @@ export function JengaTower({ state, isMyTurn, selectedBlock, onBlockClick, disab
                     risk={calculateBlockRisk(state, rowIdx, colIdx)}
                     isPlayable={playableSet.has(`${rowIdx}-${colIdx}`)}
                     isSelected={selectedBlock?.[0] === rowIdx && selectedBlock?.[1] === colIdx}
+                    blockLength={BLOCK_LENGTH}
                     blockWidth={BLOCK_WIDTH}
                     blockHeight={BLOCK_HEIGHT}
-                    blockDepth={BLOCK_DEPTH}
+                    isPerp={isPerp}
                     onClick={() => onBlockClick(rowIdx, colIdx)}
                   />
                 ))}
