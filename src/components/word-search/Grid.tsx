@@ -30,16 +30,13 @@ export function Grid({ grid, words, foundWords, onWordFound, onFirstInteraction,
 
   const checkForMatch = (cells: [number, number][]) => {
     if (cells.length < 2) return;
-    const first = cells[0];
-    const last = cells[cells.length - 1];
+    const cellSet = new Set(cells.map(([r, c]) => `${r},${c}`));
 
     for (const placement of words) {
       if (foundWords.includes(placement.word)) continue;
-      const { start, end } = placement;
-      if (
-        (start[0] === first[0] && start[1] === first[1] && end[0] === last[0] && end[1] === last[1]) ||
-        (start[0] === last[0] && start[1] === last[1] && end[0] === first[0] && end[1] === first[1])
-      ) {
+      const wordCells = getWordCells(placement);
+      if (wordCells.length !== cells.length) continue;
+      if (wordCells.every(([r, c]) => cellSet.has(`${r},${c}`))) {
         onWordFound(placement.word);
         setSelectedCells([]);
         return;
@@ -66,30 +63,7 @@ export function Grid({ grid, words, foundWords, onWordFound, onFirstInteraction,
 
     const updated = [...selectedCells, [row, col] as [number, number]];
     setSelectedCells(updated);
-
-    if (updated.length >= 2) {
-      const first = updated[0];
-      const last = updated[updated.length - 1];
-      const dr = Math.sign(last[0] - first[0]);
-      const dc = Math.sign(last[1] - first[1]);
-      const rowDiff = Math.abs(last[0] - first[0]);
-      const colDiff = Math.abs(last[1] - first[1]);
-
-      const isLine = (rowDiff === colDiff || rowDiff === 0 || colDiff === 0) && (rowDiff > 0 || colDiff > 0);
-      if (isLine) {
-        const length = Math.max(rowDiff, colDiff);
-        const expectedCells: [number, number][] = [];
-        for (let i = 0; i <= length; i++) {
-          expectedCells.push([first[0] + dr * i, first[1] + dc * i]);
-        }
-        const allMatch = expectedCells.length === updated.length &&
-          expectedCells.every(([r, c], i) => updated[i][0] === r && updated[i][1] === c);
-
-        if (allMatch) {
-          checkForMatch(updated);
-        }
-      }
-    }
+    checkForMatch(updated);
   };
 
   const handleDeselectAll = () => {
