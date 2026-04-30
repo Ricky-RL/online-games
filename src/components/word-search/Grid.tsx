@@ -44,6 +44,34 @@ export function Grid({ grid, words, foundWords, onWordFound, onFirstInteraction,
     }
   };
 
+  const isValidSelection = (cells: [number, number][], newCell: [number, number]): boolean => {
+    if (cells.length === 0) return true;
+
+    const allCells = [...cells, newCell];
+    const [r0, c0] = allCells[0];
+
+    // Check all cells lie on a single row, column, or diagonal
+    const allSameRow = allCells.every(([r]) => r === r0);
+    if (allSameRow) return true;
+
+    const allSameCol = allCells.every(([, c]) => c === c0);
+    if (allSameCol) return true;
+
+    // Check diagonal: every cell must have |row - r0| === |col - c0| and same sign pattern
+    const [r1, c1] = allCells.find(([r, c]) => r !== r0 || c !== c0) || allCells[1];
+    const rowSign = Math.sign(r1 - r0);
+    const colSign = Math.sign(c1 - c0);
+
+    return allCells.every(([r, c]) => {
+      const dr = r - r0;
+      const dc = c - c0;
+      if (dr === 0 && dc === 0) return true;
+      if (Math.abs(dr) !== Math.abs(dc)) return false;
+      // Must be on the same diagonal line (not an anti-diagonal)
+      return Math.sign(dr) * colSign === Math.sign(dc) * rowSign;
+    });
+  };
+
   const handleCellClick = (row: number, col: number) => {
     if (disabled) return;
 
@@ -61,7 +89,15 @@ export function Grid({ grid, words, foundWords, onWordFound, onFirstInteraction,
       return;
     }
 
-    const updated = [...selectedCells, [row, col] as [number, number]];
+    const newCell: [number, number] = [row, col];
+
+    // If adding this cell breaks the line, start a new selection from this cell
+    if (!isValidSelection(selectedCells, newCell)) {
+      setSelectedCells([newCell]);
+      return;
+    }
+
+    const updated = [...selectedCells, newCell];
     setSelectedCells(updated);
     checkForMatch(updated);
   };
