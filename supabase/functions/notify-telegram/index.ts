@@ -10,6 +10,7 @@ const GAME_LABELS: Record<string, string> = {
   jenga: "Jenga",
   "snakes-and-ladders": "Snakes & Ladders",
   "word-search": "Word Search",
+  whiteboard: "Whiteboard",
 };
 
 interface TurnPayload {
@@ -18,6 +19,8 @@ interface TurnPayload {
   game_type: string;
   game_id: string;
   updated_at: string;
+  whiteboard_action?: string;
+  whiteboard_preview?: string;
 }
 
 Deno.serve(async (req) => {
@@ -38,7 +41,7 @@ Deno.serve(async (req) => {
   }
 
   const payload: TurnPayload = await req.json();
-  const { player_name, opponent_name, game_type, game_id, updated_at } =
+  const { player_name, opponent_name, game_type, game_id, updated_at, whiteboard_action, whiteboard_preview } =
     payload;
 
   if (!player_name || !game_type || !game_id) {
@@ -72,7 +75,6 @@ Deno.serve(async (req) => {
   // Format the message
   const appUrl = Deno.env.get("APP_URL") || "https://online-games-alpha.vercel.app";
   const gameLabel = GAME_LABELS[game_type] || game_type;
-  const playLink = `${appUrl}/${game_type}/${game_id}`;
   const timestamp = new Date(updated_at).toLocaleString("en-US", {
     timeZone: "America/Los_Angeles",
     month: "short",
@@ -81,12 +83,26 @@ Deno.serve(async (req) => {
     minute: "2-digit",
   });
 
-  const message =
-    `🎲 *Your turn!*\n\n` +
-    `*Game:* ${gameLabel}\n` +
-    `*Opponent:* ${opponent_name}\n` +
-    `*Time:* ${timestamp}\n\n` +
-    `[Play now](${playLink})`;
+  let message: string;
+  if (game_type === "whiteboard") {
+    const playLink = `${appUrl}/whiteboard`;
+    const actionLabel = whiteboard_action === "created" ? "added a note to" :
+      whiteboard_action === "deleted" ? "removed a note from" : "updated a note on";
+    const previewLine = whiteboard_preview ? `\n*Note:* ${whiteboard_preview}` : "";
+    message =
+      `📝 *Whiteboard activity*\n\n` +
+      `*${opponent_name}* ${actionLabel} the whiteboard${previewLine}\n` +
+      `*Time:* ${timestamp}\n\n` +
+      `[View whiteboard](${playLink})`;
+  } else {
+    const playLink = `${appUrl}/${game_type}/${game_id}`;
+    message =
+      `🎲 *Your turn!*\n\n` +
+      `*Game:* ${gameLabel}\n` +
+      `*Opponent:* ${opponent_name}\n` +
+      `*Time:* ${timestamp}\n\n` +
+      `[Play now](${playLink})`;
+  }
 
   // Send via Telegram Bot API
   const botToken = Deno.env.get("TELEGRAM_BOT_TOKEN");
