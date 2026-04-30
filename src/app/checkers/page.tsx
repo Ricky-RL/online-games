@@ -10,7 +10,6 @@ export default function CheckersLobby() {
   const router = useRouter();
   const [connecting, setConnecting] = useState<PlayerName | null>(null);
   const [checkedStorage, setCheckedStorage] = useState(false);
-  const [forcedJumps, setForcedJumps] = useState(true);
 
   const connect = useCallback(
     async (name: PlayerName) => {
@@ -108,7 +107,7 @@ export default function CheckersLobby() {
 
       const insertData = {
         game_type: 'checkers',
-        board: createInitialBoard(forcedJumps),
+        board: createInitialBoard(),
         current_turn: 1 as const,
         winner: null,
         player1_id: myId,
@@ -131,7 +130,7 @@ export default function CheckersLobby() {
 
       router.push(`/checkers/${data.id}`);
     },
-    [router, forcedJumps]
+    [router]
   );
 
   const hasAutoConnected = useRef(false);
@@ -164,19 +163,6 @@ export default function CheckersLobby() {
             Checkers
           </h1>
           <p className="text-lg text-text-secondary">Who are you?</p>
-        </div>
-
-        {/* Forced jumps toggle */}
-        <div className="flex items-center gap-3">
-          <label className="text-sm text-text-secondary cursor-pointer select-none flex items-center gap-2">
-            <input
-              type="checkbox"
-              checked={forcedJumps}
-              onChange={(e) => setForcedJumps(e.target.checked)}
-              className="w-4 h-4 rounded accent-amber-600"
-            />
-            Forced jumps
-          </label>
         </div>
 
         {/* Player selection */}

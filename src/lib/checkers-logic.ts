@@ -1,6 +1,6 @@
 import type { Player, CheckersGameState, CheckersMove, CheckersBoard, CheckersCell } from './types';
 
-export function createInitialBoard(forcedJumps: boolean): CheckersGameState {
+export function createInitialBoard(): CheckersGameState {
   const cells: CheckersBoard = Array.from({ length: 8 }, (_, row) =>
     Array.from({ length: 8 }, (_, col): CheckersCell => {
       if ((row + col) % 2 !== 1) return null;
@@ -12,7 +12,7 @@ export function createInitialBoard(forcedJumps: boolean): CheckersGameState {
 
   return {
     cells,
-    settings: { forcedJumps, moveCount: 0, movesSinceCapture: 0, continuingPiece: null },
+    settings: { moveCount: 0, movesSinceCapture: 0, continuingPiece: null },
   };
 }
 
@@ -69,7 +69,6 @@ export function getJumpMoves(state: CheckersGameState, row: number, col: number)
 
 export function getValidMoves(state: CheckersGameState, row: number, col: number): CheckersMove[] {
   const jumps = getJumpMoves(state, row, col);
-  if (state.settings.forcedJumps && jumps.length > 0) return jumps;
   return [...jumps, ...getSimpleMoves(state, row, col)];
 }
 
@@ -80,23 +79,19 @@ export function getMovablePieces(state: CheckersGameState, player: Player): [num
     return [];
   }
 
-  const withJumps: [number, number][] = [];
-  const withMoves: [number, number][] = [];
+  const pieces: [number, number][] = [];
 
   for (let r = 0; r < 8; r++) {
     for (let c = 0; c < 8; c++) {
       const piece = state.cells[r][c];
       if (!piece || piece.player !== player) continue;
-      if (getJumpMoves(state, r, c).length > 0) {
-        withJumps.push([r, c]);
-      } else if (getSimpleMoves(state, r, c).length > 0) {
-        withMoves.push([r, c]);
+      if (getJumpMoves(state, r, c).length > 0 || getSimpleMoves(state, r, c).length > 0) {
+        pieces.push([r, c]);
       }
     }
   }
 
-  if (state.settings.forcedJumps && withJumps.length > 0) return withJumps;
-  return [...withJumps, ...withMoves];
+  return pieces;
 }
 
 export function canContinueJump(state: CheckersGameState, row: number, col: number): boolean {
@@ -125,7 +120,6 @@ export function applyMove(state: CheckersGameState, move: CheckersMove, player: 
   return {
     cells,
     settings: {
-      forcedJumps: state.settings.forcedJumps,
       moveCount: state.settings.moveCount + 1,
       movesSinceCapture: move.captured.length > 0 ? 0 : state.settings.movesSinceCapture + 1,
       continuingPiece: hasContinuation ? [move.to[0], move.to[1]] : null,

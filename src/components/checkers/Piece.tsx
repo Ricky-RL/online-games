@@ -7,7 +7,6 @@ interface CheckersPieceProps {
   isKing: boolean;
   isSelected: boolean;
   isMovable: boolean;
-  isForcedJumper: boolean;
   onClick?: () => void;
 }
 
@@ -19,7 +18,7 @@ function CrownIcon() {
   );
 }
 
-export function CheckersPiece({ player, isKing, isSelected, isMovable, isForcedJumper, onClick }: CheckersPieceProps) {
+export function CheckersPiece({ player, isKing, isSelected, isMovable, onClick }: CheckersPieceProps) {
   const colorClass = player === 1 ? 'bg-player1' : 'bg-player2';
 
   return (
@@ -27,17 +26,15 @@ export function CheckersPiece({ player, isKing, isSelected, isMovable, isForcedJ
       type="button"
       onClick={onClick}
       disabled={!onClick}
-      className={`w-[80%] h-[80%] rounded-full ${colorClass} flex items-center justify-center relative cursor-pointer disabled:cursor-default shadow-md ${isSelected ? 'ring-2 ring-white ring-offset-2 ring-offset-transparent' : ''} ${isForcedJumper && !isSelected ? 'ring-3 ring-red-400 ring-offset-1 ring-offset-transparent' : ''}`}
+      className={`w-[80%] h-[80%] rounded-full ${colorClass} flex items-center justify-center relative cursor-pointer disabled:cursor-default shadow-md ${isSelected ? 'ring-2 ring-white ring-offset-2 ring-offset-transparent' : ''}`}
       animate={{
-        scale: isSelected ? 1.1 : isForcedJumper ? [1, 1.05, 1] : 1,
-        opacity: isMovable && !isSelected && !isForcedJumper ? [0.8, 1, 0.8] : 1,
+        scale: isSelected ? 1.1 : 1,
+        opacity: isMovable && !isSelected ? [0.8, 1, 0.8] : 1,
       }}
       transition={
-        isForcedJumper && !isSelected
-          ? { scale: { duration: 0.8, repeat: Infinity, ease: 'easeInOut' } }
-          : isMovable && !isSelected
-            ? { opacity: { duration: 1.2, repeat: Infinity, ease: 'easeInOut' } }
-            : { type: 'spring', stiffness: 300, damping: 20 }
+        isMovable && !isSelected
+          ? { opacity: { duration: 1.2, repeat: Infinity, ease: 'easeInOut' } }
+          : { type: 'spring', stiffness: 300, damping: 20 }
       }
       whileTap={onClick ? { scale: 0.95 } : undefined}
     >

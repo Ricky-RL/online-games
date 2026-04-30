@@ -1,7 +1,6 @@
 'use client';
 
 import { CheckersPiece } from './Piece';
-import { getJumpMoves } from '@/lib/checkers-logic';
 import type { CheckersGameState, CheckersMove, Player } from '@/lib/types';
 
 interface CheckersBoardProps {
@@ -33,13 +32,6 @@ export function CheckersBoard({
   const isMovablePiece = (row: number, col: number) =>
     movablePieces.some(([r, c]) => r === row && c === col);
 
-  const isForcedJumperPiece = (row: number, col: number) => {
-    if (!state.settings.forcedJumps || !isMyTurn || disabled) return false;
-    const piece = state.cells[row][col];
-    if (!piece || piece.player !== myPlayer) return false;
-    return getJumpMoves(state, row, col).length > 0;
-  };
-
   const isLastMoveSquare = (row: number, col: number) =>
     lastMove && (
       (lastMove.from[0] === row && lastMove.from[1] === col) ||
@@ -56,7 +48,6 @@ export function CheckersBoard({
             const isSelected = selectedPiece?.[0] === row && selectedPiece?.[1] === col;
             const isDestination = isValidDestination(row, col);
             const isMovable = isMyTurn && !disabled && isMovablePiece(row, col);
-            const isForcedJumper = isForcedJumperPiece(row, col);
             const isLast = isLastMoveSquare(row, col);
 
             return (
@@ -74,7 +65,6 @@ export function CheckersBoard({
                     isKing={piece.king}
                     isSelected={isSelected}
                     isMovable={isMovable}
-                    isForcedJumper={isForcedJumper}
                     onClick={
                       !disabled && isMyTurn && piece.player === myPlayer
                         ? () => onSquareClick(row, col)
