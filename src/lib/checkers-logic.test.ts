@@ -15,7 +15,7 @@ import type { CheckersGameState } from './types';
 
 describe('createInitialBoard', () => {
   it('places 12 pieces per player on dark squares', () => {
-    const state = createInitialBoard(true);
+    const state = createInitialBoard();
     let p1 = 0, p2 = 0;
     for (let r = 0; r < 8; r++) {
       for (let c = 0; c < 8; c++) {
@@ -32,7 +32,7 @@ describe('createInitialBoard', () => {
   });
 
   it('places player 2 on rows 0-2 and player 1 on rows 5-7', () => {
-    const state = createInitialBoard(false);
+    const state = createInitialBoard();
     for (let r = 0; r < 3; r++) {
       for (let c = 0; c < 8; c++) {
         if (state.cells[r][c]) expect(state.cells[r][c]!.player).toBe(2);
@@ -59,7 +59,7 @@ describe('shouldKing', () => {
 
 describe('getSimpleMoves', () => {
   it('player 1 moves forward (toward row 0)', () => {
-    const state = createInitialBoard(false);
+    const state = createInitialBoard();
     // Player 1 piece at row 5, find a piece on a dark square
     const moves = getSimpleMoves(state, 5, 0);
     expect(moves.length).toBeGreaterThan(0);
@@ -70,7 +70,7 @@ describe('getSimpleMoves', () => {
   });
 
   it('player 2 moves forward (toward row 7)', () => {
-    const state = createInitialBoard(false);
+    const state = createInitialBoard();
     const moves = getSimpleMoves(state, 2, 1);
     expect(moves.length).toBeGreaterThan(0);
     for (const m of moves) {
@@ -83,7 +83,7 @@ describe('getSimpleMoves', () => {
     cells[4][3] = { player: 1, king: false };
     const state: CheckersGameState = {
       cells,
-      settings: { forcedJumps: false, moveCount: 0, movesSinceCapture: 0, continuingPiece: null },
+      settings: { moveCount: 0, movesSinceCapture: 0, continuingPiece: null },
     };
     const moves = getSimpleMoves(state, 4, 3);
     for (const m of moves) {
@@ -96,7 +96,7 @@ describe('getSimpleMoves', () => {
     cells[4][3] = { player: 1, king: true };
     const state: CheckersGameState = {
       cells,
-      settings: { forcedJumps: false, moveCount: 0, movesSinceCapture: 0, continuingPiece: null },
+      settings: { moveCount: 0, movesSinceCapture: 0, continuingPiece: null },
     };
     const moves = getSimpleMoves(state, 4, 3);
     expect(moves.length).toBe(4);
@@ -113,7 +113,7 @@ describe('getJumpMoves', () => {
     cells[3][2] = { player: 2, king: false };
     const state: CheckersGameState = {
       cells,
-      settings: { forcedJumps: false, moveCount: 0, movesSinceCapture: 0, continuingPiece: null },
+      settings: { moveCount: 0, movesSinceCapture: 0, continuingPiece: null },
     };
     const moves = getJumpMoves(state, 4, 3);
     expect(moves.length).toBe(1);
@@ -127,7 +127,7 @@ describe('getJumpMoves', () => {
     cells[3][2] = { player: 1, king: false };
     const state: CheckersGameState = {
       cells,
-      settings: { forcedJumps: false, moveCount: 0, movesSinceCapture: 0, continuingPiece: null },
+      settings: { moveCount: 0, movesSinceCapture: 0, continuingPiece: null },
     };
     const moves = getJumpMoves(state, 4, 3);
     expect(moves.length).toBe(0);
@@ -141,7 +141,7 @@ describe('canContinueJump', () => {
     cells[3][2] = { player: 2, king: false };
     const state: CheckersGameState = {
       cells,
-      settings: { forcedJumps: true, moveCount: 0, movesSinceCapture: 0, continuingPiece: null },
+      settings: { moveCount: 0, movesSinceCapture: 0, continuingPiece: null },
     };
     expect(canContinueJump(state, 4, 3)).toBe(true);
   });
@@ -151,7 +151,7 @@ describe('canContinueJump', () => {
     cells[4][3] = { player: 1, king: false };
     const state: CheckersGameState = {
       cells,
-      settings: { forcedJumps: true, moveCount: 0, movesSinceCapture: 0, continuingPiece: null },
+      settings: { moveCount: 0, movesSinceCapture: 0, continuingPiece: null },
     };
     expect(canContinueJump(state, 4, 3)).toBe(false);
   });
@@ -164,7 +164,7 @@ describe('applyMove', () => {
     cells[3][2] = { player: 2, king: false };
     const state: CheckersGameState = {
       cells,
-      settings: { forcedJumps: true, moveCount: 0, movesSinceCapture: 0, continuingPiece: null },
+      settings: { moveCount: 0, movesSinceCapture: 0, continuingPiece: null },
     };
     const result = applyMove(state, { from: [4, 3], to: [2, 1], captured: [[3, 2]] }, 1);
     expect(result.cells[4][3]).toBeNull();
@@ -181,7 +181,7 @@ describe('applyMove', () => {
     // After jump, lands on row 0 → gets kinged
     const state: CheckersGameState = {
       cells,
-      settings: { forcedJumps: true, moveCount: 5, movesSinceCapture: 0, continuingPiece: null },
+      settings: { moveCount: 5, movesSinceCapture: 0, continuingPiece: null },
     };
     const result = applyMove(state, { from: [2, 1], to: [0, 3], captured: [[1, 2]] }, 1);
     expect(result.cells[0][3]).toEqual({ player: 1, king: true });
@@ -195,7 +195,7 @@ describe('applyMove', () => {
     cells[3][4] = { player: 2, king: false };
     const state: CheckersGameState = {
       cells,
-      settings: { forcedJumps: true, moveCount: 0, movesSinceCapture: 0, continuingPiece: null },
+      settings: { moveCount: 0, movesSinceCapture: 0, continuingPiece: null },
     };
     const result = applyMove(state, { from: [6, 1], to: [4, 3], captured: [[5, 2]] }, 1);
     expect(result.settings.continuingPiece).toEqual([4, 3]);
@@ -206,7 +206,7 @@ describe('applyMove', () => {
     cells[4][3] = { player: 1, king: false };
     const state: CheckersGameState = {
       cells,
-      settings: { forcedJumps: false, moveCount: 5, movesSinceCapture: 10, continuingPiece: null },
+      settings: { moveCount: 5, movesSinceCapture: 10, continuingPiece: null },
     };
     const result = applyMove(state, { from: [4, 3], to: [3, 2], captured: [] }, 1);
     expect(result.settings.movesSinceCapture).toBe(11);
@@ -214,27 +214,14 @@ describe('applyMove', () => {
 });
 
 describe('getMovablePieces', () => {
-  it('forced jumps: returns only pieces with jumps', () => {
-    const cells = Array.from({ length: 8 }, () => Array(8).fill(null));
-    cells[4][3] = { player: 1, king: false };
-    cells[3][2] = { player: 2, king: false };
-    cells[6][5] = { player: 1, king: false }; // can only simple move
-    const state: CheckersGameState = {
-      cells,
-      settings: { forcedJumps: true, moveCount: 0, movesSinceCapture: 0, continuingPiece: null },
-    };
-    const pieces = getMovablePieces(state, 1);
-    expect(pieces).toEqual([[4, 3]]);
-  });
-
-  it('free moves: returns all movable pieces', () => {
+  it('returns all movable pieces', () => {
     const cells = Array.from({ length: 8 }, () => Array(8).fill(null));
     cells[4][3] = { player: 1, king: false };
     cells[3][2] = { player: 2, king: false };
     cells[6][5] = { player: 1, king: false };
     const state: CheckersGameState = {
       cells,
-      settings: { forcedJumps: false, moveCount: 0, movesSinceCapture: 0, continuingPiece: null },
+      settings: { moveCount: 0, movesSinceCapture: 0, continuingPiece: null },
     };
     const pieces = getMovablePieces(state, 1);
     expect(pieces.length).toBe(2);
@@ -247,7 +234,7 @@ describe('getMovablePieces', () => {
     cells[6][5] = { player: 1, king: false };
     const state: CheckersGameState = {
       cells,
-      settings: { forcedJumps: true, moveCount: 0, movesSinceCapture: 0, continuingPiece: [4, 3] },
+      settings: { moveCount: 0, movesSinceCapture: 0, continuingPiece: [4, 3] },
     };
     const pieces = getMovablePieces(state, 1);
     expect(pieces).toEqual([[4, 3]]);
@@ -260,7 +247,7 @@ describe('checkWin', () => {
     cells[4][3] = { player: 1, king: false };
     const state: CheckersGameState = {
       cells,
-      settings: { forcedJumps: true, moveCount: 20, movesSinceCapture: 0, continuingPiece: null },
+      settings: { moveCount: 20, movesSinceCapture: 0, continuingPiece: null },
     };
     expect(checkWin(state, 1)).toBe(1);
   });
@@ -274,36 +261,36 @@ describe('checkWin', () => {
     cells[4][3] = { player: 1, king: false };
     const state: CheckersGameState = {
       cells,
-      settings: { forcedJumps: false, moveCount: 20, movesSinceCapture: 0, continuingPiece: null },
+      settings: { moveCount: 20, movesSinceCapture: 0, continuingPiece: null },
     };
     expect(checkWin(state, 1)).toBe(1);
   });
 
   it('returns null when game is ongoing', () => {
-    const state = createInitialBoard(true);
+    const state = createInitialBoard();
     expect(checkWin(state, 1)).toBeNull();
   });
 });
 
 describe('getCheckersGameStatus', () => {
   it('returns waiting when player missing', () => {
-    const state = createInitialBoard(true);
+    const state = createInitialBoard();
     expect(getCheckersGameStatus({ winner: null, player1_name: 'Ricky', player2_name: null, board: state })).toBe('waiting');
   });
 
   it('returns won when winner set', () => {
-    const state = createInitialBoard(true);
+    const state = createInitialBoard();
     expect(getCheckersGameStatus({ winner: 1, player1_name: 'Ricky', player2_name: 'Lilian', board: state })).toBe('won');
   });
 
   it('returns draw when movesSinceCapture >= 40', () => {
-    const state = createInitialBoard(true);
+    const state = createInitialBoard();
     state.settings.movesSinceCapture = 40;
     expect(getCheckersGameStatus({ winner: null, player1_name: 'Ricky', player2_name: 'Lilian', board: state })).toBe('draw');
   });
 
   it('returns playing normally', () => {
-    const state = createInitialBoard(true);
+    const state = createInitialBoard();
     expect(getCheckersGameStatus({ winner: null, player1_name: 'Ricky', player2_name: 'Lilian', board: state })).toBe('playing');
   });
 });

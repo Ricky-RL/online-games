@@ -6,7 +6,6 @@ import { useCheckersGame, type CheckersGame } from '@/hooks/useCheckersGame';
 import { useGameSounds } from '@/hooks/useSound';
 import { getValidMoves, getMovablePieces, getCheckersGameStatus } from '@/lib/checkers-logic';
 import { CheckersBoard } from '@/components/checkers/Board';
-import { ForcedJumpsBadge } from '@/components/checkers/ForcedJumpsBadge';
 import { TurnIndicator } from '@/components/TurnIndicator';
 import { WinCelebration } from '@/components/WinCelebration';
 import { EndGameDialog } from '@/components/EndGameDialog';
@@ -209,7 +208,6 @@ export default function CheckersGamePage({ params }: { params: Promise<{ gameId:
             isMyTurn={isMyTurn}
             playerName={opponentName}
           />
-          <ForcedJumpsBadge enabled={game.board.settings.forcedJumps} />
         </div>
 
         {gameStatus === 'waiting' && (

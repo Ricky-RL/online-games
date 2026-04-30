@@ -197,7 +197,7 @@ export function useCheckersGame(gameId: string): UseCheckersGameReturn {
   );
 
   const resetGame = useCallback(async () => {
-    const emptyBoard = createInitialBoard(true);
+    const emptyBoard = createInitialBoard();
     const { error: resetError } = await supabase
       .from('games')
       .update({
