@@ -15,11 +15,11 @@ interface JengaBlockComponentProps {
   onClick: () => void;
 }
 
-function woodColor(risk: number): { front: string; side: string; top: string } {
-  if (risk < 15) return { front: '#d4a574', side: '#b8895c', top: '#e8c9a0' };
-  if (risk < 30) return { front: '#c99a5f', side: '#a87d48', top: '#e0ba85' };
-  if (risk < 50) return { front: '#e8a849', side: '#c48e3a', top: '#f5c96e' };
-  return { front: '#d45a3a', side: '#b04030', top: '#e87060' };
+function woodColor(risk: number): { front: string; side: string; top: string; dark: string } {
+  if (risk < 15) return { front: '#d4a574', side: '#b08050', top: '#e8c9a0', dark: '#8a6038' };
+  if (risk < 30) return { front: '#c99a5f', side: '#a06b38', top: '#e0ba85', dark: '#7a5528' };
+  if (risk < 50) return { front: '#e8a849', side: '#b87a28', top: '#f5c96e', dark: '#8a5a18' };
+  return { front: '#d45a3a', side: '#a03020', top: '#e87060', dark: '#702018' };
 }
 
 export function JengaBlockComponent({
@@ -60,8 +60,10 @@ export function JengaBlockComponent({
         style={{
           backgroundColor: colors.front,
           transform: `translateZ(${halfDepth}px)`,
-          border: isSelected ? '2px solid #fff' : '1px solid rgba(0,0,0,0.08)',
-          boxShadow: isSelected ? '0 0 10px rgba(255,255,255,0.7)' : 'inset 0 1px 0 rgba(255,255,255,0.2)',
+          border: isSelected ? '2px solid #fff' : '1px solid rgba(0,0,0,0.12)',
+          boxShadow: isSelected
+            ? '0 0 10px rgba(255,255,255,0.7)'
+            : 'inset 0 1px 0 rgba(255,255,255,0.3), inset 0 -1px 0 rgba(0,0,0,0.1)',
           borderRadius: '1px',
         }}
       />
@@ -69,7 +71,7 @@ export function JengaBlockComponent({
       <div
         className="absolute inset-0"
         style={{
-          backgroundColor: colors.side,
+          backgroundColor: colors.dark,
           transform: `translateZ(-${halfDepth}px) rotateY(180deg)`,
           borderRadius: '1px',
         }}
@@ -84,7 +86,8 @@ export function JengaBlockComponent({
           transform: `rotateX(90deg) translateZ(${halfHeight}px)`,
           transformOrigin: 'center center',
           borderRadius: '1px',
-          border: '1px solid rgba(0,0,0,0.05)',
+          border: '1px solid rgba(0,0,0,0.06)',
+          boxShadow: 'inset 0 0 4px rgba(255,255,255,0.3)',
         }}
       />
       {/* Bottom face */}
@@ -93,7 +96,7 @@ export function JengaBlockComponent({
         style={{
           width: `${blockWidth}px`,
           height: `${blockDepth}px`,
-          backgroundColor: colors.side,
+          backgroundColor: colors.dark,
           transform: `rotateX(-90deg) translateZ(${halfHeight}px)`,
           transformOrigin: 'center center',
           borderRadius: '1px',
@@ -109,7 +112,8 @@ export function JengaBlockComponent({
           transform: `rotateY(90deg) translateZ(${halfWidth}px)`,
           transformOrigin: 'center center',
           borderRadius: '1px',
-          border: '1px solid rgba(0,0,0,0.05)',
+          border: '1px solid rgba(0,0,0,0.08)',
+          boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.15)',
         }}
       />
       {/* Left face */}
@@ -118,10 +122,11 @@ export function JengaBlockComponent({
         style={{
           width: `${blockDepth}px`,
           height: `${blockHeight}px`,
-          backgroundColor: colors.front,
+          backgroundColor: colors.side,
           transform: `rotateY(-90deg) translateZ(${halfWidth}px)`,
           transformOrigin: 'center center',
           borderRadius: '1px',
+          border: '1px solid rgba(0,0,0,0.08)',
         }}
       />
       {/* Risk indicator on selected */}

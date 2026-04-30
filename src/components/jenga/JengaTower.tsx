@@ -15,7 +15,7 @@ interface JengaTowerProps {
 }
 
 export function JengaTower({ state, isMyTurn, selectedBlock, onBlockClick, disabled }: JengaTowerProps) {
-  const [rotationY, setRotationY] = useState(-25);
+  const [rotationY, setRotationY] = useState(-35);
   const [isDragging, setIsDragging] = useState(false);
   const dragStart = useRef<{ x: number; startRotation: number } | null>(null);
 
@@ -40,15 +40,12 @@ export function JengaTower({ state, isMyTurn, selectedBlock, onBlockClick, disab
     dragStart.current = null;
   }, []);
 
-  // Real Jenga proportions: block length = 3 * block width
-  // A layer of 3 blocks side-by-side forms a square footprint (3 * width = length)
-  const BLOCK_WIDTH = 20;    // narrow dimension of a block
-  const BLOCK_LENGTH = 60;   // long dimension (= 3 * BLOCK_WIDTH)
-  const BLOCK_HEIGHT = 12;   // thickness/height of each block
+  const BLOCK_WIDTH = 24;
+  const BLOCK_LENGTH = 72;
+  const BLOCK_HEIGHT = 16;
   const GAP = 1;
   const ROW_HEIGHT = BLOCK_HEIGHT + GAP;
   const towerRows = state.tower.length;
-  // Both layer types have 3 blocks side-by-side at BLOCK_WIDTH each = same total
   const ROW_WIDTH = BLOCK_WIDTH * 3 + GAP * 2;
 
   return (
@@ -56,8 +53,8 @@ export function JengaTower({ state, isMyTurn, selectedBlock, onBlockClick, disab
       <div
         className="relative select-none"
         style={{
-          perspective: '600px',
-          perspectiveOrigin: '50% 40%',
+          perspective: '800px',
+          perspectiveOrigin: '50% 35%',
           cursor: isDragging ? 'grabbing' : 'grab',
         }}
         onPointerDown={handlePointerDown}
@@ -70,7 +67,7 @@ export function JengaTower({ state, isMyTurn, selectedBlock, onBlockClick, disab
           transition={isDragging ? { duration: 0 } : { type: 'spring', stiffness: 100, damping: 20 }}
           style={{
             transformStyle: 'preserve-3d',
-            transform: `rotateX(12deg) rotateY(${rotationY}deg)`,
+            transform: `rotateX(18deg) rotateY(${rotationY}deg)`,
             position: 'relative',
             width: `${ROW_WIDTH + 80}px`,
             height: `${towerRows * ROW_HEIGHT + 60}px`,
