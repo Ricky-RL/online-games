@@ -52,6 +52,7 @@ export default function WordSearchLobby() {
           .update({
             player2_id: myId,
             player2_name: playerName,
+            current_turn: 2,
             updated_at: new Date().toISOString(),
           })
           .eq('id', joinable.id);
