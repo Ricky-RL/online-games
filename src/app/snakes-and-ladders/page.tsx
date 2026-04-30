@@ -5,13 +5,7 @@ import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { supabase } from '@/lib/supabase';
 import { generateBoard } from '@/lib/snakes-and-ladders-logic';
-
-type PlayerName = 'Ricky' | 'Lilian';
-
-const PLAYER_IDS: Record<PlayerName, string> = {
-  Ricky: '00000000-0000-0000-0000-000000000001',
-  Lilian: '00000000-0000-0000-0000-000000000002',
-};
+import { type PlayerName, PLAYER_IDS } from '@/lib/players';
 
 export default function SnakesAndLaddersLobby() {
   const router = useRouter();

@@ -9,8 +9,7 @@ import { MatchHistory } from '@/components/MatchHistory';
 import { ResetStatsDialog } from '@/components/ResetStatsDialog';
 import { useMatchHistory } from '@/hooks/useMatchHistory';
 import { Inbox } from '@/components/inbox';
-
-type PlayerName = 'Ricky' | 'Lilian';
+import { type PlayerName, PLAYER_IDS } from '@/lib/players';
 
 interface ClickableGameCardProps {
   title: string;
@@ -258,11 +257,6 @@ function PlayerSelector({ onSelect }: { onSelect: (name: PlayerName) => void }) 
     </motion.div>
   );
 }
-
-const PLAYER_IDS: Record<PlayerName, string> = {
-  Ricky: '00000000-0000-0000-0000-000000000001',
-  Lilian: '00000000-0000-0000-0000-000000000002',
-};
 
 function GameSelection({ playerName, onChangePlayer }: { playerName: PlayerName; onChangePlayer: () => void }) {
   const router = useRouter();

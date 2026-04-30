@@ -6,11 +6,7 @@ import { motion } from 'framer-motion';
 import { THEME_PACKS } from '@/lib/word-search-themes';
 import { createWordSearchBoard } from '@/lib/word-search-logic';
 import { SettingsButton } from '@/components/SettingsButton';
-
-const PLAYER_IDS: Record<string, string> = {
-  Ricky: '00000000-0000-0000-0000-000000000001',
-  Lilian: '00000000-0000-0000-0000-000000000002',
-};
+import { PLAYER_IDS, type PlayerName } from '@/lib/players';
 
 export default function WordSearchLobby() {
   const router = useRouter();
@@ -21,12 +17,12 @@ export default function WordSearchLobby() {
     : null;
 
   const handleSelectTheme = useCallback(async (themeId: string) => {
-    if (!playerName) return;
+    if (!playerName || (playerName !== 'Ricky' && playerName !== 'Lilian')) return;
     setCreating(themeId);
 
     const { supabase } = await import('@/lib/supabase');
     const isRicky = playerName === 'Ricky';
-    const myId = PLAYER_IDS[playerName];
+    const myId = PLAYER_IDS[playerName as PlayerName];
 
     // Check for existing active word-search game
     const { data: existing } = await supabase

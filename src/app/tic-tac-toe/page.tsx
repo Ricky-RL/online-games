@@ -4,23 +4,7 @@ import { useState, useCallback, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { createEmptyBoard } from '@/lib/tic-tac-toe-logic';
-
-type PlayerName = 'Ricky' | 'Lilian';
-
-const PLAYER_IDS: Record<PlayerName, string> = {
-  Ricky: '00000000-0000-0000-0000-000000000001',
-  Lilian: '00000000-0000-0000-0000-000000000002',
-};
-
-function getStoredPlayerName(): PlayerName | null {
-  const stored =
-    sessionStorage.getItem('player-name') ||
-    localStorage.getItem('player-name');
-  if (stored === 'Ricky' || stored === 'Lilian') {
-    return stored;
-  }
-  return null;
-}
+import { type PlayerName, PLAYER_IDS, getStoredPlayerName } from '@/lib/players';
 
 export default function TicTacToeLobby() {
   const router = useRouter();

@@ -6,13 +6,7 @@ import { motion } from 'framer-motion';
 import { supabase } from '@/lib/supabase';
 import { createInitialBoard } from '@/lib/mini-golf/logic';
 import { EASY_LEVEL_IDS, MEDIUM_LEVEL_IDS, HARD_LEVEL_IDS } from '@/lib/mini-golf/levels';
-
-type PlayerName = 'Ricky' | 'Lilian';
-
-const PLAYER_IDS: Record<PlayerName, string> = {
-  Ricky: '00000000-0000-0000-0000-000000000001',
-  Lilian: '00000000-0000-0000-0000-000000000002',
-};
+import { type PlayerName, PLAYER_IDS } from '@/lib/players';
 
 export default function MiniGolfLobby() {
   const router = useRouter();
