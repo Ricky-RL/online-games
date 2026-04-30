@@ -8,14 +8,14 @@ Add chaotic, party-style powerups to the existing Snakes and Ladders game. Power
 
 | Powerup | Icon | Effect | Resolution Details |
 |---------|------|--------|-------------------|
-| Double Dice | 🎲 | Roll value × 2 | Applied before bounce-back calculation |
-| Shield | 🛡️ | Ignore next snake landing | Persists in state until consumed by a snake |
-| Reverse | ⏪ | Opponent moves back 5-10 spaces (random) | Clamped at tile 1 minimum |
-| Teleport | ✨ | Jump forward 1-15 tiles (random) | Clamped at 100, no bounce-back applied |
-| Freeze | 🧊 | Opponent skips their next turn | Consumed when opponent's turn is skipped |
-| Swap | 🔄 | Switch positions with opponent | Immediate position swap |
-| Earthquake | 🌋 | All snakes + ladders re-randomize | Uses existing generation constraints |
-| Magnet | 🧲 | Move to nearest ladder bottom ahead | If no ladder ahead, move forward 5 |
+| Double Dice | 🎲 | Roll value × 2 on NEXT roll | Deferred — stored until next turn, applied before bounce-back |
+| Shield | 🛡️ | Ignore next snake landing | Deferred — persists until consumed by a snake |
+| Reverse | ⏪ | Opponent moves back 5-10 spaces (random) | Immediate — clamped at tile 1, no secondary effects |
+| Teleport | ✨ | Jump forward 1-15 tiles (random) | Immediate — clamped at 100, no bounce-back, snake/ladder checks apply to new position |
+| Freeze | 🧊 | Opponent skips their next turn | Immediate — consumed when opponent's turn is skipped |
+| Swap | 🔄 | Switch positions with opponent | Immediate — final position, no snake/ladder/powerup checks |
+| Earthquake | 🌋 | All snakes + ladders re-randomize | Immediate — uses existing generation constraints, re-validates powerup positions |
+| Magnet | 🧲 | Move to nearest ladder bottom ahead | Immediate — if no ladder ahead, move forward 5. Ladder climb applies. |
 
 ## Game State
 
@@ -37,35 +37,55 @@ export interface SnakesAndLaddersState {
   snakes: Record<number, number>
   ladders: Record<number, number>
   lastRoll: { player: 1 | 2; value: number } | null
+  moveNumber: number
   powerups: Record<number, PowerupType>
-  powerupRespawns: { tile: number; turnsLeft: number }[]
-  lastPowerup: { player: 1 | 2; tile: number; type: PowerupType; effect: string } | null
+  powerupRespawns: { turnsLeft: number; type: PowerupType }[]
+  lastMoveEvents: MoveEvent[]
   skipNextTurn: { player: 1 | 2 } | null
   shielded: { player: 1 | 2 } | null
   doubleDice: { player: 1 | 2 } | null
 }
+
+export interface MoveEvent {
+  player: 1 | 2
+  roll: number
+  from: number
+  to: number
+  powerups: { tile: number; type: PowerupType; effect: string }[]
+  snakeSlide: { from: number; to: number } | null
+  ladderClimb: { from: number; to: number } | null
+  shieldUsed: boolean
+  skipped: boolean
+}
 ```
+
+`lastMoveEvents` stores ALL moves since the opponent last saw the board (handles roll-6 multi-move sequences). `moveNumber` is a monotonic counter incremented each turn.
 
 ## Turn Processing Order
 
-1. Check if current player has `skipNextTurn` — if so, consume it, flip turn, done
-2. Roll dice (1-6)
-3. If `doubleDice` is active for this player, multiply roll by 2 and consume it
-4. Calculate new position (current + roll)
-5. Apply bounce-back if > 100 (200 - position)
-6. Check if landing on a powerup tile — if so, trigger it:
+1. Decrement all `powerupRespawns` timers; spawn new powerups where timer hits 0
+2. Check if current player has `skipNextTurn` — if so, consume it, record a `MoveEvent` with `skipped: true`, flip turn, done
+3. Roll dice (1-6)
+4. If `doubleDice` is active for this player, multiply roll by 2 and consume it
+5. Calculate new position (current + roll)
+6. Apply bounce-back if > 100 (200 - position)
+7. Check if landing on a powerup tile — if so, trigger it:
    - Remove powerup from `powerups` map
    - Add to `powerupRespawns` with `turnsLeft: 3`
-   - Set `lastPowerup` with name and effect description
    - Apply immediate effects (Reverse, Teleport, Freeze, Swap, Earthquake, Magnet)
    - Store deferred effects (Shield → `shielded`, Double Dice → `doubleDice`)
-7. Check snake head — if landing on one:
+   - Powerup chaining: if Teleport/Magnet moves player onto another powerup, trigger it too (max depth 3)
+   - Chaining only applies within this step — snake/ladder resolution does NOT re-trigger powerups
+8. Check snake head at player's FINAL position (after all powerup effects):
    - If `shielded` is active for this player, consume shield, stay in place
    - Otherwise slide to snake tail
-8. Check ladder bottom — if landing on one, climb to top
-9. Check win condition (position === 100)
-10. Decrement all `powerupRespawns` timers; spawn new powerups where timer hits 0
-11. Update `current_turn` (same player if rolled 6 and no winner, otherwise flip)
+9. Check ladder bottom at player's FINAL position — if on one, climb to top
+10. Check win condition (position === 100)
+11. Increment `moveNumber`, append `MoveEvent` to `lastMoveEvents`
+12. Update `current_turn` (same player if rolled 6 and no winner, otherwise flip)
+13. If turn passes to other player, clear `lastMoveEvents` only when that player acknowledges (see Replay)
+
+Note: Steps 7-9 operate on the player's position AFTER all powerup effects resolve. Exception: Swap is terminal (no snake/ladder/powerup checks after swap).
 
 ## Powerup Spawning
 
@@ -75,24 +95,32 @@ export interface SnakesAndLaddersState {
 - Type selected uniformly at random from the 8 types
 
 ### Respawn
-- When triggered, powerup is removed and added to `powerupRespawns` with `turnsLeft: 3`
-- Each turn (regardless of which player), all respawn timers decrement by 1
+- Timers decrement at the START of each turn (step 1), including skipped turns
 - When a timer hits 0, a new powerup spawns on a random valid empty tile with a random type
-- The respawned powerup does not need to be the same type or location as the original
+- The respawned powerup does not need to be the same type as the original
+
+### After Earthquake
+- After snakes/ladders re-randomize, check all existing powerup tiles
+- Remove any powerup now sitting on a new snake head or ladder bottom
+- Those removed powerups enter `powerupRespawns` with `turnsLeft: 2` (faster respawn since they were removed involuntarily)
 
 ## Turn Replay Animation
 
-When a player loads the game and the opponent has taken a turn since they last saw the board:
+When a player returns and `moveNumber` has advanced since they last saw the board, play back all events in `lastMoveEvents`:
 
-1. **Dice result** — Show the rolled number (0.5s)
-2. **Piece movement** — Animate piece hopping square by square to new position (1s)
-3. **Powerup toast** — If powerup triggered, show centered popup with icon, name, and one-line effect description (1.5s pause)
-4. **Snake/Ladder** — If hit, animate the slide/climb (0.8s)
-5. **Skip button** — Visible in corner throughout, clicking skips to final board state
+For each `MoveEvent` in sequence:
+1. **Skipped turn** — If `skipped: true`, show "Turn skipped! (Frozen)" text (1s), continue to next event
+2. **Dice result** — Show the rolled number (0.5s)
+3. **Piece movement** — Animate piece hopping square by square to new position (1s)
+4. **Powerup toast(s)** — For each powerup in `powerups[]`, show centered popup with icon, name, and one-line effect description (1.5s each)
+5. **Snake/Ladder** — If `snakeSlide` or `ladderClimb` is non-null, animate the slide/climb (0.8s)
+6. **Skip button** — Visible in corner throughout, clicking skips to final board state
 
-Total replay duration: ~3-4 seconds.
+Total replay: ~3-5 seconds per move. Multiple moves (roll-6 chains) play sequentially.
 
-Detection: Compare `lastRoll` from polled state vs what was last seen. If different, the opponent took a turn — play it back before enabling the roll button.
+Detection: Compare `moveNumber` from polled state vs last-seen `moveNumber`. If higher, replay is needed.
+
+Acknowledgment: After replay completes (or skip pressed), client writes its seen `moveNumber` — `lastMoveEvents` clears on the next turn by the replaying player.
 
 ## Powerup Toast UI
 
@@ -114,13 +142,16 @@ Appears when any powerup is triggered (during live play or replay):
 
 ## Edge Cases
 
-- **Powerup + Snake on same tile:** Not possible — powerups don't spawn on snake heads
-- **Teleport/Magnet lands on another powerup:** That second powerup also triggers (chain, max depth 3 to prevent infinite loops)
-- **Swap puts you on a snake/ladder:** No additional movement — swap is final position
-- **Earthquake while on a snake/ladder tile:** Player stays on their current tile number; new snakes/ladders may now be under them (resolved on their next move, not retroactively)
+- **Powerup + Snake on same tile:** Not possible — powerups don't spawn on snake heads/ladder bottoms
+- **Teleport/Magnet lands on another powerup:** Chain triggers (max depth 3). All triggered powerups recorded in `MoveEvent.powerups[]`
+- **Swap puts you on a snake/ladder/powerup:** No additional effects — swap is terminal
+- **Earthquake while on a snake/ladder tile:** Player stays on their current tile number; new snakes/ladders may now be under them but don't trigger retroactively. Powerups invalidated by new layout respawn faster (2 turns)
 - **Shield + Roll 6:** Shield only blocks snakes, roll-6 extra turn still applies
 - **Freeze + Roll 6:** Frozen player loses their turn; the 6-bonus was for the player who triggered Freeze
+- **Freeze stacking:** If opponent already has `skipNextTurn`, a second Freeze is wasted (state can only hold one)
 - **Double Dice + Roll 6:** Movement is doubled (max 12), extra turn still applies
 - **Bounce-back lands on powerup:** Powerup triggers normally after bounce-back
-- **Reverse below tile 1:** Clamped to tile 1
+- **Reverse below tile 1:** Clamped to tile 1. No secondary snake/ladder/powerup effects on reversed player
+- **Reverse onto snake/ladder/powerup:** No secondary effects — Reverse is final position for the opponent
 - **Teleport/Magnet to tile 100:** Player wins
+- **Magnet lands on ladder bottom:** Player climbs the ladder (step 9 applies after powerup resolution)
