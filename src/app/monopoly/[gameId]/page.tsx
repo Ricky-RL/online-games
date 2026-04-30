@@ -46,13 +46,13 @@ export default function MonopolyGamePage({ params }: { params: Promise<{ gameId:
   const player2Name = game.player2_name ?? 'Waiting...';
 
   return (
-    <div className="min-h-screen p-4 sm:p-6">
+    <div className="min-h-screen p-2 sm:p-4 md:p-6">
       <SettingsButton />
 
       {/* Back button */}
       <button
         onClick={() => router.push('/')}
-        className="mb-4 text-sm text-text-secondary hover:text-text-primary transition-colors cursor-pointer"
+        className="mb-2 sm:mb-4 text-sm text-text-secondary hover:text-text-primary transition-colors cursor-pointer min-h-[44px] flex items-center"
       >
         &larr; Back
       </button>
@@ -60,7 +60,7 @@ export default function MonopolyGamePage({ params }: { params: Promise<{ gameId:
       <div className="max-w-7xl mx-auto">
         {/* Turn Indicator */}
         {board.phase !== 'game-over' && (
-          <div className="mb-4">
+          <div className="mb-2 sm:mb-4">
             <TurnIndicator
               currentPlayer={board.activePlayer}
               isMyTurn={isMyTurn}
@@ -69,22 +69,20 @@ export default function MonopolyGamePage({ params }: { params: Promise<{ gameId:
           </div>
         )}
 
-        <div className="flex flex-col lg:flex-row gap-6">
-          {/* Left panel: Player info */}
-          <div className="lg:w-64 space-y-4">
+        <div className="flex flex-col lg:flex-row gap-3 sm:gap-4 lg:gap-6">
+          {/* Player panels - horizontal on mobile, vertical sidebar on desktop */}
+          <div className="grid grid-cols-2 lg:grid-cols-1 gap-2 sm:gap-4 lg:w-64">
             <PlayerPanel board={board} player={1} name={player1Name} isActive={board.activePlayer === 1} />
             <PlayerPanel board={board} player={2} name={player2Name} isActive={board.activePlayer === 2} />
           </div>
 
           {/* Center: Board */}
-          <div className="flex-1 flex flex-col items-center">
-            <div className="overflow-auto">
-              <MonopolyBoardView board={board} />
-            </div>
+          <div className="flex-1 flex flex-col items-center overflow-hidden">
+            <MonopolyBoardView board={board} />
           </div>
 
-          {/* Right panel: Actions */}
-          <div className="lg:w-72 space-y-4">
+          {/* Actions panel */}
+          <div className="lg:w-72 space-y-3 sm:space-y-4">
             {/* Dice display */}
             {board.lastRoll && <DiceDisplay lastRoll={board.lastRoll} />}
 
@@ -114,7 +112,7 @@ export default function MonopolyGamePage({ params }: { params: Promise<{ gameId:
             {board.phase === 'roll' && isMyTurn && (
               <motion.button
                 onClick={() => { play('drop'); roll(); }}
-                className="w-full px-6 py-3 rounded-xl bg-player1 text-white font-semibold hover:opacity-90 transition-opacity cursor-pointer"
+                className="w-full px-6 py-3 min-h-[48px] rounded-xl bg-player1 text-white font-semibold hover:opacity-90 transition-opacity cursor-pointer"
                 whileTap={{ scale: 0.95 }}
               >
                 Roll Dice
@@ -134,7 +132,7 @@ export default function MonopolyGamePage({ params }: { params: Promise<{ gameId:
                 {buildableProperties.length === 0 && (
                   <motion.button
                     onClick={endMyTurn}
-                    className="w-full px-6 py-3 rounded-xl bg-surface border border-border text-text-primary font-medium hover:bg-background transition-colors cursor-pointer"
+                    className="w-full px-6 py-3 min-h-[48px] rounded-xl bg-surface border border-border text-text-primary font-medium hover:bg-background transition-colors cursor-pointer"
                     whileTap={{ scale: 0.95 }}
                   >
                     {board.lastRoll && board.lastRoll.dice[0] === board.lastRoll.dice[1] ? 'Roll Again (Doubles!)' : 'End Turn'}
@@ -144,7 +142,7 @@ export default function MonopolyGamePage({ params }: { params: Promise<{ gameId:
             )}
 
             {!isMyTurn && board.phase !== 'game-over' && (
-              <p className="text-center text-sm text-text-secondary py-4">
+              <p className="text-center text-sm text-text-secondary py-3 sm:py-4">
                 Waiting for opponent...
               </p>
             )}
@@ -152,7 +150,7 @@ export default function MonopolyGamePage({ params }: { params: Promise<{ gameId:
             {board.phase !== 'game-over' && myPlayer && (
               <motion.button
                 onClick={forfeitGame}
-                className="w-full mt-4 px-4 py-2 rounded-xl border border-red-500/30 text-red-400 text-sm font-medium hover:bg-red-500/10 transition-colors cursor-pointer"
+                className="w-full mt-3 sm:mt-4 px-4 py-2 min-h-[44px] rounded-xl border border-red-500/30 text-red-400 text-sm font-medium hover:bg-red-500/10 transition-colors cursor-pointer"
                 whileTap={{ scale: 0.95 }}
               >
                 Forfeit Game
