@@ -215,6 +215,17 @@ function WordSearchIcon() {
   );
 }
 
+function MonopolyIcon() {
+  return (
+    <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
+      <path d="M4 24h20M7 24V10l7-5 7 5v14" stroke="#008000" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" opacity="0.9" />
+      <rect x="11" y="16" width="6" height="8" rx="0.5" fill="#008000" opacity="0.6" />
+      <rect x="10" y="11" width="3" height="3" rx="0.5" fill="#008000" opacity="0.4" />
+      <rect x="15" y="11" width="3" height="3" rx="0.5" fill="#008000" opacity="0.4" />
+    </svg>
+  );
+}
+
 
 function PlayerSelector({ onSelect }: { onSelect: (name: PlayerName) => void }) {
   return (
@@ -681,6 +692,47 @@ function GameSelection({ playerName, onChangePlayer }: { playerName: PlayerName;
     router.push(`/battleship/${data.id}`);
   }, [playerName, router]);
 
+  const handlePlayMonopolyGame = useCallback(async () => {
+    setConnecting('monopoly');
+    const [{ supabase }, { createInitialBoard }] = await Promise.all([
+      import('@/lib/supabase'),
+      import('@/lib/monopoly/logic'),
+    ]);
+    const isRicky = playerName === 'Ricky';
+    const myId = PLAYER_IDS[playerName];
+    async function findGames() {
+      const { data } = await supabase.from('games').select('*').eq('game_type', 'monopoly').is('winner', null).order('created_at', { ascending: false }).limit(10);
+      return data;
+    }
+    function findMyGame(games: any[] | null) {
+      if (!games) return { activeGame: null, joinableGame: null };
+      const activeGame = games.find((g) => { if (isRicky) return g.player1_name === 'Ricky'; return g.player2_name === 'Lilian'; }) || null;
+      const joinableGame = games.find((g) => { if (isRicky) return g.player1_name === null && g.player2_name === 'Lilian'; return g.player2_name === null && g.player1_name === 'Ricky'; }) || null;
+      return { activeGame, joinableGame };
+    }
+    async function joinGame(gameId: string) {
+      const updateField = isRicky ? { player1_id: myId, player1_name: playerName } : { player2_id: myId, player2_name: playerName };
+      const { error: joinError } = await supabase.from('games').update({ ...updateField, updated_at: new Date().toISOString() }).eq('id', gameId).select().single();
+      if (joinError) { setConnecting(null); return false; }
+      return true;
+    }
+    const existingGames = await findGames();
+    let { activeGame, joinableGame } = findMyGame(existingGames);
+    if (activeGame) { router.push(`/monopoly/${activeGame.id}`); return; }
+    if (joinableGame) { if (await joinGame(joinableGame.id)) router.push(`/monopoly/${joinableGame.id}`); return; }
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+    const retryGames = await findGames();
+    ({ activeGame, joinableGame } = findMyGame(retryGames));
+    if (activeGame) { router.push(`/monopoly/${activeGame.id}`); return; }
+    if (joinableGame) { if (await joinGame(joinableGame.id)) router.push(`/monopoly/${joinableGame.id}`); return; }
+    const insertData = isRicky
+      ? { game_type: 'monopoly', board: createInitialBoard(), current_turn: 1 as const, winner: null, player1_id: myId, player1_name: playerName, player2_id: null, player2_name: null }
+      : { game_type: 'monopoly', board: createInitialBoard(), current_turn: 1 as const, winner: null, player1_id: null, player1_name: null, player2_id: myId, player2_name: playerName };
+    const { data, error } = await supabase.from('games').insert(insertData).select('id').single();
+    if (error || !data) { setConnecting(null); return; }
+    router.push(`/monopoly/${data.id}`);
+  }, [playerName, router]);
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -798,6 +850,15 @@ function GameSelection({ playerName, onChangePlayer }: { playerName: PlayerName;
             icon={<WordSearchIcon />}
             delay={0.5}
             onClick={() => router.push('/word-search')}
+          />
+          <ClickableGameCard
+            title="Monopoly"
+            description="Vancouver-themed property trading. Roll, buy, build, and bankrupt."
+            color="#008000"
+            icon={<MonopolyIcon />}
+            delay={0.7}
+            onClick={handlePlayMonopolyGame}
+            loading={connecting === 'monopoly'}
           />
         </div>
       </div>

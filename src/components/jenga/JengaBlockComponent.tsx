@@ -9,15 +9,17 @@ interface JengaBlockComponentProps {
   risk: number;
   isPlayable: boolean;
   isSelected: boolean;
-  orientation: 'horizontal' | 'vertical';
+  blockWidth: number;
+  blockHeight: number;
+  blockDepth: number;
   onClick: () => void;
 }
 
-function riskColor(risk: number): string {
-  if (risk < 15) return 'bg-emerald-600';
-  if (risk < 30) return 'bg-yellow-500';
-  if (risk < 50) return 'bg-orange-500';
-  return 'bg-red-500';
+function woodColor(risk: number): { front: string; side: string; top: string } {
+  if (risk < 15) return { front: '#d4a574', side: '#b8895c', top: '#e8c9a0' };
+  if (risk < 30) return { front: '#c99a5f', side: '#a87d48', top: '#e0ba85' };
+  if (risk < 50) return { front: '#e8a849', side: '#c48e3a', top: '#f5c96e' };
+  return { front: '#d45a3a', side: '#b04030', top: '#e87060' };
 }
 
 export function JengaBlockComponent({
@@ -25,50 +27,112 @@ export function JengaBlockComponent({
   risk,
   isPlayable,
   isSelected,
-  orientation,
+  blockWidth,
+  blockHeight,
+  blockDepth,
   onClick,
 }: JengaBlockComponentProps) {
   if (!exists) {
-    const emptyWidth = orientation === 'horizontal' ? 'w-[60px] h-[20px]' : 'w-[20px] h-[60px]';
-    return <div className={emptyWidth} />;
+    return <div style={{ width: `${blockWidth}px`, height: `${blockHeight}px` }} />;
   }
 
-  const isHorizontal = orientation === 'horizontal';
-  const blockWidth = isHorizontal ? 'w-[60px] h-[20px]' : 'w-[20px] h-[60px]';
+  const colors = woodColor(risk);
+  const halfDepth = blockDepth / 2;
 
   return (
     <motion.button
+      data-block
       onClick={isPlayable ? onClick : undefined}
-      className={`
-        ${blockWidth} relative rounded-sm transition-all
-        ${isSelected ? 'ring-2 ring-white shadow-lg scale-105' : ''}
-        ${isPlayable ? 'cursor-pointer hover:brightness-110' : 'cursor-default'}
-        ${riskColor(risk)}
-      `}
-      whileHover={isPlayable ? { scale: 1.05 } : undefined}
-      whileTap={isPlayable ? { scale: 0.95 } : undefined}
+      className="relative"
       style={{
+        width: `${blockWidth}px`,
+        height: `${blockHeight}px`,
         transformStyle: 'preserve-3d',
+        cursor: isPlayable ? 'pointer' : 'default',
       }}
+      whileHover={isPlayable ? { z: 6, transition: { duration: 0.15 } } : undefined}
     >
-      {/* Top face for 3D depth */}
+      {/* Front face */}
       <div
-        className="absolute inset-0 rounded-sm opacity-30 bg-white"
-        style={{ clipPath: 'polygon(0 0, 100% 0, 90% 30%, 10% 30%)' }}
+        className="absolute inset-0"
+        style={{
+          backgroundColor: colors.front,
+          transform: `translateZ(${halfDepth}px)`,
+          border: isSelected ? '2px solid #fff' : '1px solid rgba(0,0,0,0.08)',
+          boxShadow: isSelected ? '0 0 10px rgba(255,255,255,0.7)' : 'inset 0 1px 0 rgba(255,255,255,0.2)',
+          borderRadius: '1px',
+        }}
       />
-      {/* Right face for 3D depth */}
+      {/* Back face */}
       <div
-        className="absolute inset-0 rounded-sm opacity-20 bg-black"
-        style={{ clipPath: 'polygon(100% 0, 100% 100%, 90% 70%, 90% 30%)' }}
+        className="absolute inset-0"
+        style={{
+          backgroundColor: colors.side,
+          transform: `translateZ(-${halfDepth}px) rotateY(180deg)`,
+          borderRadius: '1px',
+        }}
+      />
+      {/* Top face */}
+      <div
+        className="absolute"
+        style={{
+          width: `${blockWidth}px`,
+          height: `${blockDepth}px`,
+          backgroundColor: colors.top,
+          transform: `translateY(-${halfDepth}px) rotateX(90deg)`,
+          transformOrigin: 'bottom center',
+          borderRadius: '1px',
+          border: '1px solid rgba(0,0,0,0.05)',
+        }}
+      />
+      {/* Bottom face */}
+      <div
+        className="absolute"
+        style={{
+          width: `${blockWidth}px`,
+          height: `${blockDepth}px`,
+          backgroundColor: colors.side,
+          top: `${blockHeight}px`,
+          transform: `translateY(-${halfDepth}px) rotateX(90deg)`,
+          transformOrigin: 'top center',
+          borderRadius: '1px',
+        }}
+      />
+      {/* Right face */}
+      <div
+        className="absolute"
+        style={{
+          width: `${blockDepth}px`,
+          height: `${blockHeight}px`,
+          backgroundColor: colors.side,
+          left: `${blockWidth}px`,
+          transform: `translateX(-${halfDepth}px) rotateY(90deg)`,
+          transformOrigin: 'left center',
+          borderRadius: '1px',
+          border: '1px solid rgba(0,0,0,0.05)',
+        }}
+      />
+      {/* Left face */}
+      <div
+        className="absolute"
+        style={{
+          width: `${blockDepth}px`,
+          height: `${blockHeight}px`,
+          backgroundColor: colors.front,
+          transform: `translateX(-${halfDepth}px) rotateY(-90deg)`,
+          transformOrigin: 'right center',
+          borderRadius: '1px',
+        }}
       />
       {/* Risk indicator on selected */}
       {isSelected && (
         <motion.span
           initial={{ opacity: 0, y: -5 }}
           animate={{ opacity: 1, y: 0 }}
-          className="absolute -top-6 left-1/2 -translate-x-1/2 text-xs font-bold text-white bg-black/80 px-1.5 py-0.5 rounded whitespace-nowrap"
+          className="absolute -top-5 left-1/2 -translate-x-1/2 text-[10px] font-bold text-white bg-black/80 px-1.5 py-0.5 rounded whitespace-nowrap"
+          style={{ transform: `translateX(-50%) translateZ(${halfDepth + 4}px)` }}
         >
-          {risk}%
+          {risk}% risk
         </motion.span>
       )}
     </motion.button>

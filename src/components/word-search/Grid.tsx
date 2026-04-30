@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useRef } from 'react';
+import { useState } from 'react';
 import { motion } from 'framer-motion';
 import type { WordPlacement } from '@/lib/word-search-types';
 import { getWordCells } from '@/lib/word-search-logic';
@@ -15,126 +15,134 @@ interface GridProps {
 }
 
 export function Grid({ grid, words, foundWords, onWordFound, onFirstInteraction, disabled }: GridProps) {
-  const [selecting, setSelecting] = useState(false);
-  const [startCell, setStartCell] = useState<[number, number] | null>(null);
-  const [currentCell, setCurrentCell] = useState<[number, number] | null>(null);
+  const [selectedCells, setSelectedCells] = useState<[number, number][]>([]);
   const [shakeCell, setShakeCell] = useState<[number, number] | null>(null);
-  const gridRef = useRef<HTMLDivElement>(null);
+  const [interacted, setInteracted] = useState(false);
 
-  // Get highlighted cells for found words
-  const foundCells = new Map<string, string>(); // "r,c" -> word
+  const foundCellsMap = new Map<string, string>();
   for (const placement of words) {
     if (foundWords.includes(placement.word)) {
       const cells = getWordCells(placement);
-      cells.forEach(([r, c]) => foundCells.set(`${r},${c}`, placement.word));
+      cells.forEach(([r, c]) => foundCellsMap.set(`${r},${c}`, placement.word));
     }
   }
 
-  // Get cells in current selection line
-  const getSelectionCells = useCallback((): [number, number][] => {
-    if (!startCell || !currentCell) return [];
-    const [r1, c1] = startCell;
-    const [r2, c2] = currentCell;
-    const dr = Math.sign(r2 - r1);
-    const dc = Math.sign(c2 - c1);
+  const selectedSet = new Set(selectedCells.map(([r, c]) => `${r},${c}`));
 
-    // Only allow straight lines (horizontal, vertical, diagonal)
-    const rowDiff = Math.abs(r2 - r1);
-    const colDiff = Math.abs(c2 - c1);
-    if (rowDiff !== colDiff && rowDiff !== 0 && colDiff !== 0) return [];
+  const checkForMatch = (cells: [number, number][]) => {
+    if (cells.length < 2) return;
+    const first = cells[0];
+    const last = cells[cells.length - 1];
 
-    const length = Math.max(rowDiff, colDiff);
-    const cells: [number, number][] = [];
-    for (let i = 0; i <= length; i++) {
-      cells.push([r1 + dr * i, c1 + dc * i]);
-    }
-    return cells;
-  }, [startCell, currentCell]);
-
-  const selectionCells = getSelectionCells();
-  const selectionSet = new Set(selectionCells.map(([r, c]) => `${r},${c}`));
-
-  const handlePointerDown = (row: number, col: number) => {
-    if (disabled) return;
-    if (onFirstInteraction) onFirstInteraction();
-    setSelecting(true);
-    setStartCell([row, col]);
-    setCurrentCell([row, col]);
-  };
-
-  const handlePointerEnter = (row: number, col: number) => {
-    if (!selecting) return;
-    setCurrentCell([row, col]);
-  };
-
-  const handlePointerUp = () => {
-    if (!selecting || !startCell || !currentCell) {
-      setSelecting(false);
-      return;
-    }
-
-    // Check if selection matches a word
-    const [r1, c1] = startCell;
-    const [r2, c2] = currentCell;
-
-    let matched = false;
     for (const placement of words) {
       if (foundWords.includes(placement.word)) continue;
       const { start, end } = placement;
       if (
-        (start[0] === r1 && start[1] === c1 && end[0] === r2 && end[1] === c2) ||
-        (start[0] === r2 && start[1] === c2 && end[0] === r1 && end[1] === c1)
+        (start[0] === first[0] && start[1] === first[1] && end[0] === last[0] && end[1] === last[1]) ||
+        (start[0] === last[0] && start[1] === last[1] && end[0] === first[0] && end[1] === first[1])
       ) {
         onWordFound(placement.word);
-        matched = true;
-        break;
+        setSelectedCells([]);
+        return;
       }
     }
+  };
 
-    if (!matched && (r1 !== r2 || c1 !== c2)) {
-      setShakeCell(startCell);
-      setTimeout(() => setShakeCell(null), 400);
+  const handleCellClick = (row: number, col: number) => {
+    if (disabled) return;
+
+    if (!interacted) {
+      setInteracted(true);
+      if (onFirstInteraction) onFirstInteraction();
     }
 
-    setSelecting(false);
-    setStartCell(null);
-    setCurrentCell(null);
+    const key = `${row},${col}`;
+
+    if (selectedSet.has(key)) {
+      const updated = selectedCells.filter(([r, c]) => !(r === row && c === col));
+      setSelectedCells(updated);
+      return;
+    }
+
+    const updated = [...selectedCells, [row, col] as [number, number]];
+    setSelectedCells(updated);
+
+    if (updated.length >= 2) {
+      const first = updated[0];
+      const last = updated[updated.length - 1];
+      const dr = Math.sign(last[0] - first[0]);
+      const dc = Math.sign(last[1] - first[1]);
+      const rowDiff = Math.abs(last[0] - first[0]);
+      const colDiff = Math.abs(last[1] - first[1]);
+
+      const isLine = (rowDiff === colDiff || rowDiff === 0 || colDiff === 0) && (rowDiff > 0 || colDiff > 0);
+      if (isLine) {
+        const length = Math.max(rowDiff, colDiff);
+        const expectedCells: [number, number][] = [];
+        for (let i = 0; i <= length; i++) {
+          expectedCells.push([first[0] + dr * i, first[1] + dc * i]);
+        }
+        const allMatch = expectedCells.length === updated.length &&
+          expectedCells.every(([r, c], i) => updated[i][0] === r && updated[i][1] === c);
+
+        if (allMatch) {
+          checkForMatch(updated);
+        }
+      }
+    }
+  };
+
+  const handleDeselectAll = () => {
+    if (selectedCells.length > 0) {
+      setShakeCell(selectedCells[0]);
+      setTimeout(() => setShakeCell(null), 400);
+    }
+    setSelectedCells([]);
   };
 
   return (
-    <div
-      ref={gridRef}
-      className="grid gap-0.5 select-none touch-none"
-      style={{ gridTemplateColumns: `repeat(${grid[0].length}, minmax(0, 1fr))` }}
-      onPointerUp={handlePointerUp}
-      onPointerLeave={handlePointerUp}
-    >
-      {grid.map((row, rowIdx) =>
-        row.map((letter, colIdx) => {
-          const key = `${rowIdx},${colIdx}`;
-          const isFound = foundCells.has(key);
-          const isSelecting = selectionSet.has(key);
-          const isShaking = shakeCell && shakeCell[0] === rowIdx && shakeCell[1] === colIdx;
+    <div className="flex flex-col items-center gap-3">
+      <div
+        className="grid gap-0.5 select-none"
+        style={{ gridTemplateColumns: `repeat(${grid[0].length}, minmax(0, 1fr))` }}
+      >
+        {grid.map((row, rowIdx) =>
+          row.map((letter, colIdx) => {
+            const key = `${rowIdx},${colIdx}`;
+            const isFound = foundCellsMap.has(key);
+            const isSelected = selectedSet.has(key);
+            const isShaking = shakeCell && shakeCell[0] === rowIdx && shakeCell[1] === colIdx;
 
-          return (
-            <motion.div
-              key={key}
-              animate={isShaking ? { x: [-2, 2, -2, 2, 0] } : {}}
-              transition={{ duration: 0.3 }}
-              onPointerDown={() => handlePointerDown(rowIdx, colIdx)}
-              onPointerEnter={() => handlePointerEnter(rowIdx, colIdx)}
-              className={`w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center rounded text-sm sm:text-base font-bold cursor-pointer transition-colors ${
-                isFound
-                  ? 'bg-green-500/30 text-green-300'
-                  : isSelecting
-                  ? 'bg-blue-500/30 text-blue-200'
-                  : 'bg-surface/50 text-text-primary hover:bg-surface'
-              }`}
-            >
-              {letter}
-            </motion.div>
-          );
-        })
+            return (
+              <motion.button
+                key={key}
+                type="button"
+                animate={isShaking ? { x: [-2, 2, -2, 2, 0] } : {}}
+                transition={{ duration: 0.3 }}
+                onClick={() => handleCellClick(rowIdx, colIdx)}
+                disabled={disabled}
+                className={`w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center rounded text-sm sm:text-base font-bold cursor-pointer transition-colors disabled:cursor-not-allowed ${
+                  isFound
+                    ? 'bg-green-500/30 text-green-300'
+                    : isSelected
+                    ? 'bg-blue-500/40 text-blue-100 ring-1 ring-blue-400/60'
+                    : 'bg-surface/50 text-text-primary hover:bg-surface'
+                }`}
+              >
+                {letter}
+              </motion.button>
+            );
+          })
+        )}
+      </div>
+
+      {selectedCells.length > 0 && (
+        <button
+          onClick={handleDeselectAll}
+          className="px-4 py-1.5 text-xs font-medium rounded-lg bg-surface border border-border text-text-secondary hover:text-text-primary hover:bg-background transition-colors cursor-pointer"
+        >
+          Deselect all ({selectedCells.length})
+        </button>
       )}
     </div>
   );

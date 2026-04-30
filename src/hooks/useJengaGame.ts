@@ -133,6 +133,17 @@ export function useJengaGame(gameId: string): UseJengaGameReturn {
       if (currentGame.winner !== null) { setError('Game is already over'); return; }
 
       const playable = getPlayableBlocks(currentGame.board);
+      if (playable.length === 0) {
+        // No blocks left to pull — declare opponent as winner (stalemate = current player loses)
+        const winner: Player = (3 - myPlayerNumber) as Player;
+        updateGame((prev) => prev ? { ...prev, winner } : null);
+        await supabase
+          .from('games')
+          .update({ winner, updated_at: new Date().toISOString() })
+          .eq('id', gameId)
+          .eq('current_turn', myPlayerNumber);
+        return;
+      }
       if (!playable.some(([r, c]) => r === row && c === col)) {
         setError('That block is not playable');
         return;
@@ -161,7 +172,8 @@ export function useJengaGame(gameId: string): UseJengaGameReturn {
           winner,
           updated_at: new Date().toISOString(),
         })
-        .eq('id', gameId);
+        .eq('id', gameId)
+        .eq('current_turn', myPlayerNumber);
 
       if (updateError) {
         const { data: freshGame } = await supabase

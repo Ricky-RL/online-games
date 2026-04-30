@@ -13,6 +13,7 @@ interface LeaderboardStats {
     'mini-golf': { ricky: number; lilian: number; draws: number };
     'jenga': { ricky: number; lilian: number; draws: number };
     'snakes-and-ladders': { ricky: number; lilian: number; draws: number };
+    'monopoly': { ricky: number; lilian: number; draws: number };
   };
   streaks: {
     ricky_current: number;
@@ -133,6 +134,12 @@ export function Leaderboard({ stats, onReset, loading }: LeaderboardProps) {
                         ricky={stats.by_game['snakes-and-ladders'].ricky}
                         lilian={stats.by_game['snakes-and-ladders'].lilian}
                         draws={stats.by_game['snakes-and-ladders'].draws}
+                      />
+                      <GameStat
+                        label="Monopoly"
+                        ricky={stats.by_game['monopoly'].ricky}
+                        lilian={stats.by_game['monopoly'].lilian}
+                        draws={stats.by_game['monopoly'].draws}
                       />
                     </div>
                   </div>
