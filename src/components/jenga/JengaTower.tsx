@@ -1,7 +1,6 @@
 'use client';
 
 import { useRef, useState, useCallback } from 'react';
-import { motion } from 'framer-motion';
 import { JengaBlockComponent } from './JengaBlockComponent';
 import type { JengaGameState } from '@/lib/types';
 import { calculateBlockRisk, getPlayableBlocks } from '@/lib/jenga-logic';
@@ -24,6 +23,7 @@ export function JengaTower({ state, isMyTurn, selectedBlock, onBlockClick, disab
 
   const handlePointerDown = useCallback((e: React.PointerEvent) => {
     if ((e.target as HTMLElement).closest('button[data-block]')) return;
+    e.preventDefault();
     setIsDragging(true);
     dragStart.current = { x: e.clientX, startRotation: rotationY };
     (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
@@ -31,14 +31,17 @@ export function JengaTower({ state, isMyTurn, selectedBlock, onBlockClick, disab
 
   const handlePointerMove = useCallback((e: React.PointerEvent) => {
     if (!isDragging || !dragStart.current) return;
+    e.preventDefault();
     const dx = e.clientX - dragStart.current.x;
     setRotationY(dragStart.current.startRotation + dx * 0.5);
   }, [isDragging]);
 
-  const handlePointerUp = useCallback(() => {
+  const handlePointerUp = useCallback((e: React.PointerEvent) => {
+    if (!isDragging) return;
+    e.preventDefault();
     setIsDragging(false);
     dragStart.current = null;
-  }, []);
+  }, [isDragging]);
 
   const BLOCK_WIDTH = 24;
   const BLOCK_LENGTH = 72;
@@ -56,18 +59,18 @@ export function JengaTower({ state, isMyTurn, selectedBlock, onBlockClick, disab
           perspective: '800px',
           perspectiveOrigin: '50% 35%',
           cursor: isDragging ? 'grabbing' : 'grab',
+          touchAction: 'none',
         }}
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
         onPointerCancel={handlePointerUp}
       >
-        <motion.div
-          animate={{ rotateY: rotationY }}
-          transition={isDragging ? { duration: 0 } : { type: 'spring', stiffness: 100, damping: 20 }}
+        <div
           style={{
             transformStyle: 'preserve-3d',
             transform: `rotateX(18deg) rotateY(${rotationY}deg)`,
+            transition: isDragging ? 'none' : 'transform 0.3s ease-out',
             position: 'relative',
             width: `${ROW_WIDTH + 80}px`,
             height: `${towerRows * ROW_HEIGHT + 60}px`,
@@ -123,7 +126,7 @@ export function JengaTower({ state, isMyTurn, selectedBlock, onBlockClick, disab
               </div>
             );
           })}
-        </motion.div>
+        </div>
       </div>
 
       <p className="text-xs text-text-secondary">Drag to rotate</p>

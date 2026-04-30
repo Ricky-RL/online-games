@@ -39,7 +39,6 @@ export function JengaBlockComponent({
   const colors = woodColor(risk);
   const halfDepth = blockDepth / 2;
   const halfWidth = blockWidth / 2;
-  const halfHeight = blockHeight / 2;
 
   return (
     <motion.button
@@ -56,8 +55,12 @@ export function JengaBlockComponent({
     >
       {/* Front face */}
       <div
-        className="absolute inset-0"
         style={{
+          position: 'absolute',
+          width: `${blockWidth}px`,
+          height: `${blockHeight}px`,
+          top: 0,
+          left: 0,
           backgroundColor: colors.front,
           transform: `translateZ(${halfDepth}px)`,
           border: isSelected ? '2px solid #fff' : '1px solid rgba(0,0,0,0.12)',
@@ -69,8 +72,12 @@ export function JengaBlockComponent({
       />
       {/* Back face */}
       <div
-        className="absolute inset-0"
         style={{
+          position: 'absolute',
+          width: `${blockWidth}px`,
+          height: `${blockHeight}px`,
+          top: 0,
+          left: 0,
           backgroundColor: colors.dark,
           transform: `translateZ(-${halfDepth}px) rotateY(180deg)`,
           borderRadius: '1px',
@@ -78,13 +85,15 @@ export function JengaBlockComponent({
       />
       {/* Top face */}
       <div
-        className="absolute left-0"
         style={{
+          position: 'absolute',
           width: `${blockWidth}px`,
           height: `${blockDepth}px`,
+          top: 0,
+          left: 0,
           backgroundColor: colors.top,
-          transform: `rotateX(90deg) translateZ(${halfHeight}px)`,
-          transformOrigin: 'center center',
+          transformOrigin: 'top center',
+          transform: `rotateX(90deg) translateZ(0px)`,
           borderRadius: '1px',
           border: '1px solid rgba(0,0,0,0.06)',
           boxShadow: 'inset 0 0 4px rgba(255,255,255,0.3)',
@@ -92,25 +101,29 @@ export function JengaBlockComponent({
       />
       {/* Bottom face */}
       <div
-        className="absolute left-0"
         style={{
+          position: 'absolute',
           width: `${blockWidth}px`,
           height: `${blockDepth}px`,
+          bottom: 0,
+          left: 0,
           backgroundColor: colors.dark,
-          transform: `rotateX(-90deg) translateZ(${halfHeight}px)`,
-          transformOrigin: 'center center',
+          transformOrigin: 'bottom center',
+          transform: `rotateX(-90deg) translateZ(0px)`,
           borderRadius: '1px',
         }}
       />
       {/* Right face */}
       <div
-        className="absolute top-0"
         style={{
+          position: 'absolute',
           width: `${blockDepth}px`,
           height: `${blockHeight}px`,
+          top: 0,
+          left: `${halfWidth}px`,
           backgroundColor: colors.side,
-          transform: `rotateY(90deg) translateZ(${halfWidth}px)`,
-          transformOrigin: 'center center',
+          transformOrigin: 'left center',
+          transform: `rotateY(90deg)`,
           borderRadius: '1px',
           border: '1px solid rgba(0,0,0,0.08)',
           boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.15)',
@@ -118,13 +131,15 @@ export function JengaBlockComponent({
       />
       {/* Left face */}
       <div
-        className="absolute top-0"
         style={{
+          position: 'absolute',
           width: `${blockDepth}px`,
           height: `${blockHeight}px`,
+          top: 0,
+          left: `-${halfWidth}px`,
           backgroundColor: colors.side,
-          transform: `rotateY(-90deg) translateZ(${halfWidth}px)`,
-          transformOrigin: 'center center',
+          transformOrigin: 'right center',
+          transform: `rotateY(-90deg)`,
           borderRadius: '1px',
           border: '1px solid rgba(0,0,0,0.08)',
         }}
