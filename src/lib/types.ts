@@ -99,9 +99,38 @@ export interface JengaGameState {
 }
 
 // Snakes and Ladders types
+export type PowerupType =
+  | 'double_dice'
+  | 'shield'
+  | 'reverse'
+  | 'teleport'
+  | 'freeze'
+  | 'swap'
+  | 'earthquake'
+  | 'magnet'
+
+export interface MoveEvent {
+  player: 1 | 2
+  roll: number
+  from: number
+  to: number
+  powerups: { tile: number; type: PowerupType; effect: string }[]
+  snakeSlide: { from: number; to: number } | null
+  ladderClimb: { from: number; to: number } | null
+  shieldUsed: boolean
+  skipped: boolean
+}
+
 export interface SnakesAndLaddersState {
   players: { 1: number; 2: number }
   snakes: Record<number, number>
   ladders: Record<number, number>
   lastRoll: { player: 1 | 2; value: number } | null
+  moveNumber: number
+  powerups: Record<number, PowerupType>
+  powerupRespawns: { turnsLeft: number; type: PowerupType }[]
+  lastMoveEvents: MoveEvent[]
+  skipNextTurn: { player: 1 | 2 } | null
+  shielded: { player: 1 | 2 } | null
+  doubleDice: { player: 1 | 2 } | null
 }
