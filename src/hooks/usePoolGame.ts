@@ -60,6 +60,11 @@ export function usePoolGame(gameId: string): UsePoolGameReturn {
       return;
     }
 
+    if (data.game_type === 'ended') {
+      setDeleted(true);
+      return;
+    }
+
     const fresh = data as PoolGame;
 
     // Detect if opponent took a shot (version increased and we haven't seen it)

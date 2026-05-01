@@ -20,7 +20,7 @@ export default function MonopolyGamePage({ params }: { params: Promise<{ gameId:
   const { gameId } = use(params);
   const router = useRouter();
   const {
-    game, loading, error, myPlayer, isMyTurn, lastMove,
+    game, loading, error, deleted, myPlayer, isMyTurn, lastMove,
     roll, buy, pass, build, endMyTurn, payJailFee, rollForDoubles, dismissCard,
     buildableProperties, resetGame, forfeitGame,
   } = useMonopolyGame(gameId);
@@ -34,10 +34,18 @@ export default function MonopolyGamePage({ params }: { params: Promise<{ gameId:
     );
   }
 
+  if (deleted) {
+    router.push('/');
+    return null;
+  }
+
   if (error || !game) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <p className="text-red-500">{error ?? 'Game not found'}</p>
+        <div className="text-center">
+          <p className="text-text-secondary mb-4">{error ?? 'Game not found'}</p>
+          <button onClick={() => router.push('/')} className="px-4 py-2 bg-board text-white rounded-full cursor-pointer">Home</button>
+        </div>
       </div>
     );
   }
