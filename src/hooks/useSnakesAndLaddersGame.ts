@@ -38,6 +38,9 @@ interface UseSnakesAndLaddersGameReturn {
   replayEvents: MoveEvent[];
   isReplaying: boolean;
   activePowerup: { type: PowerupType; effect: string } | null;
+  replayLastMove: LastMoveInfo | null;
+  setReplayLastMove: (move: LastMoveInfo | null) => void;
+  replayAgain: () => void;
   rollDice: () => Promise<void>;
   resetGame: () => Promise<void>;
   skipReplay: () => void;
@@ -58,21 +61,37 @@ export function useSnakesAndLaddersGame(gameId: string): UseSnakesAndLaddersGame
   const [replayEvents, setReplayEvents] = useState<MoveEvent[]>([]);
   const [isReplaying, setIsReplaying] = useState(false);
   const [activePowerup, setActivePowerup] = useState<{ type: PowerupType; effect: string } | null>(null);
+  const [replayLastMove, setReplayLastMove] = useState<LastMoveInfo | null>(null);
   const optimisticBoard = useRef<SnakesAndLaddersState | null>(null);
   const gameRef = useRef<SnakesAndLaddersGame | null>(null);
   const matchRecorded = useRef(false);
   const lastUpdatedAt = useRef<string | null>(null);
   const lastSeenMoveNumber = useRef<number>(0);
   const pendingMoveEvents = useRef<MoveEvent[]>([]);
+  const storedReplayEvents = useRef<MoveEvent[]>([]);
+  const isReplayingRef = useRef(false);
 
   const skipReplay = useCallback(() => {
     setReplayEvents([]);
     setIsReplaying(false);
+    setReplayLastMove(null);
+  }, []);
+
+  const replayAgain = useCallback(() => {
+    if (storedReplayEvents.current.length > 0) {
+      setReplayEvents([...storedReplayEvents.current]);
+      setIsReplaying(true);
+      setReplayLastMove(null);
+    }
   }, []);
 
   const dismissPowerup = useCallback(() => {
     setActivePowerup(null);
   }, []);
+
+  useEffect(() => {
+    isReplayingRef.current = isReplaying;
+  }, [isReplaying]);
 
   const updateGame = useCallback(
     (updater: SnakesAndLaddersGame | null | ((prev: SnakesAndLaddersGame | null) => SnakesAndLaddersGame | null)) => {
@@ -148,8 +167,13 @@ export function useSnakesAndLaddersGame(gameId: string): UseSnakesAndLaddersGame
             optimisticBoard.current = null;
             return fresh;
           }
-          // Server hasn't confirmed our move yet — keep local state
-          return prev;
+          const optimisticMoveNumber = (optimisticBoard.current as SnakesAndLaddersState).moveNumber;
+          const freshMoveNumber = (fresh.board as SnakesAndLaddersState).moveNumber;
+          if (freshMoveNumber > optimisticMoveNumber) {
+            optimisticBoard.current = null;
+          } else {
+            return prev;
+          }
         }
 
         if (JSON.stringify(fresh) === JSON.stringify(prev)) return prev;
@@ -161,9 +185,12 @@ export function useSnakesAndLaddersGame(gameId: string): UseSnakesAndLaddersGame
         const prevBoard = prev.board as SnakesAndLaddersState;
 
         if (freshBoard.moveNumber > lastSeenMoveNumber.current && freshBoard.lastMoveEvents.length > 0) {
-          setReplayEvents(freshBoard.lastMoveEvents);
-          setIsReplaying(true);
           lastSeenMoveNumber.current = freshBoard.moveNumber;
+          if (!isReplayingRef.current) {
+            storedReplayEvents.current = freshBoard.lastMoveEvents;
+            setReplayEvents(freshBoard.lastMoveEvents);
+            setIsReplaying(true);
+          }
         }
 
         const rollChanged = freshBoard.lastRoll &&
@@ -369,5 +396,5 @@ export function useSnakesAndLaddersGame(gameId: string): UseSnakesAndLaddersGame
     setDeleted(true);
   }, [gameId]);
 
-  return { game, loading, error, lastMove, deleted, replayEvents, isReplaying, activePowerup, rollDice, resetGame, skipReplay, dismissPowerup };
+  return { game, loading, error, lastMove, deleted, replayEvents, isReplaying, activePowerup, replayLastMove, setReplayLastMove, replayAgain, rollDice, resetGame, skipReplay, dismissPowerup };
 }

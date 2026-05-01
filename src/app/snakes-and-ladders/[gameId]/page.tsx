@@ -14,12 +14,12 @@ import { EndGameDialog } from '@/components/EndGameDialog';
 import { SettingsButton } from '@/components/SettingsButton';
 import { useNotifications } from '@/hooks/useNotifications';
 import type { SnakesAndLaddersState } from '@/lib/types';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 
 export default function SnakesAndLaddersGamePage({ params }: { params: Promise<{ gameId: string }> }) {
   const { gameId } = use(params);
   const router = useRouter();
-  const { game, loading, error, lastMove, deleted, replayEvents, isReplaying, activePowerup, rollDice, resetGame, skipReplay, dismissPowerup } = useSnakesAndLaddersGame(gameId);
+  const { game, loading, error, lastMove, deleted, replayEvents, isReplaying, activePowerup, replayLastMove, setReplayLastMove, replayAgain, rollDice, resetGame, skipReplay, dismissPowerup } = useSnakesAndLaddersGame(gameId);
   const [showEndDialog, setShowEndDialog] = useState(false);
   const [playerName, setPlayerName] = useState<string | null>(null);
 
@@ -47,6 +47,19 @@ export default function SnakesAndLaddersGamePage({ params }: { params: Promise<{
       router.push('/');
     }
   }, [deleted, router]);
+
+  const [canReplayAgain, setCanReplayAgain] = useState(false);
+
+  const handleReplayComplete = useCallback(() => {
+    skipReplay();
+    setCanReplayAgain(true);
+  }, [skipReplay]);
+
+  useEffect(() => {
+    if (isReplaying) {
+      setCanReplayAgain(false);
+    }
+  }, [isReplaying]);
 
   if (loading) {
     return (
@@ -78,7 +91,7 @@ export default function SnakesAndLaddersGamePage({ params }: { params: Promise<{
 
       {/* Turn replay overlay */}
       {isReplaying && replayEvents.length > 0 && (
-        <TurnReplay events={replayEvents} onComplete={skipReplay} />
+        <TurnReplay events={replayEvents} onComplete={handleReplayComplete} onReplayMove={setReplayLastMove} />
       )}
 
       {/* Own-move powerup toast (non-blocking) */}
@@ -113,16 +126,30 @@ export default function SnakesAndLaddersGamePage({ params }: { params: Promise<{
       )}
 
       {/* Board */}
-      <Board board={board} lastMove={lastMove} />
+      <Board board={board} lastMove={isReplaying ? replayLastMove : lastMove} />
 
       {/* Dice */}
       {!game.winner && (
-        <DiceRoll
-          lastRoll={board.lastRoll}
-          isMyTurn={isMyTurn}
-          onRoll={rollDice}
-          disabled={isReplaying || !!game.winner}
-        />
+        <>
+          {/* Watch again button */}
+          {canReplayAgain && !isReplaying && !game.winner && isMyTurn && (
+            <motion.button
+              initial={{ opacity: 0, y: 5 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0 }}
+              onClick={() => { setCanReplayAgain(false); replayAgain(); }}
+              className="px-3 py-1.5 text-xs font-medium rounded-lg bg-surface border border-border text-text-secondary hover:text-text-primary hover:border-text-secondary/30 transition-all cursor-pointer"
+            >
+              ↺ Watch again
+            </motion.button>
+          )}
+          <DiceRoll
+            lastRoll={board.lastRoll}
+            isMyTurn={isMyTurn}
+            onRoll={rollDice}
+            disabled={isReplaying || !!game.winner}
+          />
+        </>
       )}
 
       {/* Player positions */}
