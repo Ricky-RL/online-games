@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 interface MatchResult {
   id: string;
-  game_type: 'connect-four' | 'tic-tac-toe' | 'wordle' | 'mini-golf' | 'jenga' | 'snakes-and-ladders' | 'word-search' | 'monopoly' | 'battleship' | 'memory' | 'math-trivia' | 'jeopardy' | 'pool' | 'cup-pong' | 'reaction' | 'sudoku';
+  game_type: 'connect-four' | 'tic-tac-toe' | 'wordle' | 'mini-golf' | 'jenga' | 'snakes-and-ladders' | 'word-search' | 'monopoly' | 'battleship' | 'memory' | 'math-trivia' | 'jeopardy' | 'pool' | 'cup-pong' | 'reaction' | 'sudoku' | 'solitaire';
   winner_id: string | null;
   winner_name: string | null;
   loser_id: string | null;
@@ -52,6 +52,7 @@ function gameIcon(gameType: MatchResult['game_type']): string {
     case 'cup-pong': return '🏓';
     case 'reaction': return '⚡';
     case 'sudoku': return '🧩';
+    case 'solitaire': return '♠️';
   }
 }
 function gameLabel(gameType: MatchResult['game_type']): string {
@@ -72,6 +73,7 @@ function gameLabel(gameType: MatchResult['game_type']): string {
     case 'cup-pong': return 'Cup Pong';
     case 'reaction': return 'Reaction';
     case 'sudoku': return 'Sudoku';
+    case 'solitaire': return 'Solitaire';
   }
 }
 function outcomeText(result: MatchResult): string {
@@ -107,6 +109,18 @@ function outcomeText(result: MatchResult): string {
       const winnerTime = result.winner_name === result.player1_name ? meta.p1Time : meta.p2Time;
       const timeStr = winnerTime ? ` in ${formatTime(winnerTime)}` : '';
       return `${result.winner_name} won (${winnerCorrect}/15${timeStr})`;
+    }
+    return `${result.winner_name} won`;
+  }
+  if (result.game_type === 'solitaire') {
+    if (result.is_draw) return 'Draw (both failed)';
+    const meta = result.metadata as { p1Moves?: number; p1Time?: number; p2Moves?: number; p2Time?: number } | null;
+    const winnerMoves = result.winner_name === result.player1_name ? meta?.p1Moves : meta?.p2Moves;
+    const winnerTime = result.winner_name === result.player1_name ? meta?.p1Time : meta?.p2Time;
+    if (winnerMoves && winnerTime) {
+      const m = Math.floor(winnerTime / 60);
+      const s = winnerTime % 60;
+      return `${result.winner_name} won (${winnerMoves} moves, ${m}:${s.toString().padStart(2, '0')})`;
     }
     return `${result.winner_name} won`;
   }

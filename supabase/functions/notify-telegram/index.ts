@@ -20,6 +20,7 @@ const GAME_LABELS: Record<string, string> = {
   wordle: "Wordle",
   "math-trivia": "Math Trivia",
   "cup-pong": "Cup Pong",
+  solitaire: "Solitaire",
 };
 
 interface TurnPayload {
@@ -112,6 +113,27 @@ Deno.serve(async (req) => {
       `*${opponent_name}* is waiting for you\n` +
       `*Time:* ${timestamp}\n\n` +
       `[Join game](${playLink})`;
+  } else if (game_type === "solitaire") {
+    const playLink = `${appUrl}/solitaire/${game_id}`;
+    // Fetch the game row to check player1's result
+    const { data: gameRow } = await supabase
+      .from("games")
+      .select("board")
+      .eq("id", game_id)
+      .single();
+    const player1Result = gameRow?.board?.player1_result;
+    let challengeLine: string;
+    if (player1Result?.completed) {
+      challengeLine = `*Challenge:* beat ${opponent_name}'s score of ${player1Result.moves} moves`;
+    } else {
+      challengeLine = `*Challenge:* try the same deal ${opponent_name} played`;
+    }
+    message =
+      `🃏 *Your turn!*\n\n` +
+      `*Game:* Solitaire\n` +
+      `${challengeLine}\n` +
+      `*Time:* ${timestamp}\n\n` +
+      `[Play now](${playLink})`;
   } else if (notification_type === "game_won") {
     const playLink = `${appUrl}/${game_type}/${game_id}`;
     message =

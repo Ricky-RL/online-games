@@ -353,6 +353,15 @@ function SudokuIcon() {
   );
 }
 
+function SolitaireIcon() {
+  return (
+    <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
+      <path d="M14 3C14 3 7 9 7 14C7 17.9 10.1 21 14 21C17.9 21 21 17.9 21 14C21 9 14 3 14 3Z" fill="#2D5016" opacity="0.8" />
+      <rect x="12.5" y="20" width="3" height="5" rx="1" fill="#2D5016" opacity="0.6" />
+    </svg>
+  );
+}
+
 
 function PlayerSelector({ onSelect }: { onSelect: (name: PlayerName) => void }) {
   return (
@@ -1050,6 +1059,7 @@ function GameSelection({ playerName, onChangePlayer }: { playerName: PlayerName;
     'cup-pong': { icon: <CupPongIcon />, onClick: () => router.push('/cup-pong') },
     'reaction': { icon: <ReactionIcon />, onClick: () => router.push('/reaction') },
     'sudoku': { icon: <SudokuIcon />, onClick: () => router.push('/sudoku') },
+    'solitaire': { icon: <SolitaireIcon />, onClick: () => router.push('/solitaire') },
   };
 
   return (

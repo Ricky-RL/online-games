@@ -138,6 +138,13 @@ export const DEFAULT_GAME_ORDER: GameDefinition[] = [
     categories: ['cooperative', 'strategy'],
     cooperative: true,
   },
+  {
+    slug: 'solitaire',
+    title: 'Solitaire',
+    description: 'Classic Klondike, competitive twist. Beat your opponent on the same deal.',
+    color: '#2D5016',
+    categories: ['strategy'],
+  },
 ];
 
 export const DEFAULT_SLUG_ORDER = DEFAULT_GAME_ORDER.map((g) => g.slug);

@@ -22,6 +22,7 @@ interface LeaderboardStats {
     'pool': { ricky: number; lilian: number; draws: number };
     'cup-pong': { ricky: number; lilian: number; draws: number };
     'reaction'?: { ricky: number; lilian: number; draws: number };
+    'solitaire': { ricky: number; lilian: number; draws: number };
   };
   streaks: {
     ricky_current: number;
@@ -212,6 +213,12 @@ export function Leaderboard({ stats, onReset, loading }: LeaderboardProps) {
                           draws={stats.by_game['reaction'].draws}
                         />
                       )}
+                      <GameStat
+                        label="Solitaire"
+                        ricky={stats.by_game['solitaire'].ricky}
+                        lilian={stats.by_game['solitaire'].lilian}
+                        draws={stats.by_game['solitaire'].draws}
+                      />
                     </div>
                   </div>
                 )}
