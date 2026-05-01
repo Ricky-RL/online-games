@@ -30,7 +30,7 @@ interface TurnPayload {
   updated_at: string;
   whiteboard_action?: string;
   whiteboard_preview?: string;
-  notification_type?: "turn" | "game_won" | "game_lost" | "game_draw";
+  notification_type?: "turn" | "game_created" | "game_won" | "game_lost" | "game_draw";
 }
 
 Deno.serve(async (req) => {
@@ -104,6 +104,14 @@ Deno.serve(async (req) => {
       `*${opponent_name}* ${actionLabel} the whiteboard${previewLine}\n` +
       `*Time:* ${timestamp}\n\n` +
       `[View whiteboard](${playLink})`;
+  } else if (notification_type === "game_created") {
+    const playLink = `${appUrl}/${game_type}/${game_id}`;
+    message =
+      `🆕 *New game started!*\n\n` +
+      `*Game:* ${gameLabel}\n` +
+      `*${opponent_name}* is waiting for you\n` +
+      `*Time:* ${timestamp}\n\n` +
+      `[Join game](${playLink})`;
   } else if (notification_type === "game_won") {
     const playLink = `${appUrl}/${game_type}/${game_id}`;
     message =
