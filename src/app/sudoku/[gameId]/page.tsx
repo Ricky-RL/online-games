@@ -142,30 +142,45 @@ export default function SudokuGamePage({ params }: { params: Promise<{ gameId: s
 
   if (isWon) {
     return (
-      <div className="flex-1 flex flex-col items-center justify-center gap-6 p-4">
-        <div className="text-center space-y-3">
-          <p className="text-3xl font-bold text-green-400">Puzzle Solved!</p>
-          <p className="text-text-secondary">
-            {game.player1_name && game.player2_name
-              ? `${game.player1_name} & ${game.player2_name} solved it together`
-              : 'Solved cooperatively'}
-          </p>
-          <div className="flex items-center justify-center gap-4 text-sm text-text-secondary">
-            <span>Time: {formatTime(elapsed)}</span>
-            <span>Moves: {board.moveCount}</span>
-            <span className="capitalize">{board.difficulty}</span>
+      <>
+        <div className="flex-1 flex flex-col items-center justify-center gap-6 p-4">
+          <div className="text-center space-y-3">
+            <p className="text-3xl font-bold text-green-400">Puzzle Solved!</p>
+            <p className="text-text-secondary">
+              {game.player1_name && game.player2_name
+                ? `${game.player1_name} & ${game.player2_name} solved it together`
+                : 'Solved cooperatively'}
+            </p>
+            <div className="flex items-center justify-center gap-4 text-sm text-text-secondary">
+              <span>Time: {formatTime(elapsed)}</span>
+              <span>Moves: {board.moveCount}</span>
+              <span className="capitalize">{board.difficulty}</span>
+            </div>
+          </div>
+          <div className="opacity-70 pointer-events-none">
+            <Board grid={board.grid} selectedCell={null} onCellSelect={() => {}} />
+          </div>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => router.push('/')}
+              className="px-6 py-3 text-base font-medium rounded-xl border border-border bg-surface text-text-secondary hover:text-text-primary hover:border-text-secondary/30 shadow-sm hover:shadow transition-all cursor-pointer"
+            >
+              Home
+            </button>
+            <button
+              onClick={() => setShowEndDialog(true)}
+              className="px-6 py-3 text-base font-medium rounded-xl border border-player1/20 bg-player1/5 text-player1/80 hover:bg-player1/10 hover:border-player1/40 hover:text-player1 shadow-sm hover:shadow transition-all cursor-pointer"
+            >
+              End Game
+            </button>
           </div>
         </div>
-        <div className="opacity-70 pointer-events-none">
-          <Board grid={board.grid} selectedCell={null} onCellSelect={() => {}} />
-        </div>
-        <button
-          onClick={() => router.push('/')}
-          className="px-6 py-3 text-base font-medium rounded-xl bg-surface border border-border text-text-primary hover:bg-background transition-colors cursor-pointer"
-        >
-          Home
-        </button>
-      </div>
+        <EndGameDialog
+          open={showEndDialog}
+          onConfirm={handleEndGame}
+          onCancel={() => setShowEndDialog(false)}
+        />
+      </>
     );
   }
 
