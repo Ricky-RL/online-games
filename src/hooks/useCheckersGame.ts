@@ -144,12 +144,23 @@ export function useCheckersGame(gameId: string): UseCheckersGameReturn {
       updateGame((prev) => {
         if (!prev) return fresh;
 
+        const freshMoves = fresh.board.settings.moveCount;
+        const prevMoves = prev.board.settings.moveCount;
+
         if (optimisticBoard.current) {
-          if (fresh.board.settings.moveCount >= optimisticBoard.current.settings.moveCount) {
+          // DB confirmed our optimistic write
+          if (JSON.stringify(fresh.board) === JSON.stringify(optimisticBoard.current)) {
             optimisticBoard.current = null;
             return fresh;
           }
-          if (fresh.board.settings.moveCount < prev.board.settings.moveCount) {
+          // The opponent made a move on top of ours (their move count exceeds ours)
+          if (freshMoves > optimisticBoard.current.settings.moveCount) {
+            optimisticBoard.current = null;
+            return fresh;
+          }
+          // Fresh data has fewer moves — stale poll, keep optimistic state
+          // but accept player name/id updates (e.g. opponent joining)
+          if (freshMoves < prevMoves) {
             return {
               ...prev,
               player1_name: fresh.player1_name,
@@ -158,15 +169,34 @@ export function useCheckersGame(gameId: string): UseCheckersGameReturn {
               player2_id: fresh.player2_id,
             };
           }
+          // Fresh has same move count but different board content — clear
+          // optimistic state and accept fresh to avoid getting stuck
           optimisticBoard.current = null;
         }
 
-        if (fresh.board.settings.moveCount < prev.board.settings.moveCount) {
-          return prev;
+        if (JSON.stringify(fresh) === JSON.stringify(prev)) return prev;
+
+        // Detect the opponent's new move for animation
+        if (freshMoves > prevMoves && !fresh.board.settings.continuingPiece) {
+          pendingDetectedMove.current = detectMove(prev.board, fresh.board);
         }
 
-        if (fresh.board.settings.moveCount > prev.board.settings.moveCount && !fresh.board.settings.continuingPiece) {
-          pendingDetectedMove.current = detectMove(prev.board, fresh.board);
+        // Guard against out-of-order polls regressing state
+        if (freshMoves < prevMoves) {
+          // Still pick up player name/id changes
+          if (fresh.player1_name !== prev.player1_name ||
+              fresh.player2_name !== prev.player2_name ||
+              fresh.player1_id !== prev.player1_id ||
+              fresh.player2_id !== prev.player2_id) {
+            return {
+              ...prev,
+              player1_name: fresh.player1_name,
+              player2_name: fresh.player2_name,
+              player1_id: fresh.player1_id,
+              player2_id: fresh.player2_id,
+            };
+          }
+          return prev;
         }
 
         return fresh;
@@ -211,7 +241,7 @@ export function useCheckersGame(gameId: string): UseCheckersGameReturn {
       );
       setError(null);
 
-      const { error: updateError } = await supabase
+      const { data: updatedGame, error: updateError } = await supabase
         .from('games')
         .update({
           board: newBoard,
@@ -219,16 +249,22 @@ export function useCheckersGame(gameId: string): UseCheckersGameReturn {
           winner,
           updated_at: new Date().toISOString(),
         })
-        .eq('id', gameId);
+        .eq('id', gameId)
+        .select()
+        .single();
 
-      if (updateError) {
+      if (updateError || !updatedGame) {
         optimisticBoard.current = null;
         isMultiJumping.current = false;
         const { data: freshGame } = await supabase
           .from('games').select('*').eq('id', gameId).single();
         if (freshGame) updateGame(freshGame as CheckersGame);
-        setError(updateError.message);
+        if (updateError) setError(updateError.message);
+        return;
       }
+
+      optimisticBoard.current = null;
+      updateGame(updatedGame as CheckersGame);
     },
     [gameId, updateGame]
   );
