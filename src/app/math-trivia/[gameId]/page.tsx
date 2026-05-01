@@ -4,6 +4,8 @@ import { use, useState, useCallback, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useMathTriviaGame } from '@/hooks/useMathTriviaGame';
+import { useNotifications } from '@/hooks/useNotifications';
+import { NotificationControls } from '@/components/NotificationControls';
 import { checkAnswer } from '@/lib/math-trivia-logic';
 import { EndGameDialog } from '@/components/EndGameDialog';
 import { SettingsButton } from '@/components/SettingsButton';
@@ -36,7 +38,20 @@ export default function MathTriviaGamePage({ params }: { params: Promise<{ gameI
 
   const board = game?.board as MathTriviaBoardState | undefined;
   const myPlayerNumber = game ? (game.player1_name === playerName ? 1 : 2) : null;
-  const isMyTurn = myPlayerNumber === game?.current_turn;
+  // Math Trivia: current_turn=0 means "no one has submitted yet" — both players can play.
+  // current_turn=1 or 2 means that player is next (the other already submitted).
+  const isMyTurn = game?.current_turn === 0 || myPlayerNumber === game?.current_turn;
+
+  const opponentName = game && myPlayerNumber
+    ? (myPlayerNumber === 1 ? game.player2_name : game.player1_name)
+    : null;
+
+  const { permissionState, requestPermission, isMuted, toggleMute } = useNotifications({
+    gameId,
+    isMyTurn: isMyTurn && !myResult && !submitted,
+    opponentName,
+    gameType: 'math-trivia',
+  });
 
   // Start timer when it's my turn and I haven't submitted
   useEffect(() => {
@@ -162,6 +177,12 @@ export default function MathTriviaGamePage({ params }: { params: Promise<{ gameI
           <p className="text-text-secondary">
             {game.player1_name || 'Your opponent'} is answering the questions. You&apos;ll get your turn next!
           </p>
+          <NotificationControls
+            permissionState={permissionState}
+            requestPermission={requestPermission}
+            isMuted={isMuted}
+            toggleMute={toggleMute}
+          />
           <button
             onClick={() => router.push('/')}
             className="mt-6 px-6 py-3 text-sm text-text-secondary hover:text-text-primary transition-colors cursor-pointer"

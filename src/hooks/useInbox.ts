@@ -105,11 +105,13 @@ export function useInbox(): UseInboxReturn {
       );
 
       // It's my turn if I'm in the game and current_turn points to my player number,
-      // OR if the game is waiting for me to join (I need to take action).
+      // OR if the game is waiting for me to join (I need to take action),
+      // OR if current_turn=0 (math-trivia: both players can play, no one has submitted yet).
       // Cooperative games (e.g. Sudoku) are always "active" — no turn logic applies.
       const isCooperative = COOPERATIVE_GAMES.has(game.game_type);
       const isMyTurn = isWaitingForMe ||
         (isCooperative && iAmInGame) ||
+        (iAmInGame && game.current_turn === 0) ||
         (!isCooperative && iAmPlayer1 && game.current_turn === 1) ||
         (!isCooperative && iAmPlayer2 && game.current_turn === 2);
 
