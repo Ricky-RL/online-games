@@ -23,7 +23,7 @@ function getMyName(): string | null {
 export default function CupPongGamePage({ params }: { params: Promise<{ gameId: string }> }) {
   const { gameId } = use(params);
   const router = useRouter();
-  const { game, loading, error, deleted, firstThrow, makeThrow, resetGame } = useCupPongGame(gameId);
+  const { game, loading, error, deleted, firstThrow, makeThrow, endGame } = useCupPongGame(gameId);
   const [myName, setMyName] = useState<string | null>(null);
   const [showEndDialog, setShowEndDialog] = useState(false);
   const [animating, setAnimating] = useState(false);
@@ -87,11 +87,6 @@ export default function CupPongGamePage({ params }: { params: Promise<{ gameId: 
     setDisplayedThrow(null);
   }, []);
 
-  const handleReset = useCallback(async () => {
-    await resetGame();
-    router.push('/');
-  }, [resetGame, router]);
-
   const handleEndGameClick = useCallback(() => {
     setShowEndDialog(true);
   }, []);
@@ -99,6 +94,12 @@ export default function CupPongGamePage({ params }: { params: Promise<{ gameId: 
   const handleEndGameCancel = useCallback(() => {
     setShowEndDialog(false);
   }, []);
+
+  const handleEndGameConfirm = useCallback(async () => {
+    setShowEndDialog(false);
+    await endGame();
+    router.push('/');
+  }, [endGame, router]);
 
   if (loading) {
     return (
@@ -119,6 +120,73 @@ export default function CupPongGamePage({ params }: { params: Promise<{ gameId: 
   const p1Remaining = getCupsRemaining(game.board, 1);
   const p2Remaining = getCupsRemaining(game.board, 2);
 
+  // Game won state — show celebration with disabled table
+  if (game.winner) {
+    const isMe = game.winner === myPlayerNumber;
+    return (
+      <>
+        <motion.div
+          className="flex-1 flex flex-col items-center justify-center min-h-screen p-4 gap-4"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.4 }}
+        >
+          <SettingsButton />
+
+          <WinCelebration
+            winner={game.winner}
+            winnerName={winnerName}
+            isMe={isMe}
+            onPlayAgain={handleEndGameClick}
+            onHome={() => router.push('/')}
+          />
+
+          {/* Score display */}
+          <div className="flex items-center gap-6 text-sm font-medium">
+            <div className="flex items-center gap-2">
+              <div className="w-3 h-3 rounded-full bg-player1" />
+              <span className="text-text-primary">
+                {game.player1_name}: {10 - p1Remaining} hit
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="w-3 h-3 rounded-full bg-player2" />
+              <span className="text-text-primary">
+                {game.player2_name ?? 'Waiting...'}: {10 - p2Remaining} hit
+              </span>
+            </div>
+          </div>
+
+          {/* Disabled table showing final state */}
+          {myPlayerNumber && (
+            <div className="opacity-60">
+              <Table
+                player1Cups={game.board.player1Cups}
+                player2Cups={game.board.player2Cups}
+                currentTurn={game.current_turn}
+                myPlayer={myPlayerNumber}
+                isMyTurn={false}
+                throwsRemaining={0}
+                onThrow={() => {}}
+                lastThrowResult={null}
+                animating={false}
+                onAnimationComplete={() => {}}
+                winner={game.winner}
+              />
+            </div>
+          )}
+        </motion.div>
+
+        <EndGameDialog
+          open={showEndDialog}
+          onConfirm={handleEndGameConfirm}
+          onCancel={handleEndGameCancel}
+        />
+      </>
+    );
+  }
+
+  // Active game (waiting for opponent or playing)
   return (
     <>
       <motion.div
@@ -130,14 +198,12 @@ export default function CupPongGamePage({ params }: { params: Promise<{ gameId: 
         <SettingsButton />
 
         <div className="flex items-center gap-4">
-          {!game.winner && (
-            <TurnIndicator
-              currentPlayer={game.current_turn}
-              isMyTurn={isMyTurn}
-              playerName={opponentName}
-              label={!isMyTurn && !game.player2_name ? 'Waiting for opponent to join...' : undefined}
-            />
-          )}
+          <TurnIndicator
+            currentPlayer={game.current_turn}
+            isMyTurn={isMyTurn}
+            playerName={opponentName}
+            label={!isMyTurn && !game.player2_name ? 'Waiting for opponent to join...' : undefined}
+          />
           <NotificationControls
             permissionState={permissionState}
             requestPermission={requestPermission}
@@ -179,23 +245,13 @@ export default function CupPongGamePage({ params }: { params: Promise<{ gameId: 
           />
         )}
 
-        {game.winner && (
-          <WinCelebration
-            winner={game.winner}
-            winnerName={winnerName}
-            isMe={game.winner === myPlayerNumber}
-            onPlayAgain={handleReset}
-            onHome={() => router.push('/')}
-          />
-        )}
-
         {error && (
           <motion.p className="text-red-400 text-sm" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
             {error}
           </motion.p>
         )}
 
-        <nav className="flex items-center gap-3 mt-4">
+        <div className="flex items-center gap-3">
           <button
             onClick={() => router.push('/')}
             className="px-4 py-2 text-sm font-medium rounded-xl border border-border bg-surface text-text-secondary hover:text-text-primary hover:border-text-secondary/30 shadow-sm hover:shadow transition-all cursor-pointer"
@@ -208,12 +264,12 @@ export default function CupPongGamePage({ params }: { params: Promise<{ gameId: 
           >
             End Game
           </button>
-        </nav>
+        </div>
       </motion.div>
 
       <EndGameDialog
         open={showEndDialog}
-        onConfirm={handleReset}
+        onConfirm={handleEndGameConfirm}
         onCancel={handleEndGameCancel}
       />
     </>
