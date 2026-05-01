@@ -81,15 +81,20 @@ export const BallAnimation = memo(function BallAnimation({
     animDataRef.current = { startX, startY, endX, endY, midX, midY, hit, duration };
     setPhase('flying');
 
-    // Hard timeout to guarantee completion regardless of framer-motion behavior
     if (completionTimerRef.current) clearTimeout(completionTimerRef.current);
     const totalDuration = hit ? duration + 0.45 : duration + 0.3;
     completionTimerRef.current = setTimeout(() => {
       setPhase('idle');
       animDataRef.current = null;
-      lastThrowIdRef.current = '';
       onCompleteRef.current();
     }, totalDuration * 1000);
+
+    return () => {
+      if (completionTimerRef.current) {
+        clearTimeout(completionTimerRef.current);
+        completionTimerRef.current = null;
+      }
+    };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [throwResult]);
 

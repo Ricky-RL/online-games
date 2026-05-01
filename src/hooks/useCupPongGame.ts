@@ -32,6 +32,8 @@ interface UseCupPongGameReturn {
   deleted: boolean;
   /** The first throw of the current turn (stored locally until second throw commits both) */
   firstThrow: ThrowResult | null;
+  /** Clear the firstThrow state after animation completes */
+  clearFirstThrow: () => void;
   /** Execute a throw with direction and power. Returns the ThrowResult for animation. */
   makeThrow: (direction: ThrowVector, power: number) => Promise<ThrowResult | null>;
   resetGame: () => Promise<void>;
@@ -429,5 +431,9 @@ export function useCupPongGame(gameId: string): UseCupPongGameReturn {
     setDeleted(true);
   }, [gameId]);
 
-  return { game, loading, error, deleted, firstThrow, makeThrow, resetGame, endGame };
+  const clearFirstThrow = useCallback(() => {
+    setFirstThrow(null);
+  }, []);
+
+  return { game, loading, error, deleted, firstThrow, clearFirstThrow, makeThrow, resetGame, endGame };
 }

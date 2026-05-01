@@ -23,7 +23,7 @@ function getMyName(): string | null {
 export default function CupPongGamePage({ params }: { params: Promise<{ gameId: string }> }) {
   const { gameId } = use(params);
   const router = useRouter();
-  const { game, loading, error, deleted, firstThrow, makeThrow, endGame } = useCupPongGame(gameId);
+  const { game, loading, error, deleted, firstThrow, clearFirstThrow, makeThrow, endGame } = useCupPongGame(gameId);
   const [myName, setMyName] = useState<string | null>(null);
   const [showEndDialog, setShowEndDialog] = useState(false);
   const [animating, setAnimating] = useState(false);
@@ -47,7 +47,8 @@ export default function CupPongGamePage({ params }: { params: Promise<{ gameId: 
       setDisplayedThrow(firstThrow);
       setAnimating(true);
     }
-  }, [firstThrow, animating]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [firstThrow]);
 
   const myPlayerNumber: Player | null = useMemo(() => {
     if (!game || !myName) return null;
@@ -92,6 +93,7 @@ export default function CupPongGamePage({ params }: { params: Promise<{ gameId: 
             if (prev) {
               setDisplayedThrow(null);
               localThrowRef.current = false;
+              clearFirstThrow();
             }
             return false;
           });
@@ -101,14 +103,15 @@ export default function CupPongGamePage({ params }: { params: Promise<{ gameId: 
         localThrowRef.current = false;
       }
     },
-    [makeThrow]
+    [makeThrow, clearFirstThrow]
   );
 
   const handleAnimationComplete = useCallback(() => {
     setAnimating(false);
     setDisplayedThrow(null);
     localThrowRef.current = false;
-  }, []);
+    clearFirstThrow();
+  }, [clearFirstThrow]);
 
   const handleEndGameClick = useCallback(() => {
     setShowEndDialog(true);
