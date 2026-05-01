@@ -78,6 +78,12 @@ export const DEFAULT_GAME_ORDER: GameDefinition[] = [
     description: 'Flip cards, find pairs. Best memory wins the match.',
     color: '#9B59B6',
   },
+  {
+    slug: 'math-trivia',
+    title: 'Math Trivia',
+    description: '15 math questions — fastest correct answers wins.',
+    color: '#F97316',
+  },
 ];
 
 export const DEFAULT_SLUG_ORDER = DEFAULT_GAME_ORDER.map((g) => g.slug);

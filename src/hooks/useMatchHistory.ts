@@ -7,7 +7,7 @@ const POLL_INTERVAL_MS = 5000;
 
 export interface MatchResult {
   id: string;
-  game_type: 'connect-four' | 'tic-tac-toe' | 'wordle' | 'mini-golf' | 'jenga' | 'snakes-and-ladders' | 'word-search' | 'monopoly' | 'battleship' | 'memory';
+  game_type: 'connect-four' | 'tic-tac-toe' | 'wordle' | 'mini-golf' | 'jenga' | 'snakes-and-ladders' | 'word-search' | 'monopoly' | 'battleship' | 'memory' | 'math-trivia';
   winner_id: string | null;
   winner_name: string | null;
   loser_id: string | null;
@@ -35,6 +35,7 @@ export interface LeaderboardStats {
     'battleship': { ricky: number; lilian: number; draws: number };
     'word-search': { ricky: number; lilian: number; draws: number };
     'memory': { ricky: number; lilian: number; draws: number };
+    'math-trivia': { ricky: number; lilian: number; draws: number };
   };
   streaks: {
     ricky_current: number;
@@ -72,6 +73,7 @@ function computeStats(results: MatchResult[]): LeaderboardStats {
     'monopoly': { ricky: 0, lilian: 0, draws: 0 },
     'word-search': { ricky: 0, lilian: 0, draws: 0 },
     'memory': { ricky: 0, lilian: 0, draws: 0 },
+    'math-trivia': { ricky: 0, lilian: 0, draws: 0 },
   };
 
   let wordle_played = 0;

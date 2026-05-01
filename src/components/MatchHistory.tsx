@@ -3,13 +3,13 @@ import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 interface MatchResult {
   id: string;
-  game_type: 'connect-four' | 'tic-tac-toe' | 'wordle' | 'mini-golf' | 'jenga' | 'snakes-and-ladders' | 'word-search' | 'monopoly' | 'battleship' | 'memory';
+  game_type: 'connect-four' | 'tic-tac-toe' | 'wordle' | 'mini-golf' | 'jenga' | 'snakes-and-ladders' | 'word-search' | 'monopoly' | 'battleship' | 'memory' | 'math-trivia';
   winner_id: string | null;
   winner_name: string | null;
   loser_id: string | null;
   loser_name: string | null;
   is_draw: boolean;
-  metadata: { guessCount?: number; won?: boolean; totalMoves?: number; theme?: string; p1Words?: number; p2Words?: number; p1Time?: number; p2Time?: number; p1FoundWords?: string[]; p2FoundWords?: string[]; allWords?: string[] } | null;
+  metadata: { guessCount?: number; won?: boolean; totalMoves?: number; theme?: string; p1Words?: number; p2Words?: number; p1Time?: number; p2Time?: number; p1FoundWords?: string[]; p2FoundWords?: string[]; allWords?: string[]; p1Correct?: number; p2Correct?: number } | null;
   player1_id: string;
   player1_name: string;
   player2_id: string;
@@ -46,6 +46,7 @@ function gameIcon(gameType: MatchResult['game_type']): string {
     case 'monopoly': return '🏠';
     case 'battleship': return '🎯';
     case 'memory': return '🧠';
+    case 'math-trivia': return '🧮';
   }
 }
 function gameLabel(gameType: MatchResult['game_type']): string {
@@ -60,6 +61,7 @@ function gameLabel(gameType: MatchResult['game_type']): string {
     case 'monopoly': return 'Monopoly';
     case 'battleship': return 'Battleship';
     case 'memory': return 'Memory';
+    case 'math-trivia': return 'Math Trivia';
   }
 }
 function outcomeText(result: MatchResult): string {
@@ -75,6 +77,17 @@ function outcomeText(result: MatchResult): string {
     const meta = result.metadata;
     if (meta?.p1Words !== undefined && meta?.p2Words !== undefined) {
       return `${result.winner_name} won (${Math.max(meta.p1Words, meta.p2Words)} words)`;
+    }
+    return `${result.winner_name} won`;
+  }
+  if (result.game_type === 'math-trivia') {
+    if (result.is_draw) return 'Draw';
+    const meta = result.metadata;
+    if (meta?.p1Correct !== undefined && meta?.p2Correct !== undefined) {
+      const winnerCorrect = Math.max(meta.p1Correct, meta.p2Correct);
+      const winnerTime = result.winner_name === result.player1_name ? meta.p1Time : meta.p2Time;
+      const timeStr = winnerTime ? ` in ${formatTime(winnerTime)}` : '';
+      return `${result.winner_name} won (${winnerCorrect}/15${timeStr})`;
     }
     return `${result.winner_name} won`;
   }

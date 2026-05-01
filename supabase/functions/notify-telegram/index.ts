@@ -14,6 +14,7 @@ const GAME_LABELS: Record<string, string> = {
   memory: "Memory",
   whiteboard: "Whiteboard",
   wordle: "Wordle",
+  "math-trivia": "Math Trivia",
 };
 
 interface TurnPayload {

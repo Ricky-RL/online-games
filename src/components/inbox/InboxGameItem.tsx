@@ -136,6 +136,17 @@ function MemoryMini() {
   );
 }
 
+function MathTriviaMini() {
+  return (
+    <div className="w-8 h-8 rounded-lg bg-[#F97316]/10 flex items-center justify-center">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+        <text x="2" y="7" fontSize="5" fill="#F97316" opacity="0.9" fontFamily="monospace" fontWeight="bold">1+2</text>
+        <text x="2" y="14" fontSize="5" fill="#F97316" opacity="0.7" fontFamily="monospace" fontWeight="bold">3×4</text>
+      </svg>
+    </div>
+  );
+}
+
 function DailyWordleMini() {
   return (
     <div className="w-8 h-8 rounded-lg bg-[#538D4E]/10 flex items-center justify-center">
@@ -163,6 +174,7 @@ function GameIcon({ gameType }: { gameType: InboxGameType }) {
     case 'word-search': return <WordSearchMini />;
     case 'monopoly': return <MonopolyMini />;
     case 'memory': return <MemoryMini />;
+    case 'math-trivia': return <MathTriviaMini />;
     case 'daily-wordle': return <DailyWordleMini />;
   }
 }
@@ -179,6 +191,7 @@ function gameLabel(gameType: InboxGameType): string {
     case 'word-search': return 'Word Search';
     case 'monopoly': return 'Monopoly';
     case 'memory': return 'Memory';
+    case 'math-trivia': return 'Math Trivia';
     case 'daily-wordle': return 'Daily Wordle';
   }
 }

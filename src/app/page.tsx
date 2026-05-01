@@ -255,6 +255,16 @@ function MemoryIcon() {
   );
 }
 
+function MathTriviaIcon() {
+  return (
+    <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
+      <rect x="2" y="2" width="24" height="24" rx="3" stroke="#F97316" strokeWidth="2" fill="none" opacity="0.8" />
+      <text x="5" y="13" fontSize="7" fill="#F97316" opacity="0.9" fontFamily="monospace" fontWeight="bold">1+2</text>
+      <text x="5" y="23" fontSize="7" fill="#F97316" opacity="0.7" fontFamily="monospace" fontWeight="bold">3×4</text>
+    </svg>
+  );
+}
+
 
 function PlayerSelector({ onSelect }: { onSelect: (name: PlayerName) => void }) {
   return (
@@ -901,6 +911,7 @@ function GameSelection({ playerName, onChangePlayer }: { playerName: PlayerName;
     'word-search': { icon: <WordSearchIcon />, onClick: () => router.push('/word-search') },
     'monopoly': { icon: <MonopolyIcon />, onClick: handlePlayMonopolyGame, loading: connecting === 'monopoly' },
     'memory': { icon: <MemoryIcon />, onClick: () => router.push('/memory') },
+    'math-trivia': { icon: <MathTriviaIcon />, onClick: () => router.push('/math-trivia') },
   };
 
   return (
