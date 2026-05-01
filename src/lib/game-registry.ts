@@ -79,7 +79,6 @@ export const DEFAULT_GAME_ORDER: GameDefinition[] = [
     color: '#9B59B6',
   },
   {
-  {
     slug: 'jeopardy',
     title: 'Jeopardy',
     description: 'Pick categories, answer trivia. Highest score wins the board.',
