@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useRef, useCallback } from 'react';
+import { useMemo, useRef, useCallback, useEffect } from 'react';
 import type { JengaGameState, Point } from '@/lib/types';
 import { calculateBlockRisk, getPlayableBlocks, getPlayableBlocksAboveThreshold } from '@/lib/jenga-logic';
 
@@ -55,6 +55,17 @@ export function JengaTower({ state, isMyTurn, selectedBlock, pullingBlock, onBlo
   const pendingPointerPos = useRef<{ x: number; y: number } | null>(null);
   const rafIdRef = useRef<number | null>(null);
 
+  useEffect(() => {
+    return () => {
+      if (rafIdRef.current !== null) {
+        cancelAnimationFrame(rafIdRef.current);
+      }
+      if (holdTimerRef.current) {
+        clearTimeout(holdTimerRef.current);
+      }
+    };
+  }, []);
+
   const handlePointerDown = useCallback((row: number, col: number, e: React.PointerEvent) => {
     // Only start drag on selected block
     if (!selectedBlock || selectedBlock[0] !== row || selectedBlock[1] !== col) return;
@@ -71,7 +82,7 @@ export function JengaTower({ state, isMyTurn, selectedBlock, pullingBlock, onBlo
     holdTimerRef.current = setTimeout(() => {
       isDragging.current = true;
       dragBlockRef.current = [row, col];
-      startPointerPos.current = pendingPointerPos.current;
+      startPointerPos.current = initialPos;
 
       // Compute the screen position of the block center for overlay positioning
       if (containerRef.current) {
@@ -90,19 +101,17 @@ export function JengaTower({ state, isMyTurn, selectedBlock, pullingBlock, onBlo
   const handlePointerMove = useCallback((e: React.PointerEvent) => {
     if (!isDragging.current || !onDragMove || !startPointerPos.current) return;
 
-    // Compute delta from drag start — this gives us coordinates in the same
-    // space as generatePullPath (which starts at origin {0,0})
-    const delta: Point = {
-      x: e.clientX - startPointerPos.current.x,
-      y: e.clientY - startPointerPos.current.y,
-    };
-
-    // Use requestAnimationFrame batching for smoother visual updates
     pendingPointerPos.current = { x: e.clientX, y: e.clientY };
     if (rafIdRef.current === null) {
       rafIdRef.current = requestAnimationFrame(() => {
         rafIdRef.current = null;
-        onDragMove(delta);
+        if (startPointerPos.current && pendingPointerPos.current) {
+          const delta: Point = {
+            x: pendingPointerPos.current.x - startPointerPos.current.x,
+            y: pendingPointerPos.current.y - startPointerPos.current.y,
+          };
+          onDragMove(delta);
+        }
       });
     }
   }, [onDragMove]);
