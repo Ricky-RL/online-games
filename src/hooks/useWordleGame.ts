@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
 import { isValidGuess, isGameWon, isGameLost, getAnswer } from '@/lib/wordle-logic';
 import { recordMatchResult } from '@/lib/match-results';
+import { PLAYER_IDS } from '@/lib/players';
 import type { WordleGame, WordleGuess } from '@/lib/wordle-types';
 
 const POLL_INTERVAL_MS = 1500;
@@ -115,7 +116,7 @@ export function useWordleGame(gameId: string): UseWordleGameReturn {
   }, [gameId, fetchGame, updateGame, deleted]);
 
   const submitGuess = useCallback(async (word: string): Promise<boolean> => {
-    const currentGame = gameRef.current;
+    let currentGame = gameRef.current;
     if (!currentGame) return false;
 
     const upperWord = word.toUpperCase();
@@ -131,11 +132,50 @@ export function useWordleGame(gameId: string): UseWordleGameReturn {
       return false;
     }
 
-    const isPlayer1 = currentGame.player1_name === myName;
-    const isPlayer2 = currentGame.player2_name === myName;
+    let isPlayer1 = currentGame.player1_name === myName;
+    let isPlayer2 = currentGame.player2_name === myName;
+
+    // If player not found, re-fetch to handle race where join hasn't propagated yet
     if (!isPlayer1 && !isPlayer2) {
-      setError('You are not a player in this game');
-      return false;
+      const freshGame = await fetchGame();
+      if (freshGame) {
+        updateGame(freshGame);
+        currentGame = freshGame;
+        isPlayer1 = currentGame.player1_name === myName;
+        isPlayer2 = currentGame.player2_name === myName;
+      }
+
+      // If still not found after re-fetch, try to auto-join an empty slot
+      if (!isPlayer1 && !isPlayer2) {
+        const myId = (myName === 'Ricky' || myName === 'Lilian') ? PLAYER_IDS[myName] : null;
+        const emptySlot = currentGame.player1_name === null ? 'player1' : currentGame.player2_name === null ? 'player2' : null;
+
+        if (emptySlot && myId) {
+          const updateField = emptySlot === 'player1'
+            ? { player1_id: myId, player1_name: myName }
+            : { player2_id: myId, player2_name: myName };
+
+          const { error: joinErr } = await supabase
+            .from('wordle_games')
+            .update({ ...updateField, updated_at: new Date().toISOString() })
+            .eq('id', gameId);
+
+          if (!joinErr) {
+            const joined = await fetchGame();
+            if (joined) {
+              updateGame(joined);
+              currentGame = joined;
+              isPlayer1 = currentGame.player1_name === myName;
+              isPlayer2 = currentGame.player2_name === myName;
+            }
+          }
+        }
+
+        if (!isPlayer1 && !isPlayer2) {
+          setError('You are not a player in this game');
+          return false;
+        }
+      }
     }
 
     const myPlayerNumber: 1 | 2 = isPlayer1 ? 1 : 2;
@@ -270,6 +310,9 @@ export function useWordleGame(gameId: string): UseWordleGameReturn {
     if (!myName) return;
 
     const isPlayer1 = currentGame.player1_name === myName;
+    const isPlayer2 = currentGame.player2_name === myName;
+    if (!isPlayer1 && !isPlayer2) return;
+
     const typingField = isPlayer1 ? 'player1_typing' : 'player2_typing';
 
     if (typingTimeout.current) {
