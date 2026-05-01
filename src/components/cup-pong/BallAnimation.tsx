@@ -7,6 +7,7 @@ import type { ThrowResult, Cup } from '@/lib/cup-pong-types';
 interface BallAnimationProps {
   throwResult: ThrowResult | null;
   throwerSide: 'bottom' | 'top';
+  throwerPlayer: 1 | 2;
   targetCups: Cup[];
   tableWidth: number;
   tableHeight: number;
@@ -18,6 +19,7 @@ const BALL_SIZE = 14;
 export const BallAnimation = memo(function BallAnimation({
   throwResult,
   throwerSide,
+  throwerPlayer,
   targetCups,
   tableWidth,
   tableHeight,
@@ -103,6 +105,14 @@ export const BallAnimation = memo(function BallAnimation({
 
   const { startX, startY, endX, endY, midX, midY, hit, duration } = data;
 
+  // Ball color matches the thrower's player color
+  const ballGradient = throwerPlayer === 1
+    ? 'radial-gradient(circle at 35% 35%, #ff6b6b, #E63946, #c1272d)'
+    : 'radial-gradient(circle at 35% 35%, #ffe066, #FFBE0B, #d4a000)';
+  const ballShadow = throwerPlayer === 1
+    ? '0 2px 4px rgba(230,57,70,0.4), inset 0 -1px 2px rgba(0,0,0,0.2)'
+    : '0 2px 4px rgba(255,190,11,0.4), inset 0 -1px 2px rgba(0,0,0,0.2)';
+
   return (
     <>
       {phase === 'flying' && (
@@ -113,8 +123,8 @@ export const BallAnimation = memo(function BallAnimation({
             style={{
               width: BALL_SIZE,
               height: BALL_SIZE,
-              background: 'radial-gradient(circle at 35% 35%, #ffffff, #f5f5f5, #e0e0e0)',
-              boxShadow: '0 2px 4px rgba(0,0,0,0.3), inset 0 -1px 2px rgba(0,0,0,0.1)',
+              background: ballGradient,
+              boxShadow: ballShadow,
             }}
             initial={{
               x: startX - BALL_SIZE / 2,
@@ -144,8 +154,8 @@ export const BallAnimation = memo(function BallAnimation({
               style={{
                 width: BALL_SIZE,
                 height: BALL_SIZE,
-                background: 'radial-gradient(circle at 35% 35%, #ffffff, #f5f5f5, #e0e0e0)',
-                boxShadow: '0 2px 4px rgba(0,0,0,0.3), inset 0 -1px 2px rgba(0,0,0,0.1)',
+                background: ballGradient,
+                boxShadow: ballShadow,
               }}
               initial={{
                 x: endX - BALL_SIZE / 2,

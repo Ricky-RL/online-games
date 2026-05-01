@@ -13,7 +13,7 @@ import { EndGameDialog } from '@/components/EndGameDialog';
 import { NotificationControls } from '@/components/NotificationControls';
 import { useNotifications } from '@/hooks/useNotifications';
 import type { Player } from '@/lib/types';
-import type { ThrowVector, ThrowResult } from '@/lib/cup-pong-types';
+import type { Cup, ThrowVector, ThrowResult } from '@/lib/cup-pong-types';
 
 function getMyName(): string | null {
   if (typeof window === 'undefined') return null;
@@ -28,7 +28,11 @@ export default function CupPongGamePage({ params }: { params: Promise<{ gameId: 
   const [showEndDialog, setShowEndDialog] = useState(false);
   const [animating, setAnimating] = useState(false);
   const [displayedThrow, setDisplayedThrow] = useState<ThrowResult | null>(null);
+  /** Snapshot of cups before the throw, so cups don't disappear until the ball animation finishes */
+  const [preThrowCups, setPreThrowCups] = useState<{ player1Cups: Cup[]; player2Cups: Cup[] } | null>(null);
   const localThrowRef = useRef(false);
+  const gameRef = useRef(game);
+  useEffect(() => { gameRef.current = game; }, [game]);
 
   useEffect(() => {
     setMyName(getMyName());
@@ -81,6 +85,11 @@ export default function CupPongGamePage({ params }: { params: Promise<{ gameId: 
 
   const handleThrow = useCallback(
     async (direction: ThrowVector, power: number) => {
+      // Snapshot cups before the throw so they stay visible during ball animation
+      const currentGame = gameRef.current;
+      if (currentGame) {
+        setPreThrowCups({ player1Cups: currentGame.board.player1Cups, player2Cups: currentGame.board.player2Cups });
+      }
       localThrowRef.current = true;
       setAnimating(true);
       const result = await makeThrow(direction, power);
@@ -92,6 +101,7 @@ export default function CupPongGamePage({ params }: { params: Promise<{ gameId: 
           setAnimating((prev) => {
             if (prev) {
               setDisplayedThrow(null);
+              setPreThrowCups(null);
               localThrowRef.current = false;
               clearFirstThrow();
             }
@@ -100,6 +110,7 @@ export default function CupPongGamePage({ params }: { params: Promise<{ gameId: 
         }, 1500);
       } else {
         setAnimating(false);
+        setPreThrowCups(null);
         localThrowRef.current = false;
       }
     },
@@ -109,6 +120,7 @@ export default function CupPongGamePage({ params }: { params: Promise<{ gameId: 
   const handleAnimationComplete = useCallback(() => {
     setAnimating(false);
     setDisplayedThrow(null);
+    setPreThrowCups(null);
     localThrowRef.current = false;
     clearFirstThrow();
   }, [clearFirstThrow]);
@@ -257,8 +269,8 @@ export default function CupPongGamePage({ params }: { params: Promise<{ gameId: 
         {/* Game Table */}
         {myPlayerNumber && (
           <Table
-            player1Cups={game.board.player1Cups}
-            player2Cups={game.board.player2Cups}
+            player1Cups={preThrowCups ? preThrowCups.player1Cups : game.board.player1Cups}
+            player2Cups={preThrowCups ? preThrowCups.player2Cups : game.board.player2Cups}
             currentTurn={game.current_turn}
             myPlayer={myPlayerNumber}
             isMyTurn={isMyTurn}
