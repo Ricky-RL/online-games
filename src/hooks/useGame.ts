@@ -96,17 +96,23 @@ export function useGame(gameId: string): UseGameReturn {
       updateGame((prev) => {
         if (!prev) return fresh;
 
+        const freshMoves = totalMoves(fresh.board);
+        const prevMoves = totalMoves(prev.board);
+
         if (optimisticBoard.current) {
+          // DB confirmed our optimistic write
           if (JSON.stringify(fresh.board) === JSON.stringify(optimisticBoard.current)) {
             optimisticBoard.current = null;
             return fresh;
           }
-          // If the board was fully reset (game ended), accept the fresh state.
-          if (totalMoves(fresh.board) === 0) {
+          // The opponent made a move on top of ours (their move count exceeds ours)
+          if (freshMoves > totalMoves(optimisticBoard.current)) {
             optimisticBoard.current = null;
             return fresh;
           }
-          if (totalMoves(fresh.board) < totalMoves(prev.board)) {
+          // Fresh data has fewer moves — stale poll, keep optimistic state
+          // but accept player name/id updates (e.g. opponent joining)
+          if (freshMoves < prevMoves) {
             return {
               ...prev,
               player1_name: fresh.player1_name,
@@ -115,26 +121,41 @@ export function useGame(gameId: string): UseGameReturn {
               player2_id: fresh.player2_id,
             };
           }
+          // Fresh has same move count but different board content — shouldn't
+          // normally happen, but clear optimistic and accept fresh to avoid
+          // getting stuck
           optimisticBoard.current = null;
         }
 
         if (JSON.stringify(fresh) === JSON.stringify(prev)) return prev;
 
-        // If the board was completely reset (e.g. game ended), accept it.
-        // Only guard against partial regressions from out-of-order polls.
-        const freshMoves = totalMoves(fresh.board);
-        const prevMoves = totalMoves(prev.board);
-        if (freshMoves < prevMoves && freshMoves > 0) {
-          return prev;
-        }
-
-        if (totalMoves(fresh.board) > totalMoves(prev.board)) {
+        // Detect the opponent's new move for animation
+        if (freshMoves > prevMoves) {
           for (let col = 0; col < 7; col++) {
             if (fresh.board[col].length > prev.board[col].length) {
               setLastMove({ col, row: fresh.board[col].length - 1 });
               break;
             }
           }
+        }
+
+        // Guard against out-of-order polls regressing state, but always
+        // accept a full reset (0 moves = game ended)
+        if (freshMoves < prevMoves && freshMoves > 0) {
+          // Still pick up player name/id changes
+          if (fresh.player1_name !== prev.player1_name ||
+              fresh.player2_name !== prev.player2_name ||
+              fresh.player1_id !== prev.player1_id ||
+              fresh.player2_id !== prev.player2_id) {
+            return {
+              ...prev,
+              player1_name: fresh.player1_name,
+              player2_name: fresh.player2_name,
+              player1_id: fresh.player1_id,
+              player2_id: fresh.player2_id,
+            };
+          }
+          return prev;
         }
 
         return fresh;
@@ -202,7 +223,7 @@ export function useGame(gameId: string): UseGameReturn {
       );
       setError(null);
 
-      const { error: updateError } = await supabase
+      const { data: updatedGame, error: updateError } = await supabase
         .from('games')
         .update({
           board: newBoard,
@@ -210,9 +231,11 @@ export function useGame(gameId: string): UseGameReturn {
           winner,
           updated_at: new Date().toISOString(),
         })
-        .eq('id', gameId);
+        .eq('id', gameId)
+        .select()
+        .single();
 
-      if (updateError) {
+      if (updateError || !updatedGame) {
         optimisticBoard.current = null;
         const { data: freshGame } = await supabase
           .from('games')
@@ -220,9 +243,12 @@ export function useGame(gameId: string): UseGameReturn {
           .eq('id', gameId)
           .single();
         if (freshGame) updateGame(freshGame as Game);
-        setError(updateError.message);
+        if (updateError) setError(updateError.message);
         return;
       }
+
+      optimisticBoard.current = null;
+      updateGame(updatedGame as Game);
 
       // Record match result on win
       if (winner && !matchRecorded.current) {
