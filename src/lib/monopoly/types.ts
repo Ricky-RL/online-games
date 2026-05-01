@@ -4,7 +4,7 @@ export type ColorGroup =
   | 'brown' | 'light-blue' | 'pink' | 'orange'
   | 'red' | 'yellow' | 'green' | 'dark-blue';
 
-export type SpaceType = 'property' | 'railroad' | 'utility' | 'tax' | 'corner';
+export type SpaceType = 'property' | 'railroad' | 'utility' | 'tax' | 'corner' | 'community-chest' | 'chance';
 export type CornerType = 'go' | 'jail' | 'free-parking' | 'go-to-jail';
 
 export interface SpaceDefinition {
@@ -19,10 +19,34 @@ export interface SpaceDefinition {
   cornerType?: CornerType;
 }
 
+export type CardType = 'community-chest' | 'chance';
+
+export type CardEffect =
+  | { kind: 'cash'; amount: number }
+  | { kind: 'move-to'; position: number; collectGo?: boolean }
+  | { kind: 'go-to-jail' }
+  | { kind: 'advance-to-nearest-railroad' }
+  | { kind: 'advance-to-nearest-utility' }
+  | { kind: 'move-back'; spaces: number }
+  | { kind: 'collect-from-opponent'; amount: number }
+  | { kind: 'repairs'; perHouse: number; perHotel: number };
+
+export interface CardDefinition {
+  text: string;
+  effect: CardEffect;
+}
+
+export interface DrawnCard {
+  cardType: CardType;
+  text: string;
+  nextPhase: MonopolyPhase;
+}
+
 export type MonopolyPhase =
   | 'roll'
   | 'buy-decision'
   | 'jail-decision'
+  | 'card-drawn'
   | 'end-turn'
   | 'game-over';
 
@@ -55,6 +79,7 @@ export interface MonopolyBoard {
   doublesCount: number;
   winner: Player | null;
   finalNetWorth?: [number, number];
+  drawnCard: DrawnCard | null;
 }
 
 export interface MonopolyGame {

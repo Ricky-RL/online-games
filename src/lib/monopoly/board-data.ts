@@ -5,7 +5,7 @@ export const BOARD: SpaceDefinition[] = [
   { index: 0, name: 'GO', type: 'corner', cornerType: 'go', rent: [] },
   // Brown
   { index: 1, name: 'East Hastings', type: 'property', color: 'brown', price: 60, rent: [2, 10, 30, 90, 160, 250], housePrice: 50 },
-  { index: 2, name: 'Community Chest', type: 'corner', cornerType: 'free-parking', rent: [] }, // No-op space
+  { index: 2, name: 'Community Chest', type: 'community-chest', rent: [] },
   { index: 3, name: 'Chinatown', type: 'property', color: 'brown', price: 60, rent: [4, 20, 60, 180, 320, 450], housePrice: 50 },
   // Tax
   { index: 4, name: 'Income Tax', type: 'tax', taxAmount: 200, rent: [] },
@@ -13,7 +13,7 @@ export const BOARD: SpaceDefinition[] = [
   { index: 5, name: 'Waterfront Station', type: 'railroad', price: 200, rent: [25, 50, 100, 200] },
   // Light Blue
   { index: 6, name: 'Commercial Drive', type: 'property', color: 'light-blue', price: 100, rent: [6, 30, 90, 270, 400, 550], housePrice: 50 },
-  { index: 7, name: 'Chance', type: 'corner', cornerType: 'free-parking', rent: [] }, // No-op space
+  { index: 7, name: 'Chance', type: 'chance', rent: [] },
   { index: 8, name: 'Main Street', type: 'property', color: 'light-blue', price: 100, rent: [6, 30, 90, 270, 400, 550], housePrice: 50 },
   { index: 9, name: 'Kingsway', type: 'property', color: 'light-blue', price: 120, rent: [8, 40, 100, 300, 450, 600], housePrice: 50 },
   // Position 10: Jail
@@ -28,14 +28,14 @@ export const BOARD: SpaceDefinition[] = [
   { index: 15, name: 'Commercial-Broadway', type: 'railroad', price: 200, rent: [25, 50, 100, 200] },
   // Orange
   { index: 16, name: 'Gastown', type: 'property', color: 'orange', price: 180, rent: [14, 70, 200, 550, 750, 950], housePrice: 100 },
-  { index: 17, name: 'Community Chest', type: 'corner', cornerType: 'free-parking', rent: [] }, // No-op
+  { index: 17, name: 'Community Chest', type: 'community-chest', rent: [] },
   { index: 18, name: 'Yaletown', type: 'property', color: 'orange', price: 180, rent: [14, 70, 200, 550, 750, 950], housePrice: 100 },
   { index: 19, name: 'Coal Harbour', type: 'property', color: 'orange', price: 200, rent: [16, 80, 220, 600, 800, 1000], housePrice: 100 },
   // Position 20: Free Parking
   { index: 20, name: 'Free Parking', type: 'corner', cornerType: 'free-parking', rent: [] },
   // Red
   { index: 21, name: 'Robson Street', type: 'property', color: 'red', price: 220, rent: [18, 90, 250, 700, 875, 1050], housePrice: 150 },
-  { index: 22, name: 'Chance', type: 'corner', cornerType: 'free-parking', rent: [] }, // No-op
+  { index: 22, name: 'Chance', type: 'chance', rent: [] },
   { index: 23, name: 'Davie Street', type: 'property', color: 'red', price: 220, rent: [18, 90, 250, 700, 875, 1050], housePrice: 150 },
   { index: 24, name: 'Denman Street', type: 'property', color: 'red', price: 240, rent: [20, 100, 300, 750, 925, 1100], housePrice: 150 },
   // Railroad 3
@@ -51,11 +51,11 @@ export const BOARD: SpaceDefinition[] = [
   // Green
   { index: 31, name: 'Stanley Park', type: 'property', color: 'green', price: 300, rent: [26, 130, 390, 900, 1100, 1275], housePrice: 200 },
   { index: 32, name: 'English Bay', type: 'property', color: 'green', price: 300, rent: [26, 130, 390, 900, 1100, 1275], housePrice: 200 },
-  { index: 33, name: 'Community Chest', type: 'corner', cornerType: 'free-parking', rent: [] }, // No-op
+  { index: 33, name: 'Community Chest', type: 'community-chest', rent: [] },
   { index: 34, name: 'UBC', type: 'property', color: 'green', price: 320, rent: [28, 150, 450, 1000, 1200, 1400], housePrice: 200 },
   // Railroad 4
   { index: 35, name: 'King George Station', type: 'railroad', price: 200, rent: [25, 50, 100, 200] },
-  { index: 36, name: 'Chance', type: 'corner', cornerType: 'free-parking', rent: [] }, // No-op
+  { index: 36, name: 'Chance', type: 'chance', rent: [] },
   // Dark Blue
   { index: 37, name: 'West Vancouver', type: 'property', color: 'dark-blue', price: 350, rent: [35, 175, 500, 1100, 1300, 1500], housePrice: 200 },
   // Tax
