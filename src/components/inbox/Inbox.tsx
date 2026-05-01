@@ -39,7 +39,7 @@ export function Inbox({ playerName }: InboxProps) {
 
     if (!iAmInGame) {
       // Player hasn't joined yet — join the game directly, then navigate to it
-      if (game.game_type === 'connect-four' || game.game_type === 'battleship') {
+      if (game.game_type === 'connect-four' || game.game_type === 'battleship' || game.game_type === 'monopoly') {
         // These games don't have a separate lobby page; join via supabase directly
         const isPlayer1Slot = game.player1_name === null;
         const myId = playerName === 'Ricky'

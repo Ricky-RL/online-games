@@ -143,7 +143,8 @@ export function useSnakesAndLaddersGame(gameId: string): UseSnakesAndLaddersGame
 
         // If we have an optimistic state, check if server caught up
         if (optimisticBoard.current) {
-          if (JSON.stringify(fresh.board) === JSON.stringify(optimisticBoard.current)) {
+          const freshBoard = fresh.board as SnakesAndLaddersState;
+          if (freshBoard.moveNumber >= optimisticBoard.current.moveNumber) {
             optimisticBoard.current = null;
             return fresh;
           }
