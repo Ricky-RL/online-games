@@ -3,6 +3,8 @@ export interface GameDefinition {
   title: string;
   description: string;
   color: string;
+  /** Cooperative games have no turns — both players play simultaneously. */
+  cooperative?: boolean;
 }
 
 export const DEFAULT_GAME_ORDER: GameDefinition[] = [
@@ -79,6 +81,7 @@ export const DEFAULT_GAME_ORDER: GameDefinition[] = [
     color: '#9B59B6',
   },
   {
+  {
     slug: 'math-trivia',
     title: 'Math Trivia',
     description: '15 math questions — fastest correct answers wins.',
@@ -108,6 +111,18 @@ export const DEFAULT_GAME_ORDER: GameDefinition[] = [
     description: 'Test your reflexes. Tap targets as fast as you can. Lowest average time wins.',
     color: '#FF6B35',
   },
+  {
+    slug: 'sudoku',
+    title: 'Sudoku',
+    description: 'Solve puzzles together. Fill cells, share marks, beat the board as a team.',
+    color: '#4A90D9',
+    cooperative: true,
+  },
 ];
 
 export const DEFAULT_SLUG_ORDER = DEFAULT_GAME_ORDER.map((g) => g.slug);
+
+/** Set of game slugs that are cooperative (no turns). */
+export const COOPERATIVE_GAMES = new Set(
+  DEFAULT_GAME_ORDER.filter((g) => g.cooperative).map((g) => g.slug)
+);

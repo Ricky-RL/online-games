@@ -15,6 +15,7 @@ const GAME_LABELS: Record<string, string> = {
   jeopardy: "Jeopardy",
   pool: "Pool",
   reaction: "Reaction",
+  sudoku: "Sudoku",
   whiteboard: "Whiteboard",
   wordle: "Wordle",
   "math-trivia": "Math Trivia",

@@ -191,6 +191,24 @@ function ReactionMini() {
   );
 }
 
+function SudokuMini() {
+  return (
+    <div className="w-8 h-8 rounded-lg bg-[#4A90D9]/10 flex items-center justify-center">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+        <rect x="1" y="1" width="4" height="4" rx="0.5" stroke="#4A90D9" strokeWidth="0.8" opacity="0.8" />
+        <rect x="6" y="1" width="4" height="4" rx="0.5" stroke="#4A90D9" strokeWidth="0.8" opacity="0.6" />
+        <rect x="11" y="1" width="4" height="4" rx="0.5" stroke="#4A90D9" strokeWidth="0.8" opacity="0.8" />
+        <rect x="1" y="6" width="4" height="4" rx="0.5" stroke="#4A90D9" strokeWidth="0.8" opacity="0.6" />
+        <rect x="6" y="6" width="4" height="4" rx="0.5" stroke="#4A90D9" strokeWidth="0.8" opacity="0.8" />
+        <rect x="11" y="6" width="4" height="4" rx="0.5" stroke="#4A90D9" strokeWidth="0.8" opacity="0.6" />
+        <rect x="1" y="11" width="4" height="4" rx="0.5" stroke="#4A90D9" strokeWidth="0.8" opacity="0.8" />
+        <rect x="6" y="11" width="4" height="4" rx="0.5" stroke="#4A90D9" strokeWidth="0.8" opacity="0.6" />
+        <rect x="11" y="11" width="4" height="4" rx="0.5" stroke="#4A90D9" strokeWidth="0.8" opacity="0.8" />
+      </svg>
+    </div>
+  );
+}
+
 function DailyWordleMini() {
   return (
     <div className="w-8 h-8 rounded-lg bg-[#538D4E]/10 flex items-center justify-center">
@@ -224,6 +242,7 @@ function GameIcon({ gameType }: { gameType: InboxGameType }) {
     case 'reaction': return <ReactionMini />;
     case 'daily-wordle': return <DailyWordleMini />;
     case 'cup-pong': return <CupPongMini />;
+    case 'sudoku': return <SudokuMini />;
   }
 }
 
@@ -245,6 +264,7 @@ function gameLabel(gameType: InboxGameType): string {
     case 'reaction': return 'Reaction';
     case 'daily-wordle': return 'Daily Wordle';
     case 'cup-pong': return 'Cup Pong';
+    case 'sudoku': return 'Sudoku';
   }
 }
 
@@ -253,6 +273,15 @@ function TurnBadge({ game }: { game: InboxGame }) {
     return (
       <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 text-xs font-medium rounded-full bg-border text-text-secondary/70">
         Waiting to join...
+      </span>
+    );
+  }
+
+  if (game.isCooperative) {
+    return (
+      <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 text-xs font-semibold rounded-full bg-[#4A90D9]/10 text-[#4A90D9]">
+        <span className="w-1.5 h-1.5 rounded-full bg-[#4A90D9]" />
+        Playing
       </span>
     );
   }

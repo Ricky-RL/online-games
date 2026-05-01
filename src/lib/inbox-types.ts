@@ -1,5 +1,5 @@
 
-export type InboxGameType = 'connect-four' | 'tic-tac-toe' | 'checkers' | 'battleship' | 'mini-golf' | 'monopoly' | 'jenga' | 'snakes-and-ladders' | 'word-search' | 'daily-wordle' | 'memory' | 'math-trivia' | 'jeopardy' | 'pool' | 'cup-pong' | 'reaction';
+export type InboxGameType = 'connect-four' | 'tic-tac-toe' | 'checkers' | 'battleship' | 'mini-golf' | 'monopoly' | 'jenga' | 'snakes-and-ladders' | 'word-search' | 'daily-wordle' | 'memory' | 'math-trivia' | 'jeopardy' | 'pool' | 'cup-pong' | 'reaction' | 'sudoku';
 
 export interface InboxGame {
   id: string;
@@ -10,6 +10,7 @@ export interface InboxGame {
   updated_at: string;
   isMyTurn: boolean;
   isWaitingForOpponent: boolean;
+  isCooperative: boolean;
 }
 
 export interface WhiteboardActivityItem {

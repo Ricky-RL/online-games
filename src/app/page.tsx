@@ -337,6 +337,22 @@ function ReactionIcon() {
   );
 }
 
+function SudokuIcon() {
+  return (
+    <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
+      <rect x="2" y="2" width="7" height="7" rx="1" stroke="#4A90D9" strokeWidth="1.5" opacity="0.8" />
+      <rect x="10.5" y="2" width="7" height="7" rx="1" stroke="#4A90D9" strokeWidth="1.5" opacity="0.6" />
+      <rect x="19" y="2" width="7" height="7" rx="1" stroke="#4A90D9" strokeWidth="1.5" opacity="0.8" />
+      <rect x="2" y="10.5" width="7" height="7" rx="1" stroke="#4A90D9" strokeWidth="1.5" opacity="0.6" />
+      <rect x="10.5" y="10.5" width="7" height="7" rx="1" stroke="#4A90D9" strokeWidth="1.5" opacity="0.8" />
+      <rect x="19" y="10.5" width="7" height="7" rx="1" stroke="#4A90D9" strokeWidth="1.5" opacity="0.6" />
+      <rect x="2" y="19" width="7" height="7" rx="1" stroke="#4A90D9" strokeWidth="1.5" opacity="0.8" />
+      <rect x="10.5" y="19" width="7" height="7" rx="1" stroke="#4A90D9" strokeWidth="1.5" opacity="0.6" />
+      <rect x="19" y="19" width="7" height="7" rx="1" stroke="#4A90D9" strokeWidth="1.5" opacity="0.8" />
+    </svg>
+  );
+}
+
 
 function PlayerSelector({ onSelect }: { onSelect: (name: PlayerName) => void }) {
   return (
@@ -988,6 +1004,7 @@ function GameSelection({ playerName, onChangePlayer }: { playerName: PlayerName;
     'pool': { icon: <PoolIcon />, onClick: () => router.push('/pool') },
     'cup-pong': { icon: <CupPongIcon />, onClick: () => router.push('/cup-pong') },
     'reaction': { icon: <ReactionIcon />, onClick: () => router.push('/reaction') },
+    'sudoku': { icon: <SudokuIcon />, onClick: () => router.push('/sudoku') },
   };
 
   return (

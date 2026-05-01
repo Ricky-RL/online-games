@@ -42,6 +42,11 @@ interface LeaderboardStats {
     guess_distribution: [number, number, number, number, number, number];
     history: { date: string; guesses: number; won: boolean }[];
   };
+  sudoku_stats: {
+    played: number;
+    won: number;
+    average_time: number;
+  };
 }
 
 interface LeaderboardProps {
@@ -54,7 +59,7 @@ export function Leaderboard({ stats, onReset, loading }: LeaderboardProps) {
   const [expanded, setExpanded] = useState(false);
 
   const totalGames = stats.ricky_wins + stats.lilian_wins + stats.draws;
-  const hasGames = totalGames > 0 || stats.wordle_stats.played > 0;
+  const hasGames = totalGames > 0 || stats.wordle_stats.played > 0 || stats.sudoku_stats.played > 0;
 
   if (!hasGames) return null;
 
@@ -273,6 +278,33 @@ export function Leaderboard({ stats, onReset, loading }: LeaderboardProps) {
                         <p className="text-base font-semibold text-text-primary">
                           {stats.wordle_stats.average_guesses > 0
                             ? stats.wordle_stats.average_guesses.toFixed(1)
+                            : '—'}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Sudoku stats */}
+                {stats.sudoku_stats.played > 0 && (
+                  <div className="space-y-3">
+                    <h3 className="text-xs font-semibold uppercase tracking-wider text-text-secondary/70">
+                      Sudoku (Co-op)
+                    </h3>
+                    <div className="flex items-center gap-6 rounded-xl bg-background px-4 py-3">
+                      <div>
+                        <p className="text-xs text-text-secondary">Played</p>
+                        <p className="text-base font-semibold text-text-primary">{stats.sudoku_stats.played}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-text-secondary">Solved</p>
+                        <p className="text-base font-semibold text-text-primary">{stats.sudoku_stats.won}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-text-secondary">Avg. Time</p>
+                        <p className="text-base font-semibold text-text-primary">
+                          {stats.sudoku_stats.average_time > 0
+                            ? `${Math.floor(stats.sudoku_stats.average_time / 60)}:${(stats.sudoku_stats.average_time % 60).toString().padStart(2, '0')}`
                             : '—'}
                         </p>
                       </div>

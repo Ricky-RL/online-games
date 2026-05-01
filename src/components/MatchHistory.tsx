@@ -3,13 +3,13 @@ import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 interface MatchResult {
   id: string;
-  game_type: 'connect-four' | 'tic-tac-toe' | 'wordle' | 'mini-golf' | 'jenga' | 'snakes-and-ladders' | 'word-search' | 'monopoly' | 'battleship' | 'memory' | 'math-trivia' | 'jeopardy' | 'pool' | 'cup-pong' | 'reaction';
+  game_type: 'connect-four' | 'tic-tac-toe' | 'wordle' | 'mini-golf' | 'jenga' | 'snakes-and-ladders' | 'word-search' | 'monopoly' | 'battleship' | 'memory' | 'math-trivia' | 'jeopardy' | 'pool' | 'cup-pong' | 'reaction' | 'sudoku';
   winner_id: string | null;
   winner_name: string | null;
   loser_id: string | null;
   loser_name: string | null;
   is_draw: boolean;
-  metadata: { guessCount?: number; won?: boolean; totalMoves?: number; theme?: string; p1Words?: number; p2Words?: number; p1Time?: number; p2Time?: number; p1FoundWords?: string[]; p2FoundWords?: string[]; allWords?: string[]; p1Correct?: number; p2Correct?: number } | null;
+  metadata: { guessCount?: number; won?: boolean; totalMoves?: number; theme?: string; p1Words?: number; p2Words?: number; p1Time?: number; p2Time?: number; p1FoundWords?: string[]; p2FoundWords?: string[]; allWords?: string[]; p1Correct?: number; p2Correct?: number; difficulty?: string; moveCount?: number; timeSeconds?: number } | null;
   player1_id: string;
   player1_name: string;
   player2_id: string;
@@ -51,6 +51,7 @@ function gameIcon(gameType: MatchResult['game_type']): string {
     case 'pool': return '🎱';
     case 'cup-pong': return '🏓';
     case 'reaction': return '⚡';
+    case 'sudoku': return '🧩';
   }
 }
 function gameLabel(gameType: MatchResult['game_type']): string {
@@ -70,6 +71,7 @@ function gameLabel(gameType: MatchResult['game_type']): string {
     case 'pool': return 'Pool';
     case 'cup-pong': return 'Cup Pong';
     case 'reaction': return 'Reaction';
+    case 'sudoku': return 'Sudoku';
   }
 }
 function outcomeText(result: MatchResult): string {
@@ -79,6 +81,15 @@ function outcomeText(result: MatchResult): string {
       return `Solved in ${guesses} guess${guesses === 1 ? '' : 'es'}`;
     }
     return `Failed (${guesses} guesses)`;
+  }
+  if (result.game_type === 'sudoku') {
+    if (result.metadata?.won) {
+      const time = result.metadata.timeSeconds ?? 0;
+      const m = Math.floor(time / 60);
+      const s = time % 60;
+      return `Solved in ${m}:${s.toString().padStart(2, '0')}`;
+    }
+    return 'Gave up';
   }
   if (result.game_type === 'word-search') {
     if (result.is_draw) return 'Draw';
@@ -105,6 +116,9 @@ function outcomeText(result: MatchResult): string {
 function outcomeColor(result: MatchResult): string {
   if (result.game_type === 'wordle') {
     return result.metadata?.won ? 'text-wordle-correct' : 'text-text-secondary';
+  }
+  if (result.game_type === 'sudoku') {
+    return result.metadata?.won ? 'text-blue-400' : 'text-text-secondary';
   }
   if (result.is_draw) return 'text-text-secondary';
   if (result.winner_name === 'Ricky') return 'text-player1';

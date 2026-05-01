@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
+import { COOPERATIVE_GAMES } from '@/lib/game-registry';
 import type { InboxGame, InboxGameType, WhiteboardActivityItem, UseInboxReturn } from '@/lib/inbox-types';
 
 const POLL_INTERVAL_MS = 5000;
@@ -41,7 +42,7 @@ export function useInbox(): UseInboxReturn {
       supabase
         .from('games')
         .select('*')
-        .in('game_type', ['connect-four', 'tic-tac-toe', 'checkers', 'battleship', 'mini-golf', 'jenga', 'snakes-and-ladders', 'word-search', 'monopoly', 'memory', 'math-trivia', 'jeopardy', 'pool', 'cup-pong', 'reaction'])
+        .in('game_type', ['connect-four', 'tic-tac-toe', 'checkers', 'battleship', 'mini-golf', 'jenga', 'snakes-and-ladders', 'word-search', 'monopoly', 'memory', 'math-trivia', 'jeopardy', 'pool', 'cup-pong', 'reaction', 'sudoku'])
         .or(`player1_name.eq.${playerName},player2_name.eq.${playerName},player1_id.eq.${PLAYER_IDS[playerName]},player2_id.eq.${PLAYER_IDS[playerName]},and(player1_name.eq.${otherPlayer},player2_name.is.null),and(player2_name.eq.${otherPlayer},player1_name.is.null),and(player1_id.eq.${PLAYER_IDS[otherPlayer]},player2_id.is.null),and(player2_id.eq.${PLAYER_IDS[otherPlayer]},player1_id.is.null)`)
         .is('winner', null)
         .order('updated_at', { ascending: false }),
@@ -104,10 +105,13 @@ export function useInbox(): UseInboxReturn {
       );
 
       // It's my turn if I'm in the game and current_turn points to my player number,
-      // OR if the game is waiting for me to join (I need to take action)
+      // OR if the game is waiting for me to join (I need to take action).
+      // Cooperative games (e.g. Sudoku) are always "active" — no turn logic applies.
+      const isCooperative = COOPERATIVE_GAMES.has(game.game_type);
       const isMyTurn = isWaitingForMe ||
-        (iAmPlayer1 && game.current_turn === 1) ||
-        (iAmPlayer2 && game.current_turn === 2);
+        (isCooperative && iAmInGame) ||
+        (!isCooperative && iAmPlayer1 && game.current_turn === 1) ||
+        (!isCooperative && iAmPlayer2 && game.current_turn === 2);
 
       return {
         id: game.id,
@@ -118,6 +122,7 @@ export function useInbox(): UseInboxReturn {
         updated_at: game.updated_at,
         isMyTurn,
         isWaitingForOpponent,
+        isCooperative,
       };
     });
 
@@ -160,6 +165,7 @@ export function useInbox(): UseInboxReturn {
         updated_at: game.updated_at,
         isMyTurn,
         isWaitingForOpponent,
+        isCooperative: false,
       };
     });
 
