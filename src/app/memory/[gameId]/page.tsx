@@ -32,7 +32,7 @@ const FLIPPER_REVEAL_DURATION_MS = 1500;
 
 export default function MemoryGamePage({ params }: { params: Promise<{ gameId: string }> }) {
   const { gameId } = use(params);
-  const { game, loading, error, deleted, firstFlip, flipCard, resetGame } = useMemoryGame(gameId);
+  const { game, loading, error, deleted, firstFlip, flipCard, resetGame, endGame } = useMemoryGame(gameId);
   const { play } = useGameSounds();
   const router = useRouter();
   const [myName, setMyName] = useState<string | null>(null);
@@ -196,9 +196,9 @@ export default function MemoryGamePage({ params }: { params: Promise<{ gameId: s
 
   const handleEndGameConfirm = useCallback(async () => {
     setShowEndDialog(false);
-    await resetGame();
+    await endGame();
     router.push('/');
-  }, [resetGame, router]);
+  }, [endGame, router]);
 
   // Loading state
   if (loading) {
