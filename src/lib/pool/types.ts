@@ -67,19 +67,19 @@ export const CUSHION_WIDTH = 12;
 
 // Physics constants
 export const MAX_POWER = 100;
-export const BASE_SPEED = 16;
+export const BASE_SPEED = 11;
 export const FRICTION_RATE = 0.015;
 export const MIN_SPEED = 0.15;
 export const COLLISION_DAMPING = 0.98;
 
-// Pocket positions (6 pockets)
+// Pocket positions (6 pockets: 4 corners + 2 side pockets on the long sides)
 export const POCKETS: Point[] = [
-  { x: CUSHION_WIDTH, y: CUSHION_WIDTH }, // top-left
-  { x: TABLE_WIDTH / 2, y: CUSHION_WIDTH - 2 }, // top-center
-  { x: TABLE_WIDTH - CUSHION_WIDTH, y: CUSHION_WIDTH }, // top-right
-  { x: CUSHION_WIDTH, y: TABLE_HEIGHT - CUSHION_WIDTH }, // bottom-left
-  { x: TABLE_WIDTH / 2, y: TABLE_HEIGHT - CUSHION_WIDTH + 2 }, // bottom-center
-  { x: TABLE_WIDTH - CUSHION_WIDTH, y: TABLE_HEIGHT - CUSHION_WIDTH }, // bottom-right
+  { x: CUSHION_WIDTH, y: CUSHION_WIDTH }, // top-left corner
+  { x: TABLE_WIDTH - CUSHION_WIDTH, y: CUSHION_WIDTH }, // top-right corner
+  { x: CUSHION_WIDTH - 2, y: TABLE_HEIGHT / 2 }, // left-center (long side)
+  { x: TABLE_WIDTH - CUSHION_WIDTH + 2, y: TABLE_HEIGHT / 2 }, // right-center (long side)
+  { x: CUSHION_WIDTH, y: TABLE_HEIGHT - CUSHION_WIDTH }, // bottom-left corner
+  { x: TABLE_WIDTH - CUSHION_WIDTH, y: TABLE_HEIGHT - CUSHION_WIDTH }, // bottom-right corner
 ];
 
 // Ball colors for rendering
