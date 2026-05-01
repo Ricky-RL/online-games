@@ -12,6 +12,32 @@ import type { Player, CheckersGameState, CheckersMove } from '@/lib/types';
 
 const POLL_INTERVAL_MS = 1500;
 
+function detectMove(prev: CheckersGameState, next: CheckersGameState): CheckersMove | null {
+  let to: [number, number] | null = null;
+  const removed: [number, number][] = [];
+
+  for (let r = 0; r < 8; r++) {
+    for (let c = 0; c < 8; c++) {
+      const prevCell = prev.cells[r][c];
+      const nextCell = next.cells[r][c];
+      if (!prevCell && nextCell) {
+        to = [r, c];
+      } else if (prevCell && !nextCell) {
+        removed.push([r, c]);
+      }
+    }
+  }
+
+  if (!to || removed.length === 0) return null;
+
+  const movedPlayer = next.cells[to[0]][to[1]]!.player;
+  const from = removed.find(([r, c]) => prev.cells[r][c]?.player === movedPlayer);
+  if (!from) return null;
+
+  const captured = removed.filter(([r, c]) => prev.cells[r][c]?.player !== movedPlayer);
+  return { from, to, captured };
+}
+
 export interface CheckersGame {
   id: string;
   game_type: string;
@@ -36,6 +62,7 @@ interface UseCheckersGameReturn {
   loading: boolean;
   error: string | null;
   lastMove: CheckersMove | null;
+  opponentLastMove: CheckersMove | null;
   deleted: boolean;
   makeMove: (move: CheckersMove) => Promise<void>;
   resetGame: () => Promise<void>;
@@ -46,10 +73,12 @@ export function useCheckersGame(gameId: string): UseCheckersGameReturn {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [lastMove, setLastMove] = useState<CheckersMove | null>(null);
+  const [opponentLastMove, setOpponentLastMove] = useState<CheckersMove | null>(null);
   const [deleted, setDeleted] = useState(false);
   const optimisticBoard = useRef<CheckersGameState | null>(null);
   const isMultiJumping = useRef(false);
   const gameRef = useRef<CheckersGame | null>(null);
+  const pendingDetectedMove = useRef<CheckersMove | null>(null);
 
   const updateGame = useCallback(
     (updater: CheckersGame | null | ((prev: CheckersGame | null) => CheckersGame | null)) => {
@@ -110,6 +139,8 @@ export function useCheckersGame(gameId: string): UseCheckersGameReturn {
       const fresh = await fetchGame();
       if (!fresh) return;
 
+      pendingDetectedMove.current = null;
+
       updateGame((prev) => {
         if (!prev) return fresh;
 
@@ -134,12 +165,17 @@ export function useCheckersGame(gameId: string): UseCheckersGameReturn {
           return prev;
         }
 
-        if (fresh.board.settings.moveCount > prev.board.settings.moveCount) {
-          setLastMove(null);
+        if (fresh.board.settings.moveCount > prev.board.settings.moveCount && !fresh.board.settings.continuingPiece) {
+          pendingDetectedMove.current = detectMove(prev.board, fresh.board);
         }
 
         return fresh;
       });
+
+      if (pendingDetectedMove.current) {
+        setOpponentLastMove(pendingDetectedMove.current);
+        setLastMove(null);
+      }
     }, POLL_INTERVAL_MS);
 
     return () => clearInterval(interval);
@@ -169,6 +205,7 @@ export function useCheckersGame(gameId: string): UseCheckersGameReturn {
       isMultiJumping.current = !turnEnds;
       optimisticBoard.current = newBoard;
       setLastMove(move);
+      setOpponentLastMove(null);
       updateGame((prev) =>
         prev ? { ...prev, board: newBoard, current_turn: winner ? prev.current_turn : nextTurn, winner } : null
       );
@@ -221,5 +258,5 @@ export function useCheckersGame(gameId: string): UseCheckersGameReturn {
     setDeleted(true);
   }, [gameId]);
 
-  return { game, loading, error, lastMove, deleted, makeMove, resetGame };
+  return { game, loading, error, lastMove, opponentLastMove, deleted, makeMove, resetGame };
 }

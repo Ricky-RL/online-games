@@ -18,16 +18,26 @@ function getMyName(): string | null {
 
 export default function CheckersGamePage({ params }: { params: Promise<{ gameId: string }> }) {
   const { gameId } = use(params);
-  const { game, loading, error, lastMove, deleted, makeMove, resetGame } = useCheckersGame(gameId);
+  const { game, loading, error, lastMove, opponentLastMove, deleted, makeMove, resetGame } = useCheckersGame(gameId);
   const { play } = useGameSounds();
   const router = useRouter();
   const prevStatus = useRef<string | null>(null);
   const [myName, setMyName] = useState<string | null>(null);
   const [showEndDialog, setShowEndDialog] = useState(false);
   const [selectedPiece, setSelectedPiece] = useState<[number, number] | null>(null);
+  const [showingReplay, setShowingReplay] = useState(false);
+  const replayTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => { setMyName(getMyName()); }, []);
   useEffect(() => { if (deleted) router.push('/'); }, [deleted, router]);
+  useEffect(() => { return () => { if (replayTimeout.current) clearTimeout(replayTimeout.current); }; }, []);
+
+  const handleShowLastMove = useCallback(() => {
+    if (!opponentLastMove) return;
+    setShowingReplay(true);
+    if (replayTimeout.current) clearTimeout(replayTimeout.current);
+    replayTimeout.current = setTimeout(() => setShowingReplay(false), 3000);
+  }, [opponentLastMove]);
 
   const gameStatus = useMemo(() => {
     if (!game) return null;
@@ -161,6 +171,7 @@ export default function CheckersGamePage({ params }: { params: Promise<{ gameId:
           movablePieces={[]}
           onSquareClick={() => {}}
           lastMove={lastMove}
+          replayMove={null}
           disabled={true}
         />
       </div>
@@ -186,6 +197,7 @@ export default function CheckersGamePage({ params }: { params: Promise<{ gameId:
             movablePieces={[]}
             onSquareClick={() => {}}
             lastMove={null}
+            replayMove={null}
             disabled={true}
           />
         </div>
@@ -223,10 +235,23 @@ export default function CheckersGamePage({ params }: { params: Promise<{ gameId:
           movablePieces={movablePieces}
           onSquareClick={handleSquareClick}
           lastMove={lastMove}
+          replayMove={showingReplay ? opponentLastMove : null}
           disabled={!isMyTurn || (gameStatus !== 'playing' && gameStatus !== 'waiting')}
         />
 
         <div className="flex items-center gap-3">
+          {opponentLastMove && (
+            <button
+              onClick={handleShowLastMove}
+              className={`px-4 py-2 text-sm font-medium rounded-xl border shadow-sm transition-all cursor-pointer ${
+                showingReplay
+                  ? 'border-blue-400/50 bg-blue-500/10 text-blue-400'
+                  : 'border-border bg-surface text-text-secondary hover:text-text-primary hover:border-text-secondary/30 hover:shadow'
+              }`}
+            >
+              Show Last Move
+            </button>
+          )}
           <button
             onClick={() => router.push('/')}
             className="px-4 py-2 text-sm font-medium rounded-xl border border-border bg-surface text-text-secondary hover:text-text-primary hover:border-text-secondary/30 shadow-sm hover:shadow transition-all cursor-pointer"
