@@ -34,7 +34,7 @@ export function TableauColumn({ col, cards, faceUp, onCardClick }: TableauColumn
           draggable={faceUp.has(cardId)}
           dragData={{ source: 'tableau', col, cardIndex: idx }}
           onClick={() => faceUp.has(cardId) && onCardClick?.(cardId)}
-          style={{ marginTop: idx > 0 ? '-60px' : '0', zIndex: idx }}
+          style={{ marginTop: idx > 0 ? '-47px' : '0', zIndex: idx }}
         />
       ))}
     </div>
@@ -78,13 +78,13 @@ export function StockPile({ stock, waste, onDraw, onWasteCardClick }: StockPileP
   const topWaste = waste.length > 0 ? waste[waste.length - 1] : null;
 
   return (
-    <div className="flex gap-2">
+    <div className="flex gap-1.5 sm:gap-2">
       {/* Stock */}
       <div onClick={onDraw} className="cursor-pointer">
         {stock.length > 0 ? (
           <SolitaireCard cardId={stock[stock.length - 1]} faceUp={false} />
         ) : (
-          <div className="w-[60px] h-[84px] rounded-lg border-2 border-dashed border-border/40 flex items-center justify-center cursor-pointer hover:border-green-400/60 transition-colors">
+          <div className="w-[48px] h-[67px] sm:w-[60px] sm:h-[84px] rounded-lg border-2 border-dashed border-border/40 flex items-center justify-center cursor-pointer hover:border-green-400/60 transition-colors">
             <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2" className="text-text-secondary/40">
               <path d="M4 10a6 6 0 1 1 12 0 6 6 0 0 1-12 0z" />
               <path d="M14 6l2-2M16 4l-2 0M16 4l0 2" strokeLinecap="round" />

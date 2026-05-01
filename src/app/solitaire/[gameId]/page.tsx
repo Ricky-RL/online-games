@@ -17,7 +17,7 @@ function formatTime(seconds: number): string {
 
 export default function SolitaireGamePage({ params }: { params: Promise<{ gameId: string }> }) {
   const { gameId } = use(params);
-  const { game, loading, error, deleted, myPlayerNumber, isMyRound, submitResult, giveUp, resetGame } = useSolitaireGame(gameId);
+  const { game, loading, error, deleted, myPlayerNumber, isMyRound, submitResult, resetGame } = useSolitaireGame(gameId);
   const router = useRouter();
   const [showEndDialog, setShowEndDialog] = useState(false);
   const [submitted, setSubmitted] = useState(false);
@@ -61,12 +61,6 @@ export default function SolitaireGamePage({ params }: { params: Promise<{ gameId
     await submitResult(result);
   }, [submitted, storageKey, submitResult]);
 
-  const handleGiveUp = useCallback(async (moves: number, timeSeconds: number, startedAt: string) => {
-    if (submitted) return;
-    setSubmitted(true);
-    localStorage.removeItem(storageKey);
-    await giveUp(moves, timeSeconds, startedAt);
-  }, [submitted, storageKey, giveUp]);
 
   const handleEndGame = useCallback(async () => {
     await resetGame();
@@ -169,8 +163,14 @@ export default function SolitaireGamePage({ params }: { params: Promise<{ gameId
 
   return (
     <>
-      <div className="flex-1 flex flex-col items-center justify-center p-4">
-        <div className="flex items-center gap-3 mb-4">
+      <div className="flex-1 flex flex-col items-center justify-center p-2 sm:p-4">
+        <SolitaireBoard
+          deck={game.board.deck}
+          onWin={handleWin}
+          savedState={savedState}
+          onStateChange={handleStateChange}
+        />
+        <div className="flex items-center gap-3 mt-4">
           <button onClick={() => router.push('/')} className="px-4 py-2 text-sm font-medium rounded-xl border border-border bg-surface text-text-secondary hover:text-text-primary hover:border-text-secondary/30 shadow-sm hover:shadow transition-all cursor-pointer">
             Home
           </button>
@@ -178,13 +178,6 @@ export default function SolitaireGamePage({ params }: { params: Promise<{ gameId
             End Game
           </button>
         </div>
-        <SolitaireBoard
-          deck={game.board.deck}
-          onWin={handleWin}
-          onGiveUp={handleGiveUp}
-          savedState={savedState}
-          onStateChange={handleStateChange}
-        />
       </div>
       <EndGameDialog open={showEndDialog} onConfirm={handleEndGame} onCancel={() => setShowEndDialog(false)} />
     </>

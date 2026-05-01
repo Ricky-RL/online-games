@@ -9,12 +9,11 @@ import type { SolitaireGameState } from '@/lib/solitaire-types';
 interface BoardProps {
   deck: number[];
   onWin: (moves: number, timeSeconds: number, startedAt: string) => void;
-  onGiveUp: (moves: number, timeSeconds: number, startedAt: string) => void;
   savedState?: SolitaireGameState | null;
   onStateChange?: (state: SolitaireGameState) => void;
 }
 
-export function SolitaireBoard({ deck, onWin, onGiveUp, savedState, onStateChange }: BoardProps) {
+export function SolitaireBoard({ deck, onWin, savedState, onStateChange }: BoardProps) {
   const [state, setState] = useState<SolitaireGameState>(() => savedState ?? dealFromDeck(deck));
   const [undoStack, setUndoStack] = useState<SolitaireGameState[]>([]);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -217,12 +216,6 @@ export function SolitaireBoard({ deck, onWin, onGiveUp, savedState, onStateChang
     });
   }, [tryMoveToFoundation]);
 
-  const handleGiveUp = useCallback(() => {
-    if (!state.startedAt) return;
-    const timeSeconds = Math.floor((Date.now() - new Date(state.startedAt).getTime()) / 1000);
-    onGiveUp(state.moves, timeSeconds, state.startedAt);
-  }, [state, onGiveUp]);
-
   const formatTime = (seconds: number) => {
     const m = Math.floor(seconds / 60);
     const sec = seconds % 60;
@@ -231,7 +224,7 @@ export function SolitaireBoard({ deck, onWin, onGiveUp, savedState, onStateChang
 
   return (
     <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
-      <div className="flex flex-col items-center gap-4 p-4 max-w-[500px] mx-auto">
+      <div className="flex flex-col items-center gap-3 p-2 sm:p-4 w-full max-w-[500px] mx-auto">
         {/* Top row: Stock + Waste ... Foundations */}
         <div className="flex w-full justify-between items-start">
           <StockPile
@@ -248,7 +241,7 @@ export function SolitaireBoard({ deck, onWin, onGiveUp, savedState, onStateChang
         </div>
 
         {/* Tableau */}
-        <div className="flex gap-1.5 w-full justify-center mt-4">
+        <div className="flex gap-1 sm:gap-1.5 w-full justify-center mt-3">
           {state.tableau.map((col, i) => (
             <TableauColumn
               key={i}
@@ -264,7 +257,7 @@ export function SolitaireBoard({ deck, onWin, onGiveUp, savedState, onStateChang
         </div>
 
         {/* Stats + Controls */}
-        <div className="flex items-center gap-6 mt-4 text-sm text-text-secondary">
+        <div className="flex items-center gap-4 sm:gap-6 mt-3 text-xs sm:text-sm text-text-secondary">
           <span>Moves: <strong className="text-text-primary">{state.moves}</strong></span>
           <span>Time: <strong className="text-text-primary">{formatTime(elapsed)}</strong></span>
         </div>
@@ -286,12 +279,6 @@ export function SolitaireBoard({ deck, onWin, onGiveUp, savedState, onStateChang
               Auto-Complete
             </button>
           )}
-          <button
-            onClick={handleGiveUp}
-            className="px-3 py-1.5 text-xs font-medium rounded-lg border border-player1/20 bg-player1/5 text-player1/80 hover:bg-player1/10 transition-colors cursor-pointer"
-          >
-            Give Up
-          </button>
         </div>
       </div>
     </DndContext>
