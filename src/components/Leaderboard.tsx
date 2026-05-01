@@ -19,6 +19,7 @@ interface LeaderboardStats {
     'memory': { ricky: number; lilian: number; draws: number };
     'jeopardy': { ricky: number; lilian: number; draws: number };
     'pool': { ricky: number; lilian: number; draws: number };
+    'cup-pong': { ricky: number; lilian: number; draws: number };
   };
   streaks: {
     ricky_current: number;
@@ -183,6 +184,12 @@ export function Leaderboard({ stats, onReset, loading }: LeaderboardProps) {
                         ricky={stats.by_game['pool'].ricky}
                         lilian={stats.by_game['pool'].lilian}
                         draws={stats.by_game['pool'].draws}
+                      />
+                      <GameStat
+                        label="Cup Pong"
+                        ricky={stats.by_game['cup-pong'].ricky}
+                        lilian={stats.by_game['cup-pong'].lilian}
+                        draws={stats.by_game['cup-pong'].draws}
                       />
                     </div>
                   </div>

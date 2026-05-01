@@ -16,6 +16,7 @@ const GAME_LABELS: Record<string, string> = {
   pool: "Pool",
   whiteboard: "Whiteboard",
   wordle: "Wordle",
+  "cup-pong": "Cup Pong",
 };
 
 interface TurnPayload {
