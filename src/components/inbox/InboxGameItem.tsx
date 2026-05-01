@@ -136,6 +136,19 @@ function MemoryMini() {
   );
 }
 
+function PoolMini() {
+  return (
+    <div className="w-8 h-8 rounded-lg bg-[#1B5E20]/10 flex items-center justify-center">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+        <circle cx="8" cy="8" r="6" stroke="#1B5E20" strokeWidth="1.5" fill="none" opacity="0.6" />
+        <circle cx="6" cy="7" r="2" fill="#FFD700" opacity="0.9" />
+        <circle cx="10" cy="7" r="2" fill="#FF0000" opacity="0.9" />
+        <circle cx="8" cy="10" r="2" fill="#000" opacity="0.9" />
+      </svg>
+    </div>
+  );
+}
+
 function DailyWordleMini() {
   return (
     <div className="w-8 h-8 rounded-lg bg-[#538D4E]/10 flex items-center justify-center">
@@ -163,6 +176,7 @@ function GameIcon({ gameType }: { gameType: InboxGameType }) {
     case 'word-search': return <WordSearchMini />;
     case 'monopoly': return <MonopolyMini />;
     case 'memory': return <MemoryMini />;
+    case 'pool': return <PoolMini />;
     case 'daily-wordle': return <DailyWordleMini />;
   }
 }
@@ -179,6 +193,7 @@ function gameLabel(gameType: InboxGameType): string {
     case 'word-search': return 'Word Search';
     case 'monopoly': return 'Monopoly';
     case 'memory': return 'Memory';
+    case 'pool': return 'Pool';
     case 'daily-wordle': return 'Daily Wordle';
   }
 }
