@@ -2,9 +2,10 @@ import { Player } from '../types';
 import {
   MonopolyBoard, PlayerState, PropertyOwnership, MonopolyPhase, LastRoll,
   MAX_TURNS, STARTING_CASH, GO_SALARY, JAIL_FEE, MAX_JAIL_TURNS,
-  HOUSE_VALUE, HOTEL_VALUE, ColorGroup,
+  HOUSE_VALUE, HOTEL_VALUE, ColorGroup, CardDefinition, CardEffect, DrawnCard,
 } from './types';
 import { BOARD, getPropertiesInGroup, getRailroadIndices, getUtilityIndices } from './board-data';
+import { COMMUNITY_CHEST_CARDS, CHANCE_CARDS, drawRandomCard } from './cards';
 
 export function createInitialBoard(startingPlayer: Player = 1): MonopolyBoard {
   return {
@@ -21,6 +22,7 @@ export function createInitialBoard(startingPlayer: Player = 1): MonopolyBoard {
     doublesCount: 0,
     winner: null,
     finalNetWorth: undefined,
+    drawnCard: null,
   };
 }
 
@@ -122,6 +124,231 @@ export function calculateRent(board: MonopolyBoard, spaceIndex: number, diceTota
   return 0;
 }
 
+function getNearestRailroad(position: number): number {
+  const railroads = getRailroadIndices(); // [5, 15, 25, 35]
+  for (const r of railroads) {
+    if (r > position) return r;
+  }
+  return railroads[0]; // wrap around
+}
+
+function getNearestUtility(position: number): number {
+  const utilities = getUtilityIndices(); // [12, 28]
+  for (const u of utilities) {
+    if (u > position) return u;
+  }
+  return utilities[0]; // wrap around
+}
+
+function countPlayerHousesAndHotels(board: MonopolyBoard, player: Player): { houses: number; hotels: number } {
+  let houses = 0;
+  let hotels = 0;
+  for (const prop of Object.values(board.properties)) {
+    if (prop.owner !== player) continue;
+    if (prop.houses === 5) hotels++;
+    else if (prop.houses > 0) houses += prop.houses;
+  }
+  return { houses, hotels };
+}
+
+function checkBankruptcy(board: MonopolyBoard, player: Player): MonopolyBoard {
+  const state = getPlayerState(board, player);
+  if (state.cash < 0) {
+    const opponent: Player = player === 1 ? 2 : 1;
+    const finalNetWorth = calculateNetWorth(board);
+    return { ...board, winner: opponent, phase: 'game-over', finalNetWorth };
+  }
+  return board;
+}
+
+export function applyCardEffect(board: MonopolyBoard, player: Player, effect: CardEffect): { board: MonopolyBoard; phase: MonopolyPhase } {
+  const opponent: Player = player === 1 ? 2 : 1;
+
+  switch (effect.kind) {
+    case 'cash': {
+      const state = getPlayerState(board, player);
+      let updated = updatePlayerState(board, player, { cash: state.cash + effect.amount });
+      updated = checkBankruptcy(updated, player);
+      return { board: updated, phase: updated.phase === 'game-over' ? 'game-over' : 'end-turn' };
+    }
+
+    case 'move-to': {
+      const state = getPlayerState(board, player);
+      const passedGo = effect.collectGo && effect.position < state.position && effect.position !== state.position;
+      let updated = updatePlayerState(board, player, { position: effect.position });
+      if (passedGo) {
+        const newCash = getPlayerState(updated, player).cash + GO_SALARY;
+        updated = updatePlayerState(updated, player, { cash: newCash });
+      }
+      // Resolve the new landing (but not recursively for card spaces)
+      const landedSpace = BOARD[effect.position];
+      if (landedSpace && (landedSpace.type === 'property' || landedSpace.type === 'railroad' || landedSpace.type === 'utility')) {
+        const ownership = updated.properties[effect.position];
+        if (!ownership) {
+          if (landedSpace.price && getPlayerState(updated, player).cash >= landedSpace.price) {
+            return { board: updated, phase: 'buy-decision' };
+          }
+          return { board: updated, phase: 'end-turn' };
+        }
+        if (ownership.owner === player) {
+          return { board: updated, phase: 'end-turn' };
+        }
+        const diceTotal = updated.lastRoll ? updated.lastRoll.dice[0] + updated.lastRoll.dice[1] : 7;
+        const rent = calculateRent(updated, effect.position, diceTotal);
+        const pState = getPlayerState(updated, player);
+        updated = updatePlayerState(updated, player, { cash: pState.cash - rent });
+        const opCash = getPlayerState(updated, opponent).cash;
+        updated = updatePlayerState(updated, opponent, { cash: opCash + rent });
+        updated = checkBankruptcy(updated, player);
+        return { board: updated, phase: updated.phase === 'game-over' ? 'game-over' : 'end-turn' };
+      }
+      if (landedSpace && landedSpace.type === 'tax') {
+        const taxAmount = landedSpace.taxAmount ?? 0;
+        const pState = getPlayerState(updated, player);
+        updated = updatePlayerState(updated, player, { cash: pState.cash - taxAmount });
+        updated = checkBankruptcy(updated, player);
+        return { board: updated, phase: updated.phase === 'game-over' ? 'game-over' : 'end-turn' };
+      }
+      return { board: updated, phase: 'end-turn' };
+    }
+
+    case 'go-to-jail': {
+      return { board: sendToJail(board, player), phase: 'end-turn' };
+    }
+
+    case 'advance-to-nearest-railroad': {
+      const state = getPlayerState(board, player);
+      const target = getNearestRailroad(state.position);
+      const passedGo = target < state.position;
+      let updated = updatePlayerState(board, player, { position: target });
+      if (passedGo) {
+        const newCash = getPlayerState(updated, player).cash + GO_SALARY;
+        updated = updatePlayerState(updated, player, { cash: newCash });
+      }
+      const ownership = updated.properties[target];
+      if (!ownership) {
+        const space = BOARD[target];
+        if (space?.price && getPlayerState(updated, player).cash >= space.price) {
+          return { board: updated, phase: 'buy-decision' };
+        }
+        return { board: updated, phase: 'end-turn' };
+      }
+      if (ownership.owner === player) {
+        return { board: updated, phase: 'end-turn' };
+      }
+      // Pay double rent
+      const diceTotal = updated.lastRoll ? updated.lastRoll.dice[0] + updated.lastRoll.dice[1] : 7;
+      const rent = calculateRent(updated, target, diceTotal) * 2;
+      const pState = getPlayerState(updated, player);
+      updated = updatePlayerState(updated, player, { cash: pState.cash - rent });
+      const opCash = getPlayerState(updated, opponent).cash;
+      updated = updatePlayerState(updated, opponent, { cash: opCash + rent });
+      updated = checkBankruptcy(updated, player);
+      return { board: updated, phase: updated.phase === 'game-over' ? 'game-over' : 'end-turn' };
+    }
+
+    case 'advance-to-nearest-utility': {
+      const state = getPlayerState(board, player);
+      const target = getNearestUtility(state.position);
+      const passedGo = target < state.position;
+      let updated = updatePlayerState(board, player, { position: target });
+      if (passedGo) {
+        const newCash = getPlayerState(updated, player).cash + GO_SALARY;
+        updated = updatePlayerState(updated, player, { cash: newCash });
+      }
+      const ownership = updated.properties[target];
+      if (!ownership) {
+        const space = BOARD[target];
+        if (space?.price && getPlayerState(updated, player).cash >= space.price) {
+          return { board: updated, phase: 'buy-decision' };
+        }
+        return { board: updated, phase: 'end-turn' };
+      }
+      if (ownership.owner === player) {
+        return { board: updated, phase: 'end-turn' };
+      }
+      // Pay 10x dice roll
+      const diceTotal = updated.lastRoll ? updated.lastRoll.dice[0] + updated.lastRoll.dice[1] : 7;
+      const rent = diceTotal * 10;
+      const pState = getPlayerState(updated, player);
+      updated = updatePlayerState(updated, player, { cash: pState.cash - rent });
+      const opCash = getPlayerState(updated, opponent).cash;
+      updated = updatePlayerState(updated, opponent, { cash: opCash + rent });
+      updated = checkBankruptcy(updated, player);
+      return { board: updated, phase: updated.phase === 'game-over' ? 'game-over' : 'end-turn' };
+    }
+
+    case 'move-back': {
+      const state = getPlayerState(board, player);
+      const newPos = (state.position - effect.spaces + 40) % 40;
+      let updated = updatePlayerState(board, player, { position: newPos });
+      // Resolve landing at new position
+      const landedSpace = BOARD[newPos];
+      if (landedSpace && (landedSpace.type === 'property' || landedSpace.type === 'railroad' || landedSpace.type === 'utility')) {
+        const ownership = updated.properties[newPos];
+        if (!ownership) {
+          if (landedSpace.price && getPlayerState(updated, player).cash >= landedSpace.price) {
+            return { board: updated, phase: 'buy-decision' };
+          }
+          return { board: updated, phase: 'end-turn' };
+        }
+        if (ownership.owner === player) {
+          return { board: updated, phase: 'end-turn' };
+        }
+        const diceTotal = updated.lastRoll ? updated.lastRoll.dice[0] + updated.lastRoll.dice[1] : 7;
+        const rent = calculateRent(updated, newPos, diceTotal);
+        const pState = getPlayerState(updated, player);
+        updated = updatePlayerState(updated, player, { cash: pState.cash - rent });
+        const opCash = getPlayerState(updated, opponent).cash;
+        updated = updatePlayerState(updated, opponent, { cash: opCash + rent });
+        updated = checkBankruptcy(updated, player);
+        return { board: updated, phase: updated.phase === 'game-over' ? 'game-over' : 'end-turn' };
+      }
+      if (landedSpace && landedSpace.type === 'tax') {
+        const taxAmount = landedSpace.taxAmount ?? 0;
+        const pState = getPlayerState(updated, player);
+        updated = updatePlayerState(updated, player, { cash: pState.cash - taxAmount });
+        updated = checkBankruptcy(updated, player);
+        return { board: updated, phase: updated.phase === 'game-over' ? 'game-over' : 'end-turn' };
+      }
+      return { board: updated, phase: 'end-turn' };
+    }
+
+    case 'collect-from-opponent': {
+      const pState = getPlayerState(board, player);
+      const oState = getPlayerState(board, opponent);
+      let updated = updatePlayerState(board, player, { cash: pState.cash + effect.amount });
+      updated = updatePlayerState(updated, opponent, { cash: oState.cash - effect.amount });
+      updated = checkBankruptcy(updated, opponent);
+      return { board: updated, phase: updated.phase === 'game-over' ? 'game-over' : 'end-turn' };
+    }
+
+    case 'repairs': {
+      const { houses, hotels } = countPlayerHousesAndHotels(board, player);
+      const cost = houses * effect.perHouse + hotels * effect.perHotel;
+      const state = getPlayerState(board, player);
+      let updated = updatePlayerState(board, player, { cash: state.cash - cost });
+      updated = checkBankruptcy(updated, player);
+      return { board: updated, phase: updated.phase === 'game-over' ? 'game-over' : 'end-turn' };
+    }
+  }
+}
+
+export function drawAndApplyCard(board: MonopolyBoard, player: Player, cardType: 'community-chest' | 'chance'): { board: MonopolyBoard; phase: MonopolyPhase } {
+  const cards = cardType === 'community-chest' ? COMMUNITY_CHEST_CARDS : CHANCE_CARDS;
+  const card = drawRandomCard(cards);
+  const result = applyCardEffect(board, player, card.effect);
+  const movementEffects: CardEffect['kind'][] = ['move-to', 'go-to-jail', 'advance-to-nearest-railroad', 'advance-to-nearest-utility', 'move-back'];
+  const didMove = movementEffects.includes(card.effect.kind);
+  const resultBoard = didMove ? { ...result.board, lastRoll: null } : result.board;
+  if (result.phase === 'game-over') {
+    const drawnCard: DrawnCard = { cardType, text: card.text, nextPhase: 'game-over' };
+    return { board: { ...resultBoard, drawnCard }, phase: 'game-over' };
+  }
+  const drawnCard: DrawnCard = { cardType, text: card.text, nextPhase: result.phase };
+  return { board: { ...resultBoard, drawnCard }, phase: 'card-drawn' };
+}
+
 export function resolveLanding(board: MonopolyBoard, player: Player): { board: MonopolyBoard; phase: MonopolyPhase } {
   const state = getPlayerState(board, player);
   const space = BOARD[state.position];
@@ -134,6 +361,11 @@ export function resolveLanding(board: MonopolyBoard, player: Player): { board: M
         return { board: sendToJail(board, player), phase: 'end-turn' };
       }
       return { board, phase: 'end-turn' };
+    }
+
+    case 'community-chest':
+    case 'chance': {
+      return drawAndApplyCard(board, player, space.type);
     }
 
     case 'tax': {
@@ -336,6 +568,11 @@ export function calculateNetWorth(board: MonopolyBoard): [number, number] {
   }
 
   return worth;
+}
+
+export function acknowledgeCard(board: MonopolyBoard): MonopolyBoard {
+  const nextPhase = board.drawnCard?.nextPhase ?? 'end-turn';
+  return { ...board, drawnCard: null, phase: nextPhase, turnSequence: board.turnSequence + 1 };
 }
 
 export function forfeit(board: MonopolyBoard, player: Player): MonopolyBoard {

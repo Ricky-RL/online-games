@@ -12,6 +12,7 @@ import { PropertyCard } from '@/components/monopoly/PropertyCard';
 import { JailDecision } from '@/components/monopoly/JailDecision';
 import { GameOverSummary } from '@/components/monopoly/GameOverSummary';
 import { BuildMenu } from '@/components/monopoly/BuildMenu';
+import { CardDisplay } from '@/components/monopoly/CardDisplay';
 import { TurnIndicator } from '@/components/TurnIndicator';
 import { SettingsButton } from '@/components/SettingsButton';
 
@@ -20,7 +21,7 @@ export default function MonopolyGamePage({ params }: { params: Promise<{ gameId:
   const router = useRouter();
   const {
     game, loading, error, myPlayer, isMyTurn,
-    roll, buy, pass, build, endMyTurn, payJailFee, rollForDoubles,
+    roll, buy, pass, build, endMyTurn, payJailFee, rollForDoubles, dismissCard,
     buildableProperties, resetGame, forfeitGame,
   } = useMonopolyGame(gameId);
   const { play } = useGameSounds();
@@ -102,6 +103,14 @@ export default function MonopolyGamePage({ params }: { params: Promise<{ gameId:
                 player={myPlayer!}
                 onPayFee={payJailFee}
                 onRollForDoubles={rollForDoubles}
+              />
+            )}
+
+            {board.phase === 'card-drawn' && board.drawnCard && (
+              <CardDisplay
+                card={board.drawnCard}
+                isMyTurn={isMyTurn}
+                onAcknowledge={dismissCard}
               />
             )}
 

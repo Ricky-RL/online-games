@@ -7,7 +7,7 @@ import { MonopolyGame, MonopolyBoard, MonopolyPhase } from '@/lib/monopoly/types
 import {
   createInitialBoard, rollDice, performRoll, buyProperty, endTurn,
   buildHouse, jailPayFee, jailRollForDoubles, resolveLanding,
-  getPlayerState, getBuildableProperties, forfeit,
+  getPlayerState, getBuildableProperties, forfeit, acknowledgeCard,
 } from '@/lib/monopoly/logic';
 import { recordMatchResult, GameType } from '@/lib/match-results';
 
@@ -26,6 +26,7 @@ interface UseMonopolyGameReturn {
   endMyTurn: () => Promise<void>;
   payJailFee: () => Promise<void>;
   rollForDoubles: () => Promise<void>;
+  dismissCard: () => Promise<void>;
   buildableProperties: number[];
   resetGame: () => Promise<void>;
   forfeitGame: () => Promise<void>;
@@ -186,6 +187,14 @@ export function useMonopolyGame(gameId: string): UseMonopolyGameReturn {
     await updateBoard(newBoard);
   }, [myPlayer, updateBoard]);
 
+  const dismissCard = useCallback(async () => {
+    const current = gameRef.current;
+    if (!current || !myPlayer || current.board.phase !== 'card-drawn') return;
+
+    const newBoard = acknowledgeCard(current.board);
+    await updateBoard(newBoard);
+  }, [myPlayer, updateBoard]);
+
   const buildableProperties = game && myPlayer ? getBuildableProperties(game.board, myPlayer) : [];
 
   const forfeitGame = useCallback(async () => {
@@ -217,7 +226,7 @@ export function useMonopolyGame(gameId: string): UseMonopolyGameReturn {
 
   return {
     game, loading, error, myPlayer, isMyTurn,
-    roll, buy, pass, build, endMyTurn, payJailFee, rollForDoubles,
+    roll, buy, pass, build, endMyTurn, payJailFee, rollForDoubles, dismissCard,
     buildableProperties, resetGame, forfeitGame,
   };
 }
