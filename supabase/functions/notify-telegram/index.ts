@@ -12,6 +12,7 @@ const GAME_LABELS: Record<string, string> = {
   "snakes-and-ladders": "Snakes & Ladders",
   "word-search": "Word Search",
   memory: "Memory",
+  jeopardy: "Jeopardy",
   whiteboard: "Whiteboard",
   wordle: "Wordle",
 };

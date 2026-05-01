@@ -136,6 +136,16 @@ function MemoryMini() {
   );
 }
 
+function JeopardyMini() {
+  return (
+    <div className="w-8 h-8 rounded-lg bg-[#1A3A7A]/10 flex items-center justify-center">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+        <text x="2" y="13" fontSize="13" fill="#1A3A7A" opacity="0.8" fontFamily="serif" fontWeight="bold">J!</text>
+      </svg>
+    </div>
+  );
+}
+
 function DailyWordleMini() {
   return (
     <div className="w-8 h-8 rounded-lg bg-[#538D4E]/10 flex items-center justify-center">
@@ -163,6 +173,7 @@ function GameIcon({ gameType }: { gameType: InboxGameType }) {
     case 'word-search': return <WordSearchMini />;
     case 'monopoly': return <MonopolyMini />;
     case 'memory': return <MemoryMini />;
+    case 'jeopardy': return <JeopardyMini />;
     case 'daily-wordle': return <DailyWordleMini />;
   }
 }
@@ -179,6 +190,7 @@ function gameLabel(gameType: InboxGameType): string {
     case 'word-search': return 'Word Search';
     case 'monopoly': return 'Monopoly';
     case 'memory': return 'Memory';
+    case 'jeopardy': return 'Jeopardy';
     case 'daily-wordle': return 'Daily Wordle';
   }
 }

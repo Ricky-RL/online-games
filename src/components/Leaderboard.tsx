@@ -17,6 +17,7 @@ interface LeaderboardStats {
     'battleship': { ricky: number; lilian: number; draws: number };
     'word-search': { ricky: number; lilian: number; draws: number };
     'memory': { ricky: number; lilian: number; draws: number };
+    'jeopardy': { ricky: number; lilian: number; draws: number };
   };
   streaks: {
     ricky_current: number;
@@ -169,6 +170,12 @@ export function Leaderboard({ stats, onReset, loading }: LeaderboardProps) {
                         ricky={stats.by_game['memory'].ricky}
                         lilian={stats.by_game['memory'].lilian}
                         draws={stats.by_game['memory'].draws}
+                      />
+                      <GameStat
+                        label="Jeopardy"
+                        ricky={stats.by_game['jeopardy'].ricky}
+                        lilian={stats.by_game['jeopardy'].lilian}
+                        draws={stats.by_game['jeopardy'].draws}
                       />
                     </div>
                   </div>

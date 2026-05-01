@@ -78,6 +78,12 @@ export const DEFAULT_GAME_ORDER: GameDefinition[] = [
     description: 'Flip cards, find pairs. Best memory wins the match.',
     color: '#9B59B6',
   },
+  {
+    slug: 'jeopardy',
+    title: 'Jeopardy',
+    description: 'Pick categories, answer trivia. Highest score wins the board.',
+    color: '#1A3A7A',
+  },
 ];
 
 export const DEFAULT_SLUG_ORDER = DEFAULT_GAME_ORDER.map((g) => g.slug);
