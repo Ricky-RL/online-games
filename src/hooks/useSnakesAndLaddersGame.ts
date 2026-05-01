@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
 import { makeMove as computeMove, checkWin, rollDice as generateRoll, handleSkipTurn, tickRespawns } from '@/lib/snakes-and-ladders-logic';
 import { recordMatchResult } from '@/lib/match-results';
+import { getStoredPlayerName, PLAYER_IDS } from '@/lib/players';
 import type { Player, SnakesAndLaddersState, MoveEvent, PowerupType } from '@/lib/types';
 
 const POLL_INTERVAL_MS = 1500;
@@ -65,6 +66,7 @@ export function useSnakesAndLaddersGame(gameId: string): UseSnakesAndLaddersGame
   const optimisticBoard = useRef<SnakesAndLaddersState | null>(null);
   const gameRef = useRef<SnakesAndLaddersGame | null>(null);
   const matchRecorded = useRef(false);
+  const autoJoinAttempted = useRef(false);
   const lastUpdatedAt = useRef<string | null>(null);
   const lastSeenMoveNumber = useRef<number>(0);
   const pendingMoveEvents = useRef<MoveEvent[]>([]);
@@ -131,6 +133,44 @@ export function useSnakesAndLaddersGame(gameId: string): UseSnakesAndLaddersGame
     return data as SnakesAndLaddersGame;
   }, [gameId, updateGame]);
 
+  const tryAutoJoin = useCallback(async (gameData: SnakesAndLaddersGame) => {
+    if (autoJoinAttempted.current) return;
+
+    const playerName = getStoredPlayerName();
+    if (!playerName) return;
+
+    const myId = PLAYER_IDS[playerName];
+    const isPlayer1 = gameData.player1_id === myId || gameData.player1_name === playerName;
+
+    if (!isPlayer1 && gameData.player2_id === null) {
+      autoJoinAttempted.current = true;
+
+      const { data: joined, error: joinError } = await supabase
+        .from('games')
+        .update({
+          player2_id: myId,
+          player2_name: playerName,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', gameId)
+        .is('player2_id', null)
+        .select()
+        .single();
+
+      if (joinError) {
+        await fetchGame();
+        return;
+      }
+
+      if (joined) {
+        const fresh = joined as SnakesAndLaddersGame;
+        updateGame(fresh);
+        const board = fresh.board as SnakesAndLaddersState;
+        lastSeenMoveNumber.current = board.moveNumber ?? 0;
+      }
+    }
+  }, [gameId, fetchGame, updateGame]);
+
   // Initial fetch
   useEffect(() => {
     let cancelled = false;
@@ -142,12 +182,13 @@ export function useSnakesAndLaddersGame(gameId: string): UseSnakesAndLaddersGame
         updateGame(gameData);
         const board = gameData.board as SnakesAndLaddersState;
         lastSeenMoveNumber.current = board.moveNumber ?? 0;
+        await tryAutoJoin(gameData);
       }
       setLoading(false);
     }
     init();
     return () => { cancelled = true; };
-  }, [fetchGame, updateGame]);
+  }, [fetchGame, updateGame, tryAutoJoin]);
 
   // Poll for changes
   useEffect(() => {
