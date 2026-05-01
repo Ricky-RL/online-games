@@ -114,6 +114,9 @@ export function useJengaGame(gameId: string): UseJengaGameReturn {
       updateGame((prev) => {
         if (!prev) return fresh;
 
+        const freshMoves = fresh.board.move_history.length;
+        const prevMoves = prev.board.move_history.length;
+
         // If game ended (opponent toppled), always update regardless of drag state
         if (fresh.winner !== null && prev.winner === null) {
           // Cancel any in-progress drag
@@ -132,21 +135,52 @@ export function useJengaGame(gameId: string): UseJengaGameReturn {
 
         // When a drag is in progress, skip turn updates from poll
         if (pullingInProgress.current) {
-          // Still update player names if they joined
-          if (fresh.player2_name && !prev.player2_name) {
-            return { ...prev, player2_name: fresh.player2_name, player2_id: fresh.player2_id };
+          // Still update player names/ids and current_turn if they joined
+          if (fresh.player1_name !== prev.player1_name ||
+              fresh.player2_name !== prev.player2_name ||
+              fresh.player1_id !== prev.player1_id ||
+              fresh.player2_id !== prev.player2_id) {
+            return {
+              ...prev,
+              player1_name: fresh.player1_name,
+              player2_name: fresh.player2_name,
+              player1_id: fresh.player1_id,
+              player2_id: fresh.player2_id,
+              current_turn: fresh.current_turn,
+            };
           }
           return prev;
         }
 
-        if (fresh.board.move_history.length > prev.board.move_history.length) {
+        if (JSON.stringify(fresh) === JSON.stringify(prev)) return prev;
+
+        // Opponent made a move — accept fresh state
+        if (freshMoves > prevMoves) {
           return fresh;
         }
-        // Update player names if they joined
-        if (fresh.player2_name && !prev.player2_name) {
-          return { ...prev, player2_name: fresh.player2_name, player2_id: fresh.player2_id };
+
+        // Guard against out-of-order polls regressing state
+        if (freshMoves < prevMoves) {
+          // Still pick up player name/id/turn changes
+          if (fresh.player1_name !== prev.player1_name ||
+              fresh.player2_name !== prev.player2_name ||
+              fresh.player1_id !== prev.player1_id ||
+              fresh.player2_id !== prev.player2_id) {
+            return {
+              ...prev,
+              player1_name: fresh.player1_name,
+              player2_name: fresh.player2_name,
+              player1_id: fresh.player1_id,
+              player2_id: fresh.player2_id,
+            };
+          }
+          return prev;
         }
-        return prev;
+
+        // Same move count — accept fresh to pick up player name/id/turn updates
+        // This is the key fix: when a player joins via Telegram link, move count
+        // stays the same but player2_id and current_turn need to be accepted
+        return fresh;
       });
     }, POLL_INTERVAL_MS);
 
@@ -239,7 +273,7 @@ export function useJengaGame(gameId: string): UseJengaGameReturn {
       );
       setError(null);
 
-      const { error: updateError } = await supabase
+      const { data: updatedGame, error: updateError } = await supabase
         .from('games')
         .update({
           board: newBoard,
@@ -248,14 +282,19 @@ export function useJengaGame(gameId: string): UseJengaGameReturn {
           updated_at: new Date().toISOString(),
         })
         .eq('id', gameId)
-        .eq('current_turn', myPlayerNumber);
+        .eq('current_turn', myPlayerNumber)
+        .select()
+        .single();
 
-      if (updateError) {
+      if (updateError || !updatedGame) {
         const { data: freshGame } = await supabase
           .from('games').select('*').eq('id', gameId).single();
         if (freshGame) updateGame(freshGame as JengaGame);
-        setError(updateError.message);
+        if (updateError) setError(updateError.message);
+        return;
       }
+
+      updateGame(updatedGame as JengaGame);
 
       // Record match result if game ended
       if (winner && !updateError) {

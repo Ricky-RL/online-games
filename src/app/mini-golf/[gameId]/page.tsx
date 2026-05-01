@@ -10,7 +10,6 @@ import { MiniGolfCanvas } from '@/components/mini-golf/Canvas';
 import { StrokeCounter } from '@/components/mini-golf/StrokeCounter';
 import { EndGameScreen } from '@/components/mini-golf/EndGameScreen';
 import { TurnIndicator } from '@/components/TurnIndicator';
-import { SettingsButton } from '@/components/SettingsButton';
 import { NotificationControls } from '@/components/NotificationControls';
 import { EndGameDialog } from '@/components/EndGameDialog';
 import { LEVELS } from '@/lib/mini-golf/levels';
@@ -178,7 +177,6 @@ export default function MiniGolfGamePage({ params }: { params: Promise<{ gameId:
               <polyline points="9 22 9 12 15 12 15 22" />
             </svg>
           </button>
-          <SettingsButton />
           <NotificationControls
             isMuted={isMuted}
             toggleMute={toggleMute}

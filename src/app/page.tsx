@@ -626,6 +626,7 @@ function GameSelection({ playerName, onChangePlayer }: { playerName: PlayerName;
         .from('wordle_games')
         .select('*')
         .eq('game_type', 'wordle')
+        .neq('answer_index', -1)
         .eq('status', 'playing')
         .order('created_at', { ascending: false })
         .limit(10);
@@ -762,24 +763,28 @@ function GameSelection({ playerName, onChangePlayer }: { playerName: PlayerName;
     function findMyDailyGame(games: any[] | null) {
       if (!games) return { activeGame: null, joinableGame: null };
 
+      // Check both player slots — the current player could be in either one
       const activeGame = games.find((g) => {
-        if (isRicky) return g.player1_name === 'Ricky';
-        return g.player2_name === 'Lilian';
+        return g.player1_name === playerName || g.player2_name === playerName;
       }) || null;
 
+      // A joinable game has the OTHER player in one slot and an empty slot for us
       const joinableGame = games.find((g) => {
-        if (isRicky) {
-          return g.player1_name === null && g.player2_name === 'Lilian';
-        } else {
-          return g.player2_name === null && g.player1_name === 'Ricky';
-        }
+        const otherPlayer = isRicky ? 'Lilian' : 'Ricky';
+        const hasOtherPlayer = g.player1_name === otherPlayer || g.player2_name === otherPlayer;
+        const hasEmptySlot = g.player1_name === null || g.player2_name === null;
+        const notAlreadyIn = g.player1_name !== playerName && g.player2_name !== playerName;
+        return hasOtherPlayer && hasEmptySlot && notAlreadyIn;
       }) || null;
 
       return { activeGame, joinableGame };
     }
 
-    async function joinDailyGame(gameId: string) {
-      const updateField = isRicky
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    async function joinDailyGame(game: any) {
+      // Fill whichever player slot is empty
+      const isPlayer1SlotEmpty = game.player1_name === null;
+      const updateField = isPlayer1SlotEmpty
         ? { player1_id: myId, player1_name: playerName }
         : { player2_id: myId, player2_name: playerName };
 
@@ -789,7 +794,7 @@ function GameSelection({ playerName, onChangePlayer }: { playerName: PlayerName;
           ...updateField,
           updated_at: new Date().toISOString(),
         })
-        .eq('id', gameId)
+        .eq('id', game.id)
         .select()
         .single();
 
@@ -810,7 +815,7 @@ function GameSelection({ playerName, onChangePlayer }: { playerName: PlayerName;
     }
 
     if (joinableGame) {
-      if (await joinDailyGame(joinableGame.id)) {
+      if (await joinDailyGame(joinableGame)) {
         router.push(`/wordle/${joinableGame.id}`);
       }
       return;
@@ -828,40 +833,26 @@ function GameSelection({ playerName, onChangePlayer }: { playerName: PlayerName;
     }
 
     if (joinableGame) {
-      if (await joinDailyGame(joinableGame.id)) {
+      if (await joinDailyGame(joinableGame)) {
         router.push(`/wordle/${joinableGame.id}`);
       }
       return;
     }
 
-    // No existing game found — create a new one
-    const insertData = isRicky
-      ? {
-          game_type: 'wordle',
-          answer_index: -1,
-          answer_word: dailyWord,
-          guesses: [],
-          guess_count: 0,
-          status: 'playing',
-          winner: null,
-          player1_id: myId,
-          player1_name: playerName,
-          player2_id: null,
-          player2_name: null,
-        }
-      : {
-          game_type: 'wordle',
-          answer_index: -1,
-          answer_word: dailyWord,
-          guesses: [],
-          guess_count: 0,
-          status: 'playing',
-          winner: null,
-          player1_id: null,
-          player1_name: null,
-          player2_id: myId,
-          player2_name: playerName,
-        };
+    // No existing game found — create a new one (creator is always player1)
+    const insertData = {
+      game_type: 'wordle',
+      answer_index: -1,
+      answer_word: dailyWord,
+      guesses: [],
+      guess_count: 0,
+      status: 'playing',
+      winner: null,
+      player1_id: myId,
+      player1_name: playerName,
+      player2_id: null,
+      player2_name: null,
+    };
 
     const { data, error } = await supabase
       .from('wordle_games')

@@ -9,7 +9,6 @@ import { WordList } from '@/components/word-search/WordList';
 import { Timer, getElapsedSeconds } from '@/components/word-search/Timer';
 import { Results } from '@/components/word-search/Results';
 import { EndGameDialog } from '@/components/EndGameDialog';
-import { SettingsButton } from '@/components/SettingsButton';
 import type { WordSearchBoardState } from '@/lib/word-search-types';
 
 export default function WordSearchGamePage({ params }: { params: Promise<{ gameId: string }> }) {
@@ -86,7 +85,6 @@ export default function WordSearchGamePage({ params }: { params: Promise<{ gameI
     if (bothSubmitted) {
       return (
         <div className="flex-1 flex flex-col items-center justify-center min-h-screen px-4 py-8">
-          <SettingsButton />
           <Results
             board={board}
             player1Name={game.player1_name || 'Player 1'}
@@ -111,7 +109,6 @@ export default function WordSearchGamePage({ params }: { params: Promise<{ gameI
     const opponentName = myPlayerNumber === 1 ? (game.player2_name || 'Opponent') : (game.player1_name || 'Opponent');
     return (
       <div className="flex-1 flex flex-col items-center justify-center min-h-screen px-4 gap-4">
-        <SettingsButton />
         <div className="text-2xl font-bold text-text-primary">
           You found {myResult?.foundWords.length ?? myFoundWords.length}/{allWords.length} words
         </div>
@@ -131,7 +128,6 @@ export default function WordSearchGamePage({ params }: { params: Promise<{ gameI
   // Active game — playing
   return (
     <div className="flex-1 flex flex-col items-center min-h-screen px-4 py-6 gap-4">
-      <SettingsButton />
 
       {/* Header: theme + timer */}
       <div className="flex items-center justify-between w-full max-w-md">

@@ -313,16 +313,55 @@ function renderTable(
 
       if (power >= 5) {
         const angle = Math.atan2(dx, -dy);
-        const lineLen = 40 + power * 0.3;
-        const endX = cueBall.x + Math.sin(angle) * lineLen;
-        const endY = cueBall.y - Math.cos(angle) * lineLen;
+        const totalLen = 80 + power * 0.8;
+
+        // Ray-march with wall reflections
+        const minX = CUSHION_WIDTH + BALL_RADIUS;
+        const maxX = TABLE_WIDTH - CUSHION_WIDTH - BALL_RADIUS;
+        const minY = CUSHION_WIDTH + BALL_RADIUS;
+        const maxY = TABLE_HEIGHT - CUSHION_WIDTH - BALL_RADIUS;
+
+        let rx = cueBall.x;
+        let ry = cueBall.y;
+        let rdx = Math.sin(angle);
+        let rdy = -Math.cos(angle);
+        let remaining = totalLen;
 
         ctx.beginPath();
         ctx.setLineDash([4, 4]);
-        ctx.moveTo(cueBall.x, cueBall.y);
-        ctx.lineTo(endX, endY);
+        ctx.moveTo(rx, ry);
         ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)';
         ctx.lineWidth = 1.5;
+
+        while (remaining > 0.5) {
+          // Find distance to each wall along current direction
+          let tMin = remaining;
+
+          if (rdx > 0) tMin = Math.min(tMin, (maxX - rx) / rdx);
+          else if (rdx < 0) tMin = Math.min(tMin, (minX - rx) / rdx);
+
+          if (rdy > 0) tMin = Math.min(tMin, (maxY - ry) / rdy);
+          else if (rdy < 0) tMin = Math.min(tMin, (minY - ry) / rdy);
+
+          if (tMin >= remaining) {
+            // No wall hit — draw to end
+            rx += rdx * remaining;
+            ry += rdy * remaining;
+            ctx.lineTo(rx, ry);
+            remaining = 0;
+          } else {
+            // Advance to wall
+            rx += rdx * tMin;
+            ry += rdy * tMin;
+            ctx.lineTo(rx, ry);
+            remaining -= tMin;
+
+            // Reflect direction
+            if (rx <= minX + 0.1 || rx >= maxX - 0.1) rdx = -rdx;
+            if (ry <= minY + 0.1 || ry >= maxY - 0.1) rdy = -rdy;
+          }
+        }
+
         ctx.stroke();
         ctx.setLineDash([]);
 

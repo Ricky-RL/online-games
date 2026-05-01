@@ -9,7 +9,6 @@ import { useNotifications } from '@/hooks/useNotifications';
 import { PoolCanvas } from '@/components/pool/Canvas';
 import { BallInHandOverlay } from '@/components/pool/BallInHandOverlay';
 import { TurnIndicator } from '@/components/TurnIndicator';
-import { SettingsButton } from '@/components/SettingsButton';
 import { NotificationControls } from '@/components/NotificationControls';
 import { EndGameDialog } from '@/components/EndGameDialog';
 import { Shot } from '@/lib/pool/types';
@@ -181,7 +180,6 @@ export default function PoolGamePage({ params }: { params: Promise<{ gameId: str
               <polyline points="9 22 9 12 15 12 15 22" />
             </svg>
           </button>
-          <SettingsButton />
           <NotificationControls
             isMuted={isMuted}
             toggleMute={toggleMute}
