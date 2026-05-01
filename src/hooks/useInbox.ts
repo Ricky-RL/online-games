@@ -182,12 +182,12 @@ export function useInbox(): UseInboxReturn {
       isUnread: new Date(item.created_at) > new Date(whiteboardLastReadAt),
     }));
 
-    // Filter out games waiting for opponent — they're not actionable in the inbox
-    const actionableGames = [...enrichedGames, ...enrichedWordleGames].filter((g) => !g.isWaitingForOpponent);
+    const allGames = [...enrichedGames, ...enrichedWordleGames];
 
     // Combine games and whiteboard activity, sort by priority then date, limit to 3
+    // Priority: 2 = my turn / waiting for me to join, 1 = their turn / whiteboard, 0 = waiting for opponent
     const combined: Array<{ type: 'game'; item: InboxGame; date: string; priority: number } | { type: 'whiteboard'; item: WhiteboardActivityItem; date: string; priority: number }> = [
-      ...actionableGames.map((g) => ({ type: 'game' as const, item: g, date: g.updated_at, priority: g.isMyTurn ? 2 : 1 })),
+      ...allGames.map((g) => ({ type: 'game' as const, item: g, date: g.updated_at, priority: g.isWaitingForOpponent ? 0 : g.isMyTurn ? 2 : 1 })),
       ...enrichedActivity.map((a) => ({ type: 'whiteboard' as const, item: a, date: a.created_at, priority: 1 })),
     ];
     combined.sort((a, b) => b.priority - a.priority || new Date(b.date).getTime() - new Date(a.date).getTime());
