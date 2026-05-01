@@ -14,6 +14,7 @@ const GAME_LABELS: Record<string, string> = {
   memory: "Memory",
   jeopardy: "Jeopardy",
   pool: "Pool",
+  reaction: "Reaction",
   whiteboard: "Whiteboard",
   wordle: "Wordle",
   "cup-pong": "Cup Pong",

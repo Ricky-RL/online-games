@@ -79,6 +79,7 @@ export const DEFAULT_GAME_ORDER: GameDefinition[] = [
     color: '#9B59B6',
   },
   {
+  {
     slug: 'jeopardy',
     title: 'Jeopardy',
     description: 'Pick categories, answer trivia. Highest score wins the board.',
@@ -94,6 +95,12 @@ export const DEFAULT_GAME_ORDER: GameDefinition[] = [
     slug: 'cup-pong',
     title: 'Cup Pong',
     description: 'Throw balls, sink cups. Classic beer pong for two.',
+    color: '#FF6B35',
+  },
+  {
+    slug: 'reaction',
+    title: 'Reaction',
+    description: 'Test your reflexes. Tap targets as fast as you can. Lowest average time wins.',
     color: '#FF6B35',
   },
 ];

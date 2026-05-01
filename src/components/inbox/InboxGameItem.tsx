@@ -170,6 +170,16 @@ function CupPongMini() {
   );
 }
 
+function ReactionMini() {
+  return (
+    <div className="w-8 h-8 rounded-lg bg-[#FF6B35]/10 flex items-center justify-center">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+        <path d="M9.5 2L5 9h3.5l-1 5L12 7H8.5l1-5z" fill="#FF6B35" opacity="0.9" />
+      </svg>
+    </div>
+  );
+}
+
 function DailyWordleMini() {
   return (
     <div className="w-8 h-8 rounded-lg bg-[#538D4E]/10 flex items-center justify-center">
@@ -199,6 +209,7 @@ function GameIcon({ gameType }: { gameType: InboxGameType }) {
     case 'memory': return <MemoryMini />;
     case 'jeopardy': return <JeopardyMini />;
     case 'pool': return <PoolMini />;
+    case 'reaction': return <ReactionMini />;
     case 'daily-wordle': return <DailyWordleMini />;
     case 'cup-pong': return <CupPongMini />;
   }
@@ -218,6 +229,7 @@ function gameLabel(gameType: InboxGameType): string {
     case 'memory': return 'Memory';
     case 'jeopardy': return 'Jeopardy';
     case 'pool': return 'Pool';
+    case 'reaction': return 'Reaction';
     case 'daily-wordle': return 'Daily Wordle';
     case 'cup-pong': return 'Cup Pong';
   }
