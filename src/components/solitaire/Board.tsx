@@ -153,19 +153,50 @@ export function SolitaireBoard({ deck, onWin, savedState, onStateChange }: Board
     moveCard(cardId, { type: dragData.source, col: dragData.col, cardIndex: dragData.cardIndex }, dropData);
   }, [moveCard]);
 
-  const handleDoubleClick = useCallback((cardId: number, source: { type: string; col?: number; cardIndex?: number }) => {
+  const handleCardClick = useCallback((cardId: number, source: { type: string; col?: number; cardIndex?: number }) => {
     setState((s) => {
       const started = ensureStarted(s);
-      const result = tryMoveToFoundation(cardId, started);
-      if (!result) return started;
+
+      // Determine how many cards would move from source
+      const isMultiCard = source.type === 'tableau' && source.col !== undefined && source.cardIndex !== undefined
+        && source.cardIndex < started.tableau[source.col].length - 1;
+
+      // Try foundation first (only single cards)
+      let targetType: 'foundation' | 'tableau' | null = null;
+      let targetIndex: number | null = null;
+
+      if (!isMultiCard) {
+        const result = tryMoveToFoundation(cardId, started);
+        if (result) {
+          targetType = 'foundation';
+        }
+      }
+
+      // Try tableau columns if foundation didn't work
+      if (!targetType) {
+        for (let col = 0; col < 7; col++) {
+          if (source.type === 'tableau' && col === source.col) continue;
+          if (canPlaceOnTableau(cardId, started.tableau[col])) {
+            // Prefer non-empty columns over empty ones (don't move king to empty pointlessly)
+            if (targetIndex === null || (started.tableau[col].length > 0 && started.tableau[targetIndex].length === 0)) {
+              targetType = 'tableau';
+              targetIndex = col;
+            }
+          }
+        }
+      }
+
+      if (!targetType) return started;
       pushUndo(started);
 
-      let newState = { ...result };
+      let newState = { ...started };
+      let cardsToMove: number[] = [cardId];
 
       // Remove from source
       if (source.type === 'waste') {
         newState.waste = started.waste.slice(0, -1);
       } else if (source.type === 'tableau' && source.col !== undefined && source.cardIndex !== undefined) {
+        cardsToMove = started.tableau[source.col].slice(source.cardIndex);
         newState.tableau = started.tableau.map((col, i) =>
           i === source.col ? col.slice(0, source.cardIndex) : col
         );
@@ -175,6 +206,18 @@ export function SolitaireBoard({ deck, onWin, savedState, onStateChange }: Board
           newFaceUp.add(newCol[newCol.length - 1]);
           newState.faceUp = newFaceUp;
         }
+      }
+
+      // Place on target
+      if (targetType === 'foundation') {
+        const card = getCard(cardId);
+        newState.foundations = newState.foundations.map((f, i) =>
+          i === card.suit ? [...f, cardId] : f
+        );
+      } else if (targetType === 'tableau' && targetIndex !== null) {
+        newState.tableau = newState.tableau.map((col, i) =>
+          i === targetIndex ? [...col, ...cardsToMove] : col
+        );
       }
 
       return { ...newState, moves: started.moves + 1 };
@@ -231,7 +274,7 @@ export function SolitaireBoard({ deck, onWin, savedState, onStateChange }: Board
             stock={state.stock}
             waste={state.waste}
             onDraw={handleDraw}
-            onWasteCardClick={(cardId) => handleDoubleClick(cardId, { type: 'waste' })}
+            onWasteCardClick={(cardId) => handleCardClick(cardId, { type: 'waste' })}
           />
           <div className="flex gap-1.5">
             {[0, 1, 2, 3].map((suit) => (
@@ -250,7 +293,7 @@ export function SolitaireBoard({ deck, onWin, savedState, onStateChange }: Board
               faceUp={state.faceUp}
               onCardClick={(cardId) => {
                 const cardIndex = col.indexOf(cardId);
-                handleDoubleClick(cardId, { type: 'tableau', col: i, cardIndex });
+                handleCardClick(cardId, { type: 'tableau', col: i, cardIndex });
               }}
             />
           ))}
