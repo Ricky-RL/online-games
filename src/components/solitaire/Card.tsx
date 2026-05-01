@@ -49,7 +49,7 @@ export function SolitaireCard({ cardId, faceUp, draggable = false, dragData, onC
       ref={draggable ? setNodeRef : undefined}
       {...(draggable ? { ...listeners, ...attributes } : {})}
       onClick={onClick}
-      className={`w-[60px] h-[84px] rounded-lg border border-border bg-white shadow-sm select-none ${draggable && faceUp ? 'cursor-grab active:cursor-grabbing' : ''} ${isDragging ? 'opacity-50 z-50' : ''} ${className}`}
+      className={`relative w-[60px] h-[84px] rounded-lg border border-border bg-white shadow-sm select-none overflow-hidden ${draggable && faceUp ? 'cursor-grab active:cursor-grabbing' : ''} ${isDragging ? 'opacity-50 z-50' : ''} ${className}`}
       style={{ ...style, ...transformStyle }}
     >
       <div className={`p-1 ${colorClass} text-xs font-bold leading-none`}>
