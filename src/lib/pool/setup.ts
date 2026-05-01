@@ -19,13 +19,13 @@ export function createInitialBalls(): BallState[] {
   const spacing = BALL_RADIUS * 2.05;
 
   // Standard 8-ball rack: 5 rows, 8-ball in center of 3rd row
-  // Rows go downward (toward cue ball), columns spread horizontally
+  // Point of triangle faces the cue ball (bottom), wider rows go up
   const rackOrder = [1, 9, 2, 10, 8, 3, 11, 4, 12, 5, 13, 6, 14, 7, 15];
 
   let ballIndex = 0;
   for (let row = 0; row < 5; row++) {
     const ballsInRow = row + 1;
-    const rowY = rackY + row * spacing * Math.cos(Math.PI / 6);
+    const rowY = rackY - row * spacing * Math.cos(Math.PI / 6);
     const startX = rackX - (ballsInRow - 1) * spacing / 2;
 
     for (let col = 0; col < ballsInRow; col++) {
