@@ -1,6 +1,6 @@
 'use client';
 
-import { use, useState, useCallback, useRef } from 'react';
+import { use, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { usePoolGame } from '@/hooks/usePoolGame';
@@ -12,7 +12,7 @@ import { TurnIndicator } from '@/components/TurnIndicator';
 import { SettingsButton } from '@/components/SettingsButton';
 import { NotificationControls } from '@/components/NotificationControls';
 import { EndGameDialog } from '@/components/EndGameDialog';
-import { Shot, BallState, isSolid, isStripe } from '@/lib/pool/types';
+import { Shot } from '@/lib/pool/types';
 import { isValidCueBallPlacement } from '@/lib/pool/physics';
 import { Player } from '@/lib/types';
 
@@ -22,12 +22,10 @@ export default function PoolGamePage({ params }: { params: Promise<{ gameId: str
   const {
     game, loading, error, deleted,
     takeShot, placeCueBall, forfeit, resetGame,
-    replayShot, isReplaying, triggerReplay,
+    replayShot, isReplaying, previousBalls, triggerReplay, onReplayComplete,
   } = usePoolGame(gameId);
   const { play } = useGameSounds();
   const [showForfeitDialog, setShowForfeitDialog] = useState(false);
-  const [replayDone, setReplayDone] = useState(false);
-  const previousBallsRef = useRef<BallState[] | null>(null);
 
   const getMyPlayer = useCallback((): Player | null => {
     const name = sessionStorage.getItem('player-name') || localStorage.getItem('player-name');
@@ -50,9 +48,8 @@ export default function PoolGamePage({ params }: { params: Promise<{ gameId: str
 
   const handleShotTaken = useCallback(async (shot: Shot) => {
     play('shot');
-    previousBallsRef.current = game?.board.balls ?? null;
     await takeShot(shot);
-  }, [takeShot, play, game]);
+  }, [takeShot, play]);
 
   const handleBallPlaced = useCallback(async (x: number, y: number) => {
     if (!game) return;
@@ -61,8 +58,8 @@ export default function PoolGamePage({ params }: { params: Promise<{ gameId: str
   }, [placeCueBall, game]);
 
   const handleReplayComplete = useCallback(() => {
-    setReplayDone(true);
-  }, []);
+    onReplayComplete();
+  }, [onReplayComplete]);
 
   const handleForfeit = useCallback(async () => {
     await forfeit();
@@ -137,7 +134,7 @@ export default function PoolGamePage({ params }: { params: Promise<{ gameId: str
     ? board.phase === 'ball-in-hand'
       ? 'Place the cue ball'
       : 'Your shot'
-    : `${opponentName}'s turn`;
+    : `${opponentName ?? 'Opponent'}'s turn`;
 
   return (
     <div className="h-dvh bg-background flex flex-col overflow-hidden" style={{ overscrollBehavior: 'none' }}>
@@ -190,7 +187,7 @@ export default function PoolGamePage({ params }: { params: Promise<{ gameId: str
           replayShot={replayShot}
           isReplaying={isReplaying}
           onReplayComplete={handleReplayComplete}
-          previousBalls={previousBallsRef.current ?? undefined}
+          previousBalls={previousBalls ?? undefined}
         />
       </main>
 

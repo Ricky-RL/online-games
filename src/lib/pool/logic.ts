@@ -57,8 +57,6 @@ export function determineShotResult(
       };
     }
 
-    const firstBall = objectBallsPocketed[0];
-    const assignedGroup: BallGroup = isSolid(firstBall) ? 'solids' : 'stripes';
     return {
       pocketedBalls,
       scratch: false,

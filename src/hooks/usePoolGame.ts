@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
-import { PoolGame, PoolBoard, Shot, ShotResult, GamePhase } from '@/lib/pool/types';
+import { PoolGame, PoolBoard, Shot, ShotResult, GamePhase, BallState } from '@/lib/pool/types';
 import { simulateShot } from '@/lib/pool/physics';
 import { determineShotResult, assignGroups, isGameOver, getWinner, createInitialBoard } from '@/lib/pool/logic';
 import { recordMatchResult } from '@/lib/match-results';
@@ -21,7 +21,9 @@ interface UsePoolGameReturn {
   resetGame: () => Promise<void>;
   replayShot: Shot | null;
   isReplaying: boolean;
+  previousBalls: BallState[] | null;
   triggerReplay: () => void;
+  onReplayComplete: () => void;
 }
 
 export function usePoolGame(gameId: string): UsePoolGameReturn {
@@ -31,6 +33,7 @@ export function usePoolGame(gameId: string): UsePoolGameReturn {
   const [deleted, setDeleted] = useState(false);
   const [replayShot, setReplayShot] = useState<Shot | null>(null);
   const [isReplaying, setIsReplaying] = useState(false);
+  const [previousBalls, setPreviousBalls] = useState<BallState[] | null>(null);
   const gameRef = useRef<PoolGame | null>(null);
   const matchRecorded = useRef(false);
   const lastProcessedVersion = useRef(-1);
@@ -70,6 +73,7 @@ export function usePoolGame(gameId: string): UsePoolGameReturn {
         const wasMyTurn = (myPlayer === 1 && gameRef.current.current_turn === 1) ||
                           (myPlayer === 2 && gameRef.current.current_turn === 2);
         if (!wasMyTurn && fresh.board.lastShot) {
+          setPreviousBalls(gameRef.current.board.balls);
           setReplayShot(fresh.board.lastShot);
           setIsReplaying(true);
         }
@@ -107,6 +111,7 @@ export function usePoolGame(gameId: string): UsePoolGameReturn {
             const wasMyTurn = (myPlayer === 1 && prev.current_turn === 1) ||
                               (myPlayer === 2 && prev.current_turn === 2);
             if (!wasMyTurn) {
+              setPreviousBalls(prev.board.balls);
               setReplayShot(fresh.board.lastShot);
               setIsReplaying(true);
             }
@@ -258,9 +263,15 @@ export function usePoolGame(gameId: string): UsePoolGameReturn {
   const triggerReplay = useCallback(() => {
     const current = gameRef.current;
     if (current?.board.lastShot) {
+      setPreviousBalls(previousBalls ?? current.board.balls);
       setReplayShot(current.board.lastShot);
       setIsReplaying(true);
     }
+  }, [previousBalls]);
+
+  const onReplayComplete = useCallback(() => {
+    setIsReplaying(false);
+    setReplayShot(null);
   }, []);
 
   const forfeit = useCallback(async () => {
@@ -303,6 +314,6 @@ export function usePoolGame(gameId: string): UsePoolGameReturn {
   return {
     game, loading, error, deleted,
     takeShot, placeCueBall, forfeit, resetGame,
-    replayShot, isReplaying, triggerReplay,
+    replayShot, isReplaying, previousBalls, triggerReplay, onReplayComplete,
   };
 }
