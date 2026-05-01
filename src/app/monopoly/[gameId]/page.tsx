@@ -20,7 +20,7 @@ export default function MonopolyGamePage({ params }: { params: Promise<{ gameId:
   const { gameId } = use(params);
   const router = useRouter();
   const {
-    game, loading, error, myPlayer, isMyTurn,
+    game, loading, error, myPlayer, isMyTurn, lastMove,
     roll, buy, pass, build, endMyTurn, payJailFee, rollForDoubles, dismissCard,
     buildableProperties, resetGame, forfeitGame,
   } = useMonopolyGame(gameId);
@@ -79,7 +79,7 @@ export default function MonopolyGamePage({ params }: { params: Promise<{ gameId:
 
           {/* Center: Board */}
           <div className="flex-1 flex flex-col items-center overflow-hidden">
-            <MonopolyBoardView board={board} />
+            <MonopolyBoardView board={board} lastMove={lastMove} />
           </div>
 
           {/* Actions panel */}

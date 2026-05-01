@@ -1,10 +1,14 @@
 'use client';
 
+import { useEffect, useRef, useState, useCallback } from 'react';
+import { motion, useAnimationControls } from 'framer-motion';
 import { MonopolyBoard as BoardState } from '@/lib/monopoly/types';
 import { BOARD } from '@/lib/monopoly/board-data';
+import type { MonopolyLastMove } from '@/hooks/useMonopolyGame';
 
 interface MonopolyBoardProps {
   board: BoardState;
+  lastMove: MonopolyLastMove | null;
 }
 
 const COLOR_MAP: Record<string, string> = {
@@ -25,14 +29,164 @@ function getBoardPosition(index: number): { row: number; col: number; side: 'bot
   return { row: index - 30, col: 10, side: 'right' };
 }
 
+/**
+ * Compute the list of board positions to step through when moving
+ * from `from` to `to` (wrapping around 40 spaces).
+ */
+function getSteppingPositions(from: number, roll: number): number[] {
+  const positions: number[] = [];
+  for (let i = 1; i <= roll; i++) {
+    positions.push((from + i) % 40);
+  }
+  return positions;
+}
+
+/**
+ * AnimatedPiece renders a player's token on the board and animates it
+ * step by step through intermediate squares when a move occurs.
+ */
+function AnimatedPiece({
+  player,
+  position,
+  colorClass,
+  lastMove,
+  boardRef,
+}: {
+  player: 1 | 2;
+  position: number;
+  colorClass: string;
+  lastMove: MonopolyLastMove | null;
+  boardRef: React.RefObject<HTMLDivElement | null>;
+}) {
+  const controls = useAnimationControls();
+  const isAnimating = useRef(false);
+  const lastAnimatedKey = useRef<string | null>(null);
+  const [animatedPosition, setAnimatedPosition] = useState<number>(position);
+  const currentPosRef = useRef(position);
+  const [pixelPos, setPixelPos] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
+
+  // Get pixel offset for a given board position index relative to the board container
+  const getPixelPosition = useCallback((idx: number): { x: number; y: number } | null => {
+    if (!boardRef.current) return null;
+    const spaceEl = boardRef.current.querySelector(`[data-space-index="${idx}"]`) as HTMLElement | null;
+    if (!spaceEl) return null;
+    const boardRect = boardRef.current.getBoundingClientRect();
+    const spaceRect = spaceEl.getBoundingClientRect();
+    return {
+      x: spaceRect.left - boardRect.left + spaceRect.width / 2,
+      y: spaceRect.top - boardRect.top + spaceRect.height / 2,
+    };
+  }, [boardRef]);
+
+  useEffect(() => {
+    if (
+      lastMove &&
+      lastMove.player === player &&
+      !isAnimating.current
+    ) {
+      const moveKey = `${lastMove.from}-${lastMove.to}-${lastMove.roll}`;
+      if (moveKey === lastAnimatedKey.current) return;
+      lastAnimatedKey.current = moveKey;
+
+      const steppingPositions = getSteppingPositions(lastMove.from, lastMove.roll);
+
+      isAnimating.current = true;
+
+      (async () => {
+        for (const pos of steppingPositions) {
+          const pp = getPixelPosition(pos);
+          if (pp) {
+            await controls.start({
+              x: pp.x,
+              y: pp.y,
+              transition: { duration: 0.18, ease: 'easeInOut' },
+            });
+            setPixelPos(pp);
+          }
+          setAnimatedPosition(pos);
+        }
+
+        // If the final position differs (e.g., Go To Jail sends to position 10),
+        // do a longer slide to the final destination
+        const finalPos = lastMove.to;
+        const lastStepped = steppingPositions[steppingPositions.length - 1];
+        if (finalPos !== lastStepped) {
+          await new Promise((r) => setTimeout(r, 150));
+          const pp = getPixelPosition(finalPos);
+          if (pp) {
+            await controls.start({
+              x: pp.x,
+              y: pp.y,
+              transition: { duration: 0.35, ease: [0.4, 0, 0.2, 1] },
+            });
+            setPixelPos(pp);
+          }
+          setAnimatedPosition(finalPos);
+        }
+
+        currentPosRef.current = finalPos;
+        isAnimating.current = false;
+      })();
+
+      return;
+    }
+
+    // If not animating and position changed (e.g. external update), snap immediately
+    if (!isAnimating.current && position !== currentPosRef.current) {
+      currentPosRef.current = position;
+      setAnimatedPosition(position);
+      const pp = getPixelPosition(position);
+      if (pp) {
+        setPixelPos(pp);
+        controls.start({ x: pp.x, y: pp.y, transition: { duration: 0 } });
+      }
+    }
+  }, [lastMove, position, player, controls, getPixelPosition]);
+
+  // Compute position on mount and on resize — use controls.start with duration 0
+  // instead of controls.set to ensure reliable initial placement
+  useEffect(() => {
+    const computePos = () => {
+      const pp = getPixelPosition(animatedPosition);
+      if (pp) {
+        setPixelPos(pp);
+        controls.start({ x: pp.x, y: pp.y, transition: { duration: 0 } });
+      }
+    };
+    // Wait a frame for the DOM to render space elements
+    const raf = requestAnimationFrame(computePos);
+    window.addEventListener('resize', computePos);
+    return () => {
+      cancelAnimationFrame(raf);
+      window.removeEventListener('resize', computePos);
+    };
+  }, [animatedPosition, controls, getPixelPosition]);
+
+  // Offset to avoid overlap when both players are on same space
+  const offsetY = player === 1 ? -4 : 4;
+
+  return (
+    <motion.div
+      className={`absolute rounded-full border-2 border-white shadow-md ${colorClass}`}
+      style={{
+        width: 10,
+        height: 10,
+        marginLeft: -5,
+        marginTop: -5 + offsetY,
+        zIndex: 20,
+        pointerEvents: 'none',
+      }}
+      animate={controls}
+      initial={pixelPos}
+    />
+  );
+}
+
 function SpaceCell({ index, board }: { index: number; board: BoardState }) {
   const space = BOARD[index];
   const pos = getBoardPosition(index);
   const isCorner = (pos.col === 0 && pos.row === 0) || (pos.col === 10 && pos.row === 0) ||
                    (pos.col === 0 && pos.row === 10) || (pos.col === 10 && pos.row === 10);
-
-  const p1Here = board.players[0].position === index;
-  const p2Here = board.players[1].position === index;
 
   // Responsive sizing: corners are square, sides vary by orientation
   const sizeClasses = isCorner
@@ -43,6 +197,7 @@ function SpaceCell({ index, board }: { index: number; board: BoardState }) {
 
   return (
     <div
+      data-space-index={index}
       className={`relative border border-border/50 flex flex-col items-center justify-center overflow-hidden ${sizeClasses}`}
       title={space.name}
     >
@@ -58,15 +213,13 @@ function SpaceCell({ index, board }: { index: number; board: BoardState }) {
       {board.properties[index] && (
         <div className={`w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full absolute bottom-0.5 left-0.5 sm:bottom-1 sm:left-1 ${board.properties[index].owner === 1 ? 'bg-player1' : 'bg-player2'}`} />
       )}
-      <div className="absolute bottom-0.5 right-0.5 sm:bottom-1 sm:right-1 flex gap-0.5">
-        {p1Here && <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 md:w-2.5 md:h-2.5 rounded-full bg-player1 border border-white" />}
-        {p2Here && <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 md:w-2.5 md:h-2.5 rounded-full bg-player2 border border-white" />}
-      </div>
     </div>
   );
 }
 
-export function MonopolyBoardView({ board }: MonopolyBoardProps) {
+export function MonopolyBoardView({ board, lastMove }: MonopolyBoardProps) {
+  const boardRef = useRef<HTMLDivElement>(null);
+
   // Build 11x11 grid
   const topRow = Array.from({ length: 11 }, (_, i) => 20 + i); // 20-30
   const bottomRow = Array.from({ length: 11 }, (_, i) => 10 - i); // 10-0
@@ -74,7 +227,7 @@ export function MonopolyBoardView({ board }: MonopolyBoardProps) {
   const rightCol = Array.from({ length: 9 }, (_, i) => 31 + i); // 31-39
 
   return (
-    <div className="inline-block w-full max-w-full">
+    <div className="relative inline-block w-full max-w-full" ref={boardRef}>
       {/* Top row */}
       <div className="flex">
         {topRow.map(i => <SpaceCell key={i} index={i} board={board} />)}
@@ -99,6 +252,22 @@ export function MonopolyBoardView({ board }: MonopolyBoardProps) {
       <div className="flex">
         {bottomRow.map(i => <SpaceCell key={i} index={i} board={board} />)}
       </div>
+
+      {/* Animated player pieces */}
+      <AnimatedPiece
+        player={1}
+        position={board.players[0].position}
+        colorClass="bg-player1"
+        lastMove={lastMove}
+        boardRef={boardRef}
+      />
+      <AnimatedPiece
+        player={2}
+        position={board.players[1].position}
+        colorClass="bg-player2"
+        lastMove={lastMove}
+        boardRef={boardRef}
+      />
     </div>
   );
 }

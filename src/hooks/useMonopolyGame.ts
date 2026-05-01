@@ -13,12 +13,20 @@ import { recordMatchResult, GameType } from '@/lib/match-results';
 
 const POLL_INTERVAL_MS = 1500;
 
+export interface MonopolyLastMove {
+  player: Player;
+  from: number;
+  to: number;
+  roll: number;
+}
+
 interface UseMonopolyGameReturn {
   game: MonopolyGame | null;
   loading: boolean;
   error: string | null;
   myPlayer: Player | null;
   isMyTurn: boolean;
+  lastMove: MonopolyLastMove | null;
   roll: () => Promise<void>;
   buy: () => Promise<void>;
   pass: () => Promise<void>;
@@ -36,7 +44,9 @@ export function useMonopolyGame(gameId: string): UseMonopolyGameReturn {
   const [game, setGame] = useState<MonopolyGame | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [lastMove, setLastMove] = useState<MonopolyLastMove | null>(null);
   const gameRef = useRef<MonopolyGame | null>(null);
+  const prevPositionsRef = useRef<[number, number] | null>(null);
   const matchRecorded = useRef(false);
 
   const getMyPlayer = useCallback((): Player | null => {
@@ -68,6 +78,38 @@ export function useMonopolyGame(gameId: string): UseMonopolyGameReturn {
 
     const isReset = prev && fresh.board.turnSequence === 0 && fresh.board.currentTurn === 1;
     if (prev && !isReset && fresh.board.turnSequence <= prev.board.turnSequence) return;
+
+    // Detect opponent movement by comparing player positions between poll cycles
+    if (prev) {
+      const prevPositions: [number, number] = prevPositionsRef.current ?? [
+        prev.board.players[0].position,
+        prev.board.players[1].position,
+      ];
+      const freshPositions: [number, number] = [
+        fresh.board.players[0].position,
+        fresh.board.players[1].position,
+      ];
+
+      // Determine which player(s) moved by checking position changes
+      for (const p of [1, 2] as const) {
+        const idx = p - 1;
+        const from = prevPositions[idx];
+        const to = freshPositions[idx];
+        if (from !== to) {
+          // Compute the roll: forward distance accounting for wrapping around 40 spaces
+          const roll = (to - from + 40) % 40;
+          setLastMove({ player: p, from, to, roll });
+        }
+      }
+
+      prevPositionsRef.current = freshPositions;
+    } else {
+      // First fetch — seed positions without triggering animation
+      prevPositionsRef.current = [
+        fresh.board.players[0].position,
+        fresh.board.players[1].position,
+      ];
+    }
 
     gameRef.current = fresh;
     setGame(fresh);
@@ -134,8 +176,24 @@ export function useMonopolyGame(gameId: string): UseMonopolyGameReturn {
     if (!current || !myPlayer || current.board.activePlayer !== myPlayer) return;
     if (current.board.phase !== 'roll') return;
 
+    const fromPosition = current.board.players[myPlayer - 1].position;
     const dice = rollDice();
     const newBoard = performRoll(current.board, myPlayer, dice);
+
+    // Set lastMove for animation — use actual final position (handles Go To Jail, Chance moves, etc.)
+    const finalPosition = newBoard.players[myPlayer - 1].position;
+    setLastMove({
+      player: myPlayer,
+      from: fromPosition,
+      to: finalPosition,
+      roll: dice[0] + dice[1],
+    });
+
+    // Update prevPositionsRef so polling doesn't re-trigger the same animation
+    if (prevPositionsRef.current) {
+      prevPositionsRef.current[myPlayer - 1] = finalPosition;
+    }
+
     await updateBoard(newBoard);
   }, [myPlayer, updateBoard]);
 
@@ -225,7 +283,7 @@ export function useMonopolyGame(gameId: string): UseMonopolyGameReturn {
   }, [gameId, fetchGame]);
 
   return {
-    game, loading, error, myPlayer, isMyTurn,
+    game, loading, error, myPlayer, isMyTurn, lastMove,
     roll, buy, pass, build, endMyTurn, payJailFee, rollForDoubles, dismissCard,
     buildableProperties, resetGame, forfeitGame,
   };

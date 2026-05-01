@@ -586,7 +586,13 @@ export function performRoll(board: MonopolyBoard, player: Player, dice: [number,
 
   // 3 doubles = go to jail
   if (newDoublesCount >= 3) {
-    const updated = { ...board, doublesCount: newDoublesCount, turnSequence: board.turnSequence + 1 };
+    const currentPosition = getPlayerState(board, player).position;
+    const updated = {
+      ...board,
+      doublesCount: newDoublesCount,
+      turnSequence: board.turnSequence + 1,
+      lastRoll: { dice, from: currentPosition, to: 10 } as LastRoll,
+    };
     return sendToJail(updated, player);
   }
 
