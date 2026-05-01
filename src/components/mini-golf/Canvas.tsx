@@ -32,27 +32,35 @@ export function MiniGolfCanvas({
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const physicsRef = useRef<PhysicsState | null>(null);
-  const animFrameRef = useRef<number>(0);
+  const renderFrameRef = useRef<number>(0);
+  const physicsFrameRef = useRef<number>(0);
   const timeRef = useRef<number>(0);
   const bounceCountRef = useRef<number>(0);
   const holeCompletedRef = useRef(false);
-  const [aiming, setAiming] = useState(false);
-  const [dragStart, setDragStart] = useState<{ x: number; y: number } | null>(null);
-  const [dragCurrent, setDragCurrent] = useState<{ x: number; y: number } | null>(null);
   const [animating, setAnimating] = useState(false);
   const strokeRef = useRef(currentStroke);
   const { player1Color, player2Color } = useColors();
 
-  // Stable callback refs to avoid restarting the animation loop when callbacks change
+  const aimingRef = useRef(false);
+  const dragStartRef = useRef<{ x: number; y: number } | null>(null);
+  const dragCurrentRef = useRef<{ x: number; y: number } | null>(null);
+  const [, setRenderTick] = useState(0);
+
+  const scaleRef = useRef(1);
+  const dprRef = useRef(typeof window !== 'undefined' ? window.devicePixelRatio : 1);
+  const canvasSizedRef = useRef(false);
+
   const onHoleCompleteRef = useRef(onHoleComplete);
   const onBounceRef = useRef(onBounce);
   const onSinkRef = useRef(onSink);
   const onSplashRef = useRef(onSplash);
+  const isMyTurnRef = useRef(isMyTurn);
 
   useEffect(() => { onHoleCompleteRef.current = onHoleComplete; }, [onHoleComplete]);
   useEffect(() => { onBounceRef.current = onBounce; }, [onBounce]);
   useEffect(() => { onSinkRef.current = onSink; }, [onSink]);
   useEffect(() => { onSplashRef.current = onSplash; }, [onSplash]);
+  useEffect(() => { isMyTurnRef.current = isMyTurn; }, [isMyTurn]);
 
   const level = LEVELS[levelId];
 
@@ -66,62 +74,97 @@ export function MiniGolfCanvas({
     holeCompletedRef.current = false;
   }, [level]);
 
-  const getScale = useCallback(() => {
+  const computeScale = useCallback(() => {
     const container = containerRef.current;
     if (!container) return 1;
     const { width, height } = container.getBoundingClientRect();
-    const scale = Math.min(width / CANVAS_WIDTH, height / CANVAS_HEIGHT);
-    return Math.min(scale, 0.85);
+    return Math.min(Math.min(width / CANVAS_WIDTH, height / CANVAS_HEIGHT), 0.85);
   }, []);
+
+  const sizeCanvas = useCallback(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const scale = computeScale();
+    const dpr = dprRef.current;
+    scaleRef.current = scale;
+
+    const newWidth = Math.round(CANVAS_WIDTH * scale * dpr);
+    const newHeight = Math.round(CANVAS_HEIGHT * scale * dpr);
+
+    if (canvas.width !== newWidth || canvas.height !== newHeight) {
+      canvas.width = newWidth;
+      canvas.height = newHeight;
+      canvas.style.width = `${CANVAS_WIDTH * scale}px`;
+      canvas.style.height = `${CANVAS_HEIGHT * scale}px`;
+      canvasSizedRef.current = true;
+    }
+  }, [computeScale]);
+
+  useEffect(() => {
+    sizeCanvas();
+
+    const container = containerRef.current;
+    if (!container) return;
+
+    const observer = new ResizeObserver(() => {
+      sizeCanvas();
+    });
+    observer.observe(container);
+    return () => observer.disconnect();
+  }, [sizeCanvas]);
 
   const canvasToWorld = useCallback((clientX: number, clientY: number) => {
     const canvas = canvasRef.current;
     if (!canvas) return { x: 0, y: 0 };
     const rect = canvas.getBoundingClientRect();
-    const scale = getScale();
+    const scale = scaleRef.current;
     return {
       x: (clientX - rect.left) / scale,
       y: (clientY - rect.top) / scale,
     };
-  }, [getScale]);
+  }, []);
 
   const handlePointerDown = useCallback((e: React.PointerEvent) => {
     if (animating || !physicsRef.current) return;
     const pos = canvasToWorld(e.clientX, e.clientY);
 
     (e.target as HTMLElement).setPointerCapture(e.pointerId);
-    setAiming(true);
-    setDragStart(pos);
-    setDragCurrent(pos);
+    aimingRef.current = true;
+    dragStartRef.current = pos;
+    dragCurrentRef.current = pos;
+    setRenderTick(t => t + 1);
   }, [animating, canvasToWorld]);
 
   const handlePointerMove = useCallback((e: React.PointerEvent) => {
-    if (!aiming) return;
-    setDragCurrent(canvasToWorld(e.clientX, e.clientY));
-  }, [aiming, canvasToWorld]);
+    if (!aimingRef.current) return;
+    dragCurrentRef.current = canvasToWorld(e.clientX, e.clientY);
+  }, [canvasToWorld]);
 
   const handlePointerUp = useCallback(() => {
-    if (!aiming || !dragStart || !dragCurrent || !physicsRef.current) {
-      setAiming(false);
+    if (!aimingRef.current || !dragStartRef.current || !dragCurrentRef.current || !physicsRef.current) {
+      aimingRef.current = false;
+      setRenderTick(t => t + 1);
       return;
     }
 
-    if (!isMyTurn) {
-      setAiming(false);
-      setDragStart(null);
-      setDragCurrent(null);
+    if (!isMyTurnRef.current) {
+      aimingRef.current = false;
+      dragStartRef.current = null;
+      dragCurrentRef.current = null;
+      setRenderTick(t => t + 1);
       return;
     }
 
     const ball = physicsRef.current;
-    const dx = ball.x - dragCurrent.x;
-    const dy = ball.y - dragCurrent.y;
+    const dx = ball.x - dragCurrentRef.current.x;
+    const dy = ball.y - dragCurrentRef.current.y;
     const power = Math.min(Math.sqrt(dx * dx + dy * dy), MAX_POWER);
 
     if (power < 5) {
-      setAiming(false);
-      setDragStart(null);
-      setDragCurrent(null);
+      aimingRef.current = false;
+      dragStartRef.current = null;
+      dragCurrentRef.current = null;
+      setRenderTick(t => t + 1);
       return;
     }
 
@@ -134,11 +177,12 @@ export function MiniGolfCanvas({
     bounceCountRef.current = 0;
     holeCompletedRef.current = false;
     setAnimating(true);
-    setAiming(false);
-    setDragStart(null);
-    setDragCurrent(null);
-  }, [aiming, dragStart, dragCurrent, isMyTurn, onShotTaken]);
+    aimingRef.current = false;
+    dragStartRef.current = null;
+    dragCurrentRef.current = null;
+  }, [onShotTaken]);
 
+  // Physics loop — only runs while ball is moving
   useEffect(() => {
     if (!animating) return;
 
@@ -183,167 +227,35 @@ export function MiniGolfCanvas({
         return;
       }
 
-      animFrameRef.current = requestAnimationFrame(loop);
+      physicsFrameRef.current = requestAnimationFrame(loop);
     };
 
-    animFrameRef.current = requestAnimationFrame(loop);
-    return () => cancelAnimationFrame(animFrameRef.current);
+    physicsFrameRef.current = requestAnimationFrame(loop);
+    return () => cancelAnimationFrame(physicsFrameRef.current);
   }, [animating, level]);
 
+  // Render loop — only runs when animating or aiming
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
+    const shouldRender = animating || aimingRef.current;
+    if (!shouldRender) {
+      renderOneFrame(ctx, canvas, level, scaleRef.current, dprRef.current, playerNumber, player1Color, player2Color, physicsRef.current, aimingRef.current, dragCurrentRef.current, isMyTurnRef.current, timeRef.current);
+      return;
+    }
+
     const render = () => {
-      const scale = getScale();
-      canvas.width = CANVAS_WIDTH * scale * window.devicePixelRatio;
-      canvas.height = CANVAS_HEIGHT * scale * window.devicePixelRatio;
-      canvas.style.width = `${CANVAS_WIDTH * scale}px`;
-      canvas.style.height = `${CANVAS_HEIGHT * scale}px`;
-      ctx.scale(scale * window.devicePixelRatio, scale * window.devicePixelRatio);
-
-      // Background
-      ctx.fillStyle = '#264573';
-      ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
-
-      // Sand zones
-      if (level.sand) {
-        ctx.fillStyle = '#C4A882';
-        for (const zone of level.sand) {
-          ctx.beginPath();
-          ctx.moveTo(zone.points[0].x, zone.points[0].y);
-          for (let i = 1; i < zone.points.length; i++) {
-            ctx.lineTo(zone.points[i].x, zone.points[i].y);
-          }
-          ctx.closePath();
-          ctx.fill();
-        }
-      }
-
-      // Water zones
-      if (level.water) {
-        ctx.fillStyle = '#1a5276';
-        for (const zone of level.water) {
-          ctx.beginPath();
-          ctx.moveTo(zone.points[0].x, zone.points[0].y);
-          for (let i = 1; i < zone.points.length; i++) {
-            ctx.lineTo(zone.points[i].x, zone.points[i].y);
-          }
-          ctx.closePath();
-          ctx.fill();
-        }
-      }
-
-      // Walls
-      ctx.strokeStyle = '#FFFFFF';
-      ctx.lineWidth = 3;
-      for (const wall of level.walls) {
-        ctx.beginPath();
-        ctx.moveTo(wall.x1, wall.y1);
-        ctx.lineTo(wall.x2, wall.y2);
-        ctx.stroke();
-      }
-
-      // Moving walls
-      if (level.movingWalls) {
-        ctx.strokeStyle = '#FFD700';
-        ctx.lineWidth = 4;
-        for (const mw of level.movingWalls) {
-          const pos = getMovingWallPosition(mw, timeRef.current);
-          ctx.beginPath();
-          ctx.moveTo(pos.x1, pos.y1);
-          ctx.lineTo(pos.x2, pos.y2);
-          ctx.stroke();
-        }
-      }
-
-      // Bumpers
-      if (level.bumpers) {
-        ctx.fillStyle = '#FF6B6B';
-        for (const bumper of level.bumpers) {
-          ctx.beginPath();
-          ctx.arc(bumper.x, bumper.y, bumper.radius, 0, Math.PI * 2);
-          ctx.fill();
-        }
-      }
-
-      // Portals
-      if (level.portals) {
-        for (const portal of level.portals) {
-          ctx.strokeStyle = '#A855F7';
-          ctx.lineWidth = 3;
-          ctx.beginPath();
-          ctx.arc(portal.in.x, portal.in.y, 15, 0, Math.PI * 2);
-          ctx.stroke();
-          ctx.beginPath();
-          ctx.arc(portal.out.x, portal.out.y, 15, 0, Math.PI * 2);
-          ctx.stroke();
-        }
-      }
-
-      // Hole
-      ctx.fillStyle = '#0a0a0a';
-      ctx.beginPath();
-      ctx.arc(level.hole.x, level.hole.y, level.hole.radius, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.strokeStyle = '#333';
-      ctx.lineWidth = 2;
-      ctx.stroke();
-
-      // Ball
-      if (physicsRef.current && !physicsRef.current.sunk) {
-        const ballColor = playerNumber === 1 ? player1Color : player2Color;
-        ctx.fillStyle = ballColor;
-        ctx.beginPath();
-        ctx.arc(physicsRef.current.x, physicsRef.current.y, BALL_RADIUS, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.strokeStyle = '#FFF';
-        ctx.lineWidth = 1;
-        ctx.stroke();
-      }
-
-      // Aiming line
-      if (aiming && dragStart && dragCurrent && physicsRef.current) {
-        const ball = physicsRef.current;
-        const dx = ball.x - dragCurrent.x;
-        const dy = ball.y - dragCurrent.y;
-        const power = Math.min(Math.sqrt(dx * dx + dy * dy), MAX_POWER);
-        const angle = Math.atan2(dx, -dy);
-
-        const lineLen = power * 0.8;
-        const endX = ball.x + Math.sin(angle) * lineLen;
-        const endY = ball.y - Math.cos(angle) * lineLen;
-
-        const lineColor = !isMyTurn ? '#888888' : power >= MAX_POWER * 0.95 ? '#FF4444' : '#FFFFFF';
-        ctx.strokeStyle = lineColor;
-        ctx.lineWidth = 2;
-        ctx.setLineDash([6, 4]);
-        ctx.beginPath();
-        ctx.moveTo(ball.x, ball.y);
-        ctx.lineTo(endX, endY);
-        ctx.stroke();
-        ctx.setLineDash([]);
-
-        if (!isMyTurn) {
-          ctx.fillStyle = '#888888';
-          ctx.font = '14px sans-serif';
-          ctx.textAlign = 'center';
-          ctx.fillText('Not your turn', CANVAS_WIDTH / 2, CANVAS_HEIGHT - 20);
-        }
-      }
-
-      animFrameRef.current = requestAnimationFrame(render);
+      renderOneFrame(ctx, canvas, level, scaleRef.current, dprRef.current, playerNumber, player1Color, player2Color, physicsRef.current, aimingRef.current, dragCurrentRef.current, isMyTurnRef.current, timeRef.current);
+      renderFrameRef.current = requestAnimationFrame(render);
     };
 
-    animFrameRef.current = requestAnimationFrame(render);
-    return () => cancelAnimationFrame(animFrameRef.current);
-  }, [level, aiming, dragStart, dragCurrent, getScale, player1Color, player2Color, playerNumber]);
+    renderFrameRef.current = requestAnimationFrame(render);
+    return () => cancelAnimationFrame(renderFrameRef.current);
+  }, [animating, level, player1Color, player2Color, playerNumber]);
 
-  // Prevent page scrolling on touch devices during any interaction with the canvas.
-  // React synthetic event listeners are passive by default, so we must register
-  // native non-passive listeners to call preventDefault() on touchstart/touchmove.
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -377,4 +289,154 @@ export function MiniGolfCanvas({
       />
     </div>
   );
+}
+
+function renderOneFrame(
+  ctx: CanvasRenderingContext2D,
+  canvas: HTMLCanvasElement,
+  level: Level,
+  scale: number,
+  dpr: number,
+  playerNumber: 1 | 2,
+  player1Color: string,
+  player2Color: string,
+  physics: PhysicsState | null,
+  aiming: boolean,
+  dragCurrent: { x: number; y: number } | null,
+  isMyTurn: boolean,
+  time: number,
+) {
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.scale(scale * dpr, scale * dpr);
+
+  // Background
+  ctx.fillStyle = '#264573';
+  ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+
+  // Sand zones
+  if (level.sand) {
+    ctx.fillStyle = '#C4A882';
+    for (const zone of level.sand) {
+      ctx.beginPath();
+      ctx.moveTo(zone.points[0].x, zone.points[0].y);
+      for (let i = 1; i < zone.points.length; i++) {
+        ctx.lineTo(zone.points[i].x, zone.points[i].y);
+      }
+      ctx.closePath();
+      ctx.fill();
+    }
+  }
+
+  // Water zones
+  if (level.water) {
+    ctx.fillStyle = '#1a5276';
+    for (const zone of level.water) {
+      ctx.beginPath();
+      ctx.moveTo(zone.points[0].x, zone.points[0].y);
+      for (let i = 1; i < zone.points.length; i++) {
+        ctx.lineTo(zone.points[i].x, zone.points[i].y);
+      }
+      ctx.closePath();
+      ctx.fill();
+    }
+  }
+
+  // Walls
+  ctx.strokeStyle = '#FFFFFF';
+  ctx.lineWidth = 3;
+  for (const wall of level.walls) {
+    ctx.beginPath();
+    ctx.moveTo(wall.x1, wall.y1);
+    ctx.lineTo(wall.x2, wall.y2);
+    ctx.stroke();
+  }
+
+  // Moving walls
+  if (level.movingWalls) {
+    ctx.strokeStyle = '#FFD700';
+    ctx.lineWidth = 4;
+    for (const mw of level.movingWalls) {
+      const pos = getMovingWallPosition(mw, time);
+      ctx.beginPath();
+      ctx.moveTo(pos.x1, pos.y1);
+      ctx.lineTo(pos.x2, pos.y2);
+      ctx.stroke();
+    }
+  }
+
+  // Bumpers
+  if (level.bumpers) {
+    ctx.fillStyle = '#FF6B6B';
+    for (const bumper of level.bumpers) {
+      ctx.beginPath();
+      ctx.arc(bumper.x, bumper.y, bumper.radius, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+
+  // Portals
+  if (level.portals) {
+    for (const portal of level.portals) {
+      ctx.strokeStyle = '#A855F7';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.arc(portal.in.x, portal.in.y, 15, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.arc(portal.out.x, portal.out.y, 15, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+  }
+
+  // Hole
+  ctx.fillStyle = '#0a0a0a';
+  ctx.beginPath();
+  ctx.arc(level.hole.x, level.hole.y, level.hole.radius, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = '#333';
+  ctx.lineWidth = 2;
+  ctx.stroke();
+
+  // Ball
+  if (physics && !physics.sunk) {
+    const ballColor = playerNumber === 1 ? player1Color : player2Color;
+    ctx.fillStyle = ballColor;
+    ctx.beginPath();
+    ctx.arc(physics.x, physics.y, BALL_RADIUS, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = '#FFF';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+  }
+
+  // Aiming line
+  if (aiming && dragCurrent && physics) {
+    const ball = physics;
+    const dx = ball.x - dragCurrent.x;
+    const dy = ball.y - dragCurrent.y;
+    const power = Math.min(Math.sqrt(dx * dx + dy * dy), MAX_POWER);
+    const angle = Math.atan2(dx, -dy);
+
+    const lineLen = power * 0.8;
+    const endX = ball.x + Math.sin(angle) * lineLen;
+    const endY = ball.y - Math.cos(angle) * lineLen;
+
+    const lineColor = !isMyTurn ? '#888888' : power >= MAX_POWER * 0.95 ? '#FF4444' : '#FFFFFF';
+    ctx.strokeStyle = lineColor;
+    ctx.lineWidth = 2;
+    ctx.setLineDash([6, 4]);
+    ctx.beginPath();
+    ctx.moveTo(ball.x, ball.y);
+    ctx.lineTo(endX, endY);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    if (!isMyTurn) {
+      ctx.fillStyle = '#888888';
+      ctx.font = '14px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('Not your turn', CANVAS_WIDTH / 2, CANVAS_HEIGHT - 20);
+    }
+  }
 }
