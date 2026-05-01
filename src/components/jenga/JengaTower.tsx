@@ -13,7 +13,7 @@ interface JengaTowerProps {
   disabled: boolean;
   riskThreshold?: number;
   flashingBlocks?: string[];
-  onDragStart?: (row: number, col: number) => void;
+  onDragStart?: (row: number, col: number, screenPos: { x: number; y: number }) => void;
   onDragMove?: (point: Point) => void;
   onDragEnd?: () => void;
 }
@@ -51,6 +51,9 @@ export function JengaTower({ state, isMyTurn, selectedBlock, pullingBlock, onBlo
   const dragBlockRef = useRef<[number, number] | null>(null);
   const holdTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const startPointerPos = useRef<{ x: number; y: number } | null>(null);
+  const pendingPointerPos = useRef<{ x: number; y: number } | null>(null);
+  const rafIdRef = useRef<number | null>(null);
 
   const handlePointerDown = useCallback((row: number, col: number, e: React.PointerEvent) => {
     // Only start drag on selected block
@@ -60,27 +63,48 @@ export function JengaTower({ state, isMyTurn, selectedBlock, pullingBlock, onBlo
     e.preventDefault();
     (e.target as HTMLElement).setPointerCapture(e.pointerId);
 
-    // Use a short hold to distinguish tap from drag (150ms)
+    // Record the initial pointer position for delta calculation
+    const initialPos = { x: e.clientX, y: e.clientY };
+    pendingPointerPos.current = initialPos;
+
+    // Use a short hold to distinguish tap from drag (50ms)
     holdTimerRef.current = setTimeout(() => {
       isDragging.current = true;
       dragBlockRef.current = [row, col];
-      onDragStart(row, col);
-    }, 150);
+      startPointerPos.current = pendingPointerPos.current;
+
+      // Compute the screen position of the block center for overlay positioning
+      if (containerRef.current) {
+        const rect = containerRef.current.getBoundingClientRect();
+        const screenPos = {
+          x: initialPos.x - rect.left,
+          y: initialPos.y - rect.top,
+        };
+        onDragStart(row, col, screenPos);
+      } else {
+        onDragStart(row, col, { x: 0, y: 0 });
+      }
+    }, 50);
   }, [selectedBlock, onDragStart]);
 
   const handlePointerMove = useCallback((e: React.PointerEvent) => {
-    if (!isDragging.current || !onDragMove || !containerRef.current) return;
+    if (!isDragging.current || !onDragMove || !startPointerPos.current) return;
 
-    const rect = containerRef.current.getBoundingClientRect();
-    const point: Point = {
-      x: e.clientX - rect.left,
-      y: e.clientY - rect.top,
+    // Compute delta from drag start — this gives us coordinates in the same
+    // space as generatePullPath (which starts at origin {0,0})
+    const delta: Point = {
+      x: e.clientX - startPointerPos.current.x,
+      y: e.clientY - startPointerPos.current.y,
     };
-    onDragMove(point);
 
-    // Mobile haptics when deviation is high — the parent computes deviation
-    // and triggers haptics via the hook. We do a simple vibration pulse here
-    // as a fallback when the user pointer moves far from block center.
+    // Use requestAnimationFrame batching for smoother visual updates
+    pendingPointerPos.current = { x: e.clientX, y: e.clientY };
+    if (rafIdRef.current === null) {
+      rafIdRef.current = requestAnimationFrame(() => {
+        rafIdRef.current = null;
+        onDragMove(delta);
+      });
+    }
   }, [onDragMove]);
 
   const handlePointerUp = useCallback((e: React.PointerEvent) => {
@@ -88,9 +112,14 @@ export function JengaTower({ state, isMyTurn, selectedBlock, pullingBlock, onBlo
       clearTimeout(holdTimerRef.current);
       holdTimerRef.current = null;
     }
+    if (rafIdRef.current !== null) {
+      cancelAnimationFrame(rafIdRef.current);
+      rafIdRef.current = null;
+    }
     if (isDragging.current) {
       isDragging.current = false;
       dragBlockRef.current = null;
+      startPointerPos.current = null;
       onDragEnd?.();
       e.preventDefault();
     }

@@ -10,6 +10,11 @@ import {
   computeEarlyReleaseDeviation,
   computeSkillModifier,
   computeCascadeEffects,
+  getEarlyGameMultiplier,
+  getMovePoints,
+  getPlayerScores,
+  getMinimumRiskThreshold,
+  getPlayableBlocksAboveThreshold,
 } from './jenga-logic';
 import type { Point } from './types';
 
@@ -574,5 +579,229 @@ describe('getJengaGameStatus', () => {
   it('returns won when there is a winner', () => {
     const status = getJengaGameStatus({ winner: 1, player1_name: 'Ricky', player2_name: 'Lilian' });
     expect(status).toBe('won');
+  });
+});
+
+describe('getEarlyGameMultiplier', () => {
+  it('returns 3x for moves 0-3', () => {
+    expect(getEarlyGameMultiplier(0)).toBe(3);
+    expect(getEarlyGameMultiplier(1)).toBe(3);
+    expect(getEarlyGameMultiplier(2)).toBe(3);
+    expect(getEarlyGameMultiplier(3)).toBe(3);
+  });
+
+  it('returns 2x for moves 4-7', () => {
+    expect(getEarlyGameMultiplier(4)).toBe(2);
+    expect(getEarlyGameMultiplier(5)).toBe(2);
+    expect(getEarlyGameMultiplier(7)).toBe(2);
+  });
+
+  it('returns 1.5x for moves 8-13', () => {
+    expect(getEarlyGameMultiplier(8)).toBe(1.5);
+    expect(getEarlyGameMultiplier(13)).toBe(1.5);
+  });
+
+  it('returns 1x for moves 14+', () => {
+    expect(getEarlyGameMultiplier(14)).toBe(1);
+    expect(getEarlyGameMultiplier(50)).toBe(1);
+  });
+});
+
+describe('getMovePoints', () => {
+  it('multiplies risk by early game multiplier', () => {
+    // moveIndex 0 -> 3x
+    expect(getMovePoints(20, 0)).toBe(60);
+    // moveIndex 5 -> 2x
+    expect(getMovePoints(20, 5)).toBe(40);
+    // moveIndex 10 -> 1.5x
+    expect(getMovePoints(20, 10)).toBe(30);
+    // moveIndex 20 -> 1x
+    expect(getMovePoints(20, 20)).toBe(20);
+  });
+
+  it('rounds to nearest integer', () => {
+    // 15 * 1.5 = 22.5 -> 23
+    expect(getMovePoints(15, 8)).toBe(23);
+  });
+});
+
+describe('getPlayerScores', () => {
+  it('returns 0 for both players with empty move history', () => {
+    const state = createInitialTower();
+    const scores = getPlayerScores(state);
+    expect(scores.player1).toBe(0);
+    expect(scores.player2).toBe(0);
+  });
+
+  it('assigns points to correct player', () => {
+    const state = createInitialTower();
+    // Simulate two successful moves
+    const after1 = pullBlock(state, 10, 1, 1, 0.99, 0.5);
+    const after2 = pullBlock(after1, 10, 0, 2, 0.99, 0.5);
+    const scores = getPlayerScores(after2);
+    expect(scores.player1).toBeGreaterThan(0);
+    expect(scores.player2).toBeGreaterThan(0);
+  });
+
+  it('does not award points for toppled moves', () => {
+    const state = createInitialTower();
+    state.wobble_score = 95;
+    // Force a topple with very low random value and bad drag
+    const result = pullBlock(state, 0, 0, 1, 0.01, 1.0);
+    expect(result.move_history[0].toppled).toBe(true);
+    const scores = getPlayerScores(result);
+    expect(scores.player1).toBe(0);
+  });
+
+  it('uses move.risk (baseRisk) for point calculation, not effectiveRisk', () => {
+    const state = createInitialTower();
+    // Pull a block with known base risk
+    const baseRisk = calculateBlockRisk(state, 5, 1);
+    const result = pullBlock(state, 5, 1, 1, 0.99, 0.0);
+    const scores = getPlayerScores(result);
+    // Move index 0 -> 3x multiplier
+    expect(scores.player1).toBe(Math.round(baseRisk * 3));
+  });
+});
+
+describe('getMinimumRiskThreshold', () => {
+  it('starts at base value of 10 with oscillation', () => {
+    const state = createInitialTower();
+    // moveCount = 0, oscillation[0] = 0, growth = 0
+    const threshold = getMinimumRiskThreshold(state);
+    expect(threshold).toBe(10);
+  });
+
+  it('increases with more moves', () => {
+    const state = createInitialTower();
+    // Simulate 6 moves in history
+    state.move_history = Array(6).fill({
+      player: 1, row: 0, col: 0, risk: 10, wobble_after: 0, toppled: false,
+    });
+    const threshold = getMinimumRiskThreshold(state);
+    // growth = floor(6/3) * 5 = 10, oscillation[6] = 7, base=10
+    // threshold = min(60, max(5, 10 + 10 + 7)) = 27
+    expect(threshold).toBe(27);
+  });
+
+  it('is capped at 60', () => {
+    const state = createInitialTower();
+    state.move_history = Array(100).fill({
+      player: 1, row: 0, col: 0, risk: 10, wobble_after: 0, toppled: false,
+    });
+    const threshold = getMinimumRiskThreshold(state);
+    expect(threshold).toBeLessThanOrEqual(60);
+  });
+
+  it('never goes below 5', () => {
+    const state = createInitialTower();
+    // moveCount = 2, oscillation[2] = -3, growth = 0
+    state.move_history = Array(2).fill({
+      player: 1, row: 0, col: 0, risk: 10, wobble_after: 0, toppled: false,
+    });
+    const threshold = getMinimumRiskThreshold(state);
+    // base=10 + growth=0 + oscillation=-3 = 7, clamped to max(5, 7) = 7
+    expect(threshold).toBeGreaterThanOrEqual(5);
+  });
+});
+
+describe('getPlayableBlocksAboveThreshold', () => {
+  it('filters blocks by risk threshold', () => {
+    const state = createInitialTower();
+    const threshold = 20;
+    const blocks = getPlayableBlocksAboveThreshold(state, threshold);
+    for (const [row, col] of blocks) {
+      expect(calculateBlockRisk(state, row, col)).toBeGreaterThanOrEqual(threshold);
+    }
+  });
+
+  it('returns all playable blocks when none meet threshold', () => {
+    const state = createInitialTower();
+    // Threshold so high no blocks qualify
+    const blocks = getPlayableBlocksAboveThreshold(state, 999);
+    const allPlayable = getPlayableBlocks(state);
+    expect(blocks.length).toBe(allPlayable.length);
+  });
+
+  it('returns fewer blocks than total when threshold is met by some', () => {
+    const state = createInitialTower();
+    // Set a moderate threshold
+    const allPlayable = getPlayableBlocks(state);
+    const blocks = getPlayableBlocksAboveThreshold(state, 20);
+    expect(blocks.length).toBeGreaterThan(0);
+    expect(blocks.length).toBeLessThan(allPlayable.length);
+  });
+});
+
+describe('pullBlock - wobble increase path', () => {
+  it('wobble increases on high-risk pull (baseRisk > 10)', () => {
+    const state = createInitialTower();
+    state.wobble_score = 5;
+    // Row 0, col 0 is bottom-edge — base risk is ~35
+    const result = pullBlock(state, 0, 0, 1, 0.99, 0.5);
+    expect(result.wobble_score).toBeGreaterThan(5);
+  });
+
+  it('wobble is capped at 100', () => {
+    const state = createInitialTower();
+    state.wobble_score = 99;
+    const result = pullBlock(state, 0, 0, 1, 0.99, 0.5);
+    expect(result.wobble_score).toBeLessThanOrEqual(100);
+  });
+
+  it('wobble never goes below 0', () => {
+    const state = createInitialTower();
+    state.wobble_score = 1;
+    // Low-risk pull (top, center) should try to subtract 3 from wobble 1
+    const result = pullBlock(state, 16, 1, 1, 0.99, 0.0);
+    expect(result.wobble_score).toBe(0);
+  });
+});
+
+describe('pullBlock - top row fill order', () => {
+  it('fills center (index 1) first on a new top row', () => {
+    const state = createInitialTower();
+    const result = pullBlock(state, 10, 0, 1, 0.99, 0.5);
+    // New row was created: tower[18]
+    expect(result.tower.length).toBe(19);
+    expect(result.tower[18][1].exists).toBe(true);
+    expect(result.tower[18][0].exists).toBe(false);
+    expect(result.tower[18][2].exists).toBe(false);
+  });
+
+  it('fills index 0 second when adding to partially full top row', () => {
+    const state = createInitialTower();
+    const after1 = pullBlock(state, 10, 0, 1, 0.99, 0.5);
+    // Top row has center filled, now fill another
+    const after2 = pullBlock(after1, 10, 1, 2, 0.99, 0.5);
+    expect(after2.tower.length).toBe(19); // Still same row
+    expect(after2.tower[18][0].exists).toBe(true); // Index 0 filled second
+    expect(after2.tower[18][1].exists).toBe(true);
+  });
+
+  it('fills index 2 third, then creates new row on fourth pull', () => {
+    const state = createInitialTower();
+    const after1 = pullBlock(state, 15, 0, 1, 0.99, 0.5);
+    const after2 = pullBlock(after1, 15, 1, 2, 0.99, 0.5);
+    const after3 = pullBlock(after2, 15, 2, 1, 0.99, 0.5);
+    expect(after3.tower.length).toBe(19);
+    expect(after3.tower[18][2].exists).toBe(true); // index 2 filled third
+    // All three full now — next pull creates row 19
+    const after4 = pullBlock(after3, 14, 0, 2, 0.99, 0.5);
+    expect(after4.tower.length).toBe(20);
+  });
+});
+
+describe('pullBlock - cascade_risks expansion with new rows', () => {
+  it('cascade_risks grows to match tower when new row is added', () => {
+    const state = createInitialTower();
+    const result = pullBlock(state, 10, 1, 1, 0.99, 0.5);
+    // Tower grew from 18 to 19 rows
+    expect(result.tower.length).toBe(19);
+    expect(result.cascade_risks!.length).toBe(19);
+    // New row cascade_risks initialized to 0
+    expect(result.cascade_risks![18][0]).toBe(0);
+    expect(result.cascade_risks![18][1]).toBe(0);
+    expect(result.cascade_risks![18][2]).toBe(0);
   });
 });
