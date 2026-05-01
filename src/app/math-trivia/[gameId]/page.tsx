@@ -166,31 +166,48 @@ export default function MathTriviaGamePage({ params }: { params: Promise<{ gameI
   // Waiting for my turn (I'm player 2 and player 1 hasn't gone yet)
   if (!isMyTurn && !myResult && !submitted) {
     return (
-      <div className="flex-1 flex flex-col items-center justify-center min-h-screen px-4 py-8">
-        <SettingsButton />
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="text-center space-y-4 max-w-md"
-        >
-          <h1 className="text-2xl font-bold text-text-primary">Waiting for your turn...</h1>
-          <p className="text-text-secondary">
-            {game.player1_name || 'Your opponent'} is answering the questions. You&apos;ll get your turn next!
-          </p>
-          <NotificationControls
-            permissionState={permissionState}
-            requestPermission={requestPermission}
-            isMuted={isMuted}
-            toggleMute={toggleMute}
-          />
-          <button
-            onClick={() => router.push('/')}
-            className="mt-6 px-6 py-3 text-sm text-text-secondary hover:text-text-primary transition-colors cursor-pointer"
+      <>
+        <div className="flex-1 flex flex-col items-center justify-center min-h-screen px-4 py-8">
+          <SettingsButton />
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="text-center space-y-4 max-w-md"
           >
-            Back to games
-          </button>
-        </motion.div>
-      </div>
+            <h1 className="text-2xl font-bold text-text-primary">Waiting for your turn...</h1>
+            <p className="text-text-secondary">
+              {game.player1_name || 'Your opponent'} is answering the questions. You&apos;ll get your turn next!
+            </p>
+            <NotificationControls
+              permissionState={permissionState}
+              requestPermission={requestPermission}
+              isMuted={isMuted}
+              toggleMute={toggleMute}
+            />
+            <div className="flex items-center justify-center gap-3 mt-6">
+              <button
+                onClick={() => router.push('/')}
+                className="px-4 py-2 text-sm font-medium rounded-xl border border-border bg-surface text-text-secondary hover:text-text-primary hover:border-text-secondary/30 shadow-sm hover:shadow transition-all cursor-pointer"
+              >
+                Home
+              </button>
+              <button
+                onClick={() => setShowEndDialog(true)}
+                className="px-4 py-2 text-sm font-medium rounded-xl border border-player1/20 bg-player1/5 text-player1/80 hover:bg-player1/10 hover:border-player1/40 hover:text-player1 shadow-sm hover:shadow transition-all cursor-pointer"
+              >
+                End Game
+              </button>
+            </div>
+          </motion.div>
+        </div>
+        {showEndDialog && (
+          <EndGameDialog
+            open={showEndDialog}
+            onConfirm={handleEndGame}
+            onCancel={() => setShowEndDialog(false)}
+          />
+        )}
+      </>
     );
   }
 
@@ -260,12 +277,14 @@ export default function MathTriviaGamePage({ params }: { params: Promise<{ gameI
             </div>
           </div>
 
-          <button
-            onClick={() => router.push('/')}
-            className="w-full py-3 text-sm font-medium text-text-secondary hover:text-text-primary transition-colors cursor-pointer"
-          >
-            Back to games
-          </button>
+          <div className="flex items-center justify-center">
+            <button
+              onClick={() => router.push('/')}
+              className="px-4 py-2 text-sm font-medium rounded-xl border border-border bg-surface text-text-secondary hover:text-text-primary hover:border-text-secondary/30 shadow-sm hover:shadow transition-all cursor-pointer"
+            >
+              Home
+            </button>
+          </div>
         </motion.div>
       </div>
     );
@@ -275,26 +294,43 @@ export default function MathTriviaGamePage({ params }: { params: Promise<{ gameI
   if (myResult || submitted) {
     const myCorrect = myResult?.correctCount ?? answers.filter((a) => a.correct).length;
     return (
-      <div className="flex-1 flex flex-col items-center justify-center min-h-screen px-4 py-8">
-        <SettingsButton />
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="text-center space-y-4 max-w-md"
-        >
-          <div className="text-5xl font-bold text-[#F97316]">{myCorrect}/15</div>
-          <h2 className="text-xl font-semibold text-text-primary">Nice work!</h2>
-          <p className="text-text-secondary">
-            Waiting for {myPlayerNumber === 1 ? (game.player2_name || 'your opponent') : (game.player1_name || 'your opponent')} to take their turn...
-          </p>
-          <button
-            onClick={() => router.push('/')}
-            className="mt-6 px-6 py-3 text-sm text-text-secondary hover:text-text-primary transition-colors cursor-pointer"
+      <>
+        <div className="flex-1 flex flex-col items-center justify-center min-h-screen px-4 py-8">
+          <SettingsButton />
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="text-center space-y-4 max-w-md"
           >
-            Back to games
-          </button>
-        </motion.div>
-      </div>
+            <div className="text-5xl font-bold text-[#F97316]">{myCorrect}/15</div>
+            <h2 className="text-xl font-semibold text-text-primary">Nice work!</h2>
+            <p className="text-text-secondary">
+              Waiting for {myPlayerNumber === 1 ? (game.player2_name || 'your opponent') : (game.player1_name || 'your opponent')} to take their turn...
+            </p>
+            <div className="flex items-center justify-center gap-3 mt-6">
+              <button
+                onClick={() => router.push('/')}
+                className="px-4 py-2 text-sm font-medium rounded-xl border border-border bg-surface text-text-secondary hover:text-text-primary hover:border-text-secondary/30 shadow-sm hover:shadow transition-all cursor-pointer"
+              >
+                Home
+              </button>
+              <button
+                onClick={() => setShowEndDialog(true)}
+                className="px-4 py-2 text-sm font-medium rounded-xl border border-player1/20 bg-player1/5 text-player1/80 hover:bg-player1/10 hover:border-player1/40 hover:text-player1 shadow-sm hover:shadow transition-all cursor-pointer"
+              >
+                End Game
+              </button>
+            </div>
+          </motion.div>
+        </div>
+        {showEndDialog && (
+          <EndGameDialog
+            open={showEndDialog}
+            onConfirm={handleEndGame}
+            onCancel={() => setShowEndDialog(false)}
+          />
+        )}
+      </>
     );
   }
 
@@ -364,13 +400,21 @@ export default function MathTriviaGamePage({ params }: { params: Promise<{ gameI
           ))}
         </div>
 
-        {/* End game button */}
-        <button
-          onClick={() => setShowEndDialog(true)}
-          className="w-full py-2 text-xs text-text-secondary/50 hover:text-red-400 transition-colors cursor-pointer"
-        >
-          End Game
-        </button>
+        {/* Home / End Game buttons */}
+        <div className="flex items-center justify-center gap-3">
+          <button
+            onClick={() => router.push('/')}
+            className="px-4 py-2 text-sm font-medium rounded-xl border border-border bg-surface text-text-secondary hover:text-text-primary hover:border-text-secondary/30 shadow-sm hover:shadow transition-all cursor-pointer"
+          >
+            Home
+          </button>
+          <button
+            onClick={() => setShowEndDialog(true)}
+            className="px-4 py-2 text-sm font-medium rounded-xl border border-player1/20 bg-player1/5 text-player1/80 hover:bg-player1/10 hover:border-player1/40 hover:text-player1 shadow-sm hover:shadow transition-all cursor-pointer"
+          >
+            End Game
+          </button>
+        </div>
       </motion.div>
 
       {showEndDialog && (
