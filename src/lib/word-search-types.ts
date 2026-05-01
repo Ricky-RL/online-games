@@ -43,5 +43,5 @@ export interface WordSearchGame {
 export interface ThemePack {
   id: string;
   name: string;
-  words: string[]; // pool of 15-20 words
+  words: string[]; // pool of ~100 words per category
 }
