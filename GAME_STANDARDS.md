@@ -28,6 +28,8 @@ const isPlayer1 = playerName === 'Ricky';
 - Supabase (PostgreSQL + anonymous RLS)
 - Framer Motion (all animations)
 - canvas-confetti (win celebrations)
+- @dnd-kit (drag-and-drop for game card reordering)
+- Vitest (unit testing)
 
 ## File structure for a new game
 
@@ -280,15 +282,81 @@ For collaborative non-game experiences:
 - **Components**: `src/components/tic-tac-toe/Board.tsx`, `Mark.tsx`, `WinLine.tsx`
 - **Board type**: 3x3 grid (`[row][col]`, each cell is `1 | 2 | null`)
 
+### Battleship
+- **Logic**: `src/lib/battleship-logic.ts`
+- **Hook**: `src/hooks/useBattleshipGame.ts`
+- **Page**: `src/app/battleship/[gameId]/page.tsx`
+- **Board type**: Ship placements + attack arrays in `BattleshipBoardState`
+
+### Checkers
+- **Logic**: `src/lib/checkers-logic.ts`
+- **Hook**: `src/hooks/useCheckersGame.ts`
+- **Page**: `src/app/checkers/[gameId]/page.tsx`
+- **Board type**: 8x8 grid with `CheckersPiece | null` cells, supports kings and multi-jump
+
+### Mini Golf
+- **Logic**: `src/lib/mini-golf/logic.ts`, `physics.ts`, `collision.ts`, `levels.ts`
+- **Hook**: `src/hooks/useMiniGolfGame.ts`
+- **Page**: `src/app/mini-golf/[gameId]/page.tsx`
+- **Board type**: `MiniGolfBoard` with scores, shots, hole progression, and canvas-based rendering
+
+### Jenga
+- **Logic**: `src/lib/jenga-logic.ts`
+- **Hook**: `src/hooks/useJengaGame.ts`
+- **Page**: `src/app/jenga/[gameId]/page.tsx`
+- **Board type**: `JengaGameState` with tower grid, wobble score, move history, and cascade risks
+
+### Snakes & Ladders
+- **Logic**: `src/lib/snakes-and-ladders-logic.ts`
+- **Hook**: `src/hooks/useSnakesAndLaddersGame.ts`
+- **Page**: `src/app/snakes-and-ladders/[gameId]/page.tsx`
+- **Board type**: `SnakesAndLaddersState` with player positions, snakes/ladders maps, powerups, and replay events
+
+### Word Search
+- **Logic**: `src/lib/word-search-logic.ts`, `word-search-themes.ts`
+- **Hook**: `src/hooks/useWordSearchGame.ts`
+- **Page**: `src/app/word-search/[gameId]/page.tsx`
+- **Board type**: `WordSearchBoardState` with grid, word placements, and per-player results
+
+### Monopoly
+- **Logic**: `src/lib/monopoly/logic.ts`, `board-data.ts`
+- **Hook**: `src/hooks/useMonopolyGame.ts`
+- **Page**: `src/app/monopoly/[gameId]/page.tsx`
+- **Board type**: `MonopolyBoard` with 40 Vancouver-themed spaces, player states, and property ownership
+
+### Memory
+- **Logic**: `src/lib/memory-logic.ts`
+- **Hook**: `src/hooks/useMemoryGame.ts`
+- **Page**: `src/app/memory/[gameId]/page.tsx`
+- **Board type**: `MemoryBoardState` with 20 emoji cards (10 pairs), per-player scores, and flip tracking
+
 ## Checklist for shipping a new game
 
+### Core
 - [ ] Game logic file with `createEmptyBoard`, `makeMove`, `checkWin`, `isDraw`
 - [ ] Tests for game logic
 - [ ] Game state hook with Supabase sync and polling
-- [ ] Lobby page with matchmaking
+- [ ] Lobby page with matchmaking (async -- Player 1 can take turn without Player 2)
 - [ ] Game page with board, turn indicator, win celebration, end game
 - [ ] Player colors integrated (no hardcoded hex values)
 - [ ] `<SettingsButton />` included on game page
 - [ ] Game card added to landing page with matchmaking handler
+- [ ] Game added to `DEFAULT_GAME_ORDER` in `src/lib/game-registry.ts`
 - [ ] Animations use Framer Motion
 - [ ] Works for both Ricky and Lilian (test both player perspectives)
+
+### Inbox Integration
+- [ ] Add game type to `InboxGameType` union in `src/lib/inbox-types.ts`
+- [ ] Add to `.in('game_type', [...])` filter in `src/hooks/useInbox.ts`
+- [ ] Add icon and label in `src/components/inbox/InboxGameItem.tsx`
+
+### Leaderboard & Match History
+- [ ] Add game type to `GameType` in `src/lib/match-results.ts`
+- [ ] Add game type to `MatchResult['game_type']` in `src/hooks/useMatchHistory.ts`
+- [ ] Add to `by_game` object in `LeaderboardStats` and `computeStats()` in `src/hooks/useMatchHistory.ts`
+- [ ] Add a `<GameStat>` entry in `src/components/Leaderboard.tsx`
+- [ ] Add icon and label cases in `src/components/MatchHistory.tsx`
+- [ ] Call `recordMatchResult()` on game completion in your game hook
+
+### Notifications
+- [ ] Add game label to `GAME_LABELS` in `supabase/functions/notify-telegram/index.ts`
