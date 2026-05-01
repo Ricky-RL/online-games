@@ -8,6 +8,7 @@ import {
   getCheckersGameStatus,
   createInitialBoard,
 } from '@/lib/checkers-logic';
+import { getStoredPlayerName, PLAYER_IDS } from '@/lib/players';
 import type { Player, CheckersGameState, CheckersMove } from '@/lib/types';
 
 const POLL_INTERVAL_MS = 1500;
@@ -79,6 +80,7 @@ export function useCheckersGame(gameId: string): UseCheckersGameReturn {
   const isMultiJumping = useRef(false);
   const gameRef = useRef<CheckersGame | null>(null);
   const pendingDetectedMove = useRef<CheckersMove | null>(null);
+  const autoJoinAttempted = useRef(false);
 
   const updateGame = useCallback(
     (updater: CheckersGame | null | ((prev: CheckersGame | null) => CheckersGame | null)) => {
@@ -117,18 +119,58 @@ export function useCheckersGame(gameId: string): UseCheckersGameReturn {
     return data as CheckersGame;
   }, [gameId, updateGame]);
 
+  const tryAutoJoin = useCallback(async (gameData: CheckersGame) => {
+    if (autoJoinAttempted.current) return;
+
+    const playerName = getStoredPlayerName();
+    if (!playerName) return;
+
+    const myId = PLAYER_IDS[playerName];
+    const isPlayer1 = gameData.player1_id === myId || gameData.player1_name === playerName;
+
+    if (!isPlayer1 && gameData.player2_id === null) {
+      autoJoinAttempted.current = true;
+
+      const { data: joined, error: joinError } = await supabase
+        .from('games')
+        .update({
+          player2_id: myId,
+          player2_name: playerName,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', gameId)
+        .is('player2_id', null)
+        .select()
+        .single();
+
+      if (joinError) {
+        // Join failed — likely already joined via lobby. Re-fetch to get fresh state.
+        const fresh = await fetchGame();
+        if (fresh) updateGame(fresh);
+        return;
+      }
+
+      if (joined) {
+        updateGame(joined as CheckersGame);
+      }
+    }
+  }, [gameId, updateGame, fetchGame]);
+
   useEffect(() => {
     let cancelled = false;
     async function init() {
       setLoading(true);
       const gameData = await fetchGame();
       if (cancelled) return;
-      if (gameData) updateGame(gameData);
+      if (gameData) {
+        updateGame(gameData);
+        await tryAutoJoin(gameData);
+      }
       setLoading(false);
     }
     init();
     return () => { cancelled = true; };
-  }, [fetchGame, updateGame]);
+  }, [fetchGame, updateGame, tryAutoJoin]);
 
   useEffect(() => {
     if (deleted) return;
