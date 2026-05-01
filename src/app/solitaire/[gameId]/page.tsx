@@ -128,6 +128,9 @@ export default function SolitaireGamePage({ params }: { params: Promise<{ gameId
 
   // Current player already submitted — waiting screen
   if (myResult) {
+    const readOnlyState = getSavedState();
+    if (readOnlyState) readOnlyState.startedAt = null;
+
     return (
       <>
         <div className="flex-1 flex flex-col items-center p-2 sm:p-4">
@@ -139,11 +142,11 @@ export default function SolitaireGamePage({ params }: { params: Promise<{ gameId
               {game.player2_name ? `Waiting for ${myPlayerNumber === 1 ? game.player2_name : game.player1_name} to play...` : 'Challenge sent! Waiting for opponent to join...'}
             </p>
           </div>
-          <div className="opacity-60 pointer-events-none">
+          <div className="opacity-60 pointer-events-none" aria-hidden="true">
             <SolitaireBoard
               deck={game.board.deck}
               onWin={() => {}}
-              savedState={getSavedState()}
+              savedState={readOnlyState}
               onStateChange={() => {}}
             />
           </div>
@@ -172,7 +175,7 @@ export default function SolitaireGamePage({ params }: { params: Promise<{ gameId
               {game.player1_name} is playing their round. You&apos;ll be notified when it&apos;s your turn.
             </p>
           </div>
-          <div className="opacity-60 pointer-events-none">
+          <div className="opacity-60 pointer-events-none" aria-hidden="true">
             <SolitaireBoard
               deck={game.board.deck}
               onWin={() => {}}
