@@ -64,10 +64,14 @@ export default function MathTriviaLobby() {
     // Create new game. Creator is always player1 and goes first.
     const board = createMathTriviaBoard();
 
+    // Math Trivia: both players take the quiz independently, so start with
+    // current_turn = 0 ("no one has submitted yet"). When either player submits
+    // first, current_turn flips to the opponent's number (0->1 or 0->2), which
+    // guarantees the database trigger fires and sends a Telegram notification.
     const insertData = {
       game_type: 'math-trivia',
       board,
-      current_turn: 1 as const,
+      current_turn: 0,
       winner: null,
       player1_id: myId,
       player1_name: playerName,

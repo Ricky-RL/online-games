@@ -104,8 +104,10 @@ export function useInbox(): UseInboxReturn {
       );
 
       // It's my turn if I'm in the game and current_turn points to my player number,
-      // OR if the game is waiting for me to join (I need to take action)
+      // OR if the game is waiting for me to join (I need to take action),
+      // OR if current_turn=0 (math-trivia: both players can play, no one has submitted yet)
       const isMyTurn = isWaitingForMe ||
+        (iAmInGame && game.current_turn === 0) ||
         (iAmPlayer1 && game.current_turn === 1) ||
         (iAmPlayer2 && game.current_turn === 2);
 

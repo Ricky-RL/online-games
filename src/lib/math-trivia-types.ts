@@ -31,7 +31,7 @@ export interface MathTriviaGame {
   id: string;
   game_type: 'math-trivia';
   board: MathTriviaBoardState;
-  current_turn: 1 | 2;
+  current_turn: 0 | 1 | 2;
   winner: 1 | 2 | null;
   player1_id: string | null;
   player2_id: string | null;
