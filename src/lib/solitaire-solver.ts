@@ -1,4 +1,4 @@
-import { getCard, isRed, canPlaceOnTableau, canPlaceOnFoundation, dealFromDeck, createShuffledDeck } from './solitaire-logic';
+import { getCard, canPlaceOnTableau, canPlaceOnFoundation, dealFromDeck, createShuffledDeck } from './solitaire-logic';
 
 interface SolverState {
   tableau: number[][];
