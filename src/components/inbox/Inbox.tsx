@@ -31,8 +31,24 @@ export function Inbox({ playerName }: InboxProps) {
     markGamesRead();
     const iAmInGame = game.player1_name === playerName || game.player2_name === playerName;
 
-    // Daily wordle games are in the wordle_games table — route directly
+    // Daily wordle games are in the wordle_games table
     if (game.game_type === 'daily-wordle') {
+      if (!iAmInGame) {
+        // Player hasn't joined yet — join via wordle_games table, then navigate
+        const isPlayer1Slot = game.player1_name === null;
+        const myId = playerName === 'Ricky'
+          ? '00000000-0000-0000-0000-000000000001'
+          : '00000000-0000-0000-0000-000000000002';
+
+        const updateField = isPlayer1Slot
+          ? { player1_id: myId, player1_name: playerName }
+          : { player2_id: myId, player2_name: playerName };
+
+        await supabase
+          .from('wordle_games')
+          .update({ ...updateField, updated_at: new Date().toISOString() })
+          .eq('id', game.id);
+      }
       router.push(`/wordle/${game.id}`);
       return;
     }
