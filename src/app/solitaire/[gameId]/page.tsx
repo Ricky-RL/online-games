@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useSolitaireGame } from '@/hooks/useSolitaireGame';
 import { SolitaireBoard } from '@/components/solitaire/Board';
 import { EndGameDialog } from '@/components/EndGameDialog';
+import { SolitaireHowToPlay } from '@/components/solitaire/SolitaireHowToPlay';
 import { WinCelebration } from '@/components/WinCelebration';
 import { determineSolitaireWinner } from '@/lib/solitaire-logic';
 import type { SolitaireGameState, SolitaireResult } from '@/lib/solitaire-types';
@@ -20,6 +21,7 @@ export default function SolitaireGamePage({ params }: { params: Promise<{ gameId
   const { game, loading, error, deleted, myPlayerNumber, isMyRound, submitResult, resetGame } = useSolitaireGame(gameId);
   const router = useRouter();
   const [showEndDialog, setShowEndDialog] = useState(false);
+  const [showHowToPlay, setShowHowToPlay] = useState(false);
   const [submitted, setSubmitted] = useState(false);
 
   useEffect(() => {
@@ -163,7 +165,15 @@ export default function SolitaireGamePage({ params }: { params: Promise<{ gameId
 
   return (
     <>
-      <div className="flex-1 flex flex-col items-center justify-center p-2 sm:p-4">
+      <div className="flex-1 flex flex-col items-center justify-center p-2 sm:p-4 relative">
+        {/* How to Play button */}
+        <button
+          onClick={() => setShowHowToPlay(true)}
+          className="absolute top-4 right-4 w-8 h-8 flex items-center justify-center rounded-full border border-border bg-surface text-text-secondary hover:text-text-primary hover:border-text-secondary/30 shadow-sm transition-all cursor-pointer text-sm font-semibold"
+          aria-label="How to play"
+        >
+          ?
+        </button>
         <SolitaireBoard
           deck={game.board.deck}
           onWin={handleWin}
@@ -180,6 +190,10 @@ export default function SolitaireGamePage({ params }: { params: Promise<{ gameId
         </div>
       </div>
       <EndGameDialog open={showEndDialog} onConfirm={handleEndGame} onCancel={() => setShowEndDialog(false)} />
+      <SolitaireHowToPlay
+        open={showHowToPlay}
+        onClose={() => setShowHowToPlay(false)}
+      />
     </>
   );
 }
