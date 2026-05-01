@@ -252,6 +252,17 @@ function PoolIcon() {
   );
 }
 
+function CupPongIcon() {
+  return (
+    <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
+      <circle cx="14" cy="14" r="10" fill="#E63946" opacity="0.8" />
+      <circle cx="14" cy="14" r="6" fill="#E63946" opacity="0.5" />
+      <circle cx="14" cy="14" r="3" fill="rgba(0,0,0,0.2)" />
+      <circle cx="22" cy="8" r="3" fill="#FFFFFF" opacity="0.9" />
+    </svg>
+  );
+}
+
 function MemoryIcon() {
   return (
     <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
@@ -912,6 +923,7 @@ function GameSelection({ playerName, onChangePlayer }: { playerName: PlayerName;
     'monopoly': { icon: <MonopolyIcon />, onClick: handlePlayMonopolyGame, loading: connecting === 'monopoly' },
     'memory': { icon: <MemoryIcon />, onClick: () => router.push('/memory') },
     'pool': { icon: <PoolIcon />, onClick: () => router.push('/pool') },
+    'cup-pong': { icon: <CupPongIcon />, onClick: () => router.push('/cup-pong') },
   };
 
   return (
