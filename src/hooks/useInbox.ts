@@ -45,11 +45,10 @@ export function useInbox(): UseInboxReturn {
         .or(`player1_name.eq.${playerName},player2_name.eq.${playerName},player1_id.eq.${PLAYER_IDS[playerName]},player2_id.eq.${PLAYER_IDS[playerName]},and(player1_name.eq.${otherPlayer},player2_name.is.null),and(player2_name.eq.${otherPlayer},player1_name.is.null),and(player1_id.eq.${PLAYER_IDS[otherPlayer]},player2_id.is.null),and(player2_id.eq.${PLAYER_IDS[otherPlayer]},player1_id.is.null)`)
         .is('winner', null)
         .order('updated_at', { ascending: false }),
-      // Fetch daily wordle games (answer_index = -1) that are still in progress
+      // Fetch wordle games (daily and random) that are still in progress
       supabase
         .from('wordle_games')
         .select('*')
-        .eq('answer_index', -1)
         .in('status', ['waiting', 'playing'])
         .or(`player1_name.eq.${playerName},player2_name.eq.${playerName},player1_id.eq.${PLAYER_IDS[playerName]},player2_id.eq.${PLAYER_IDS[playerName]},and(player1_name.eq.${otherPlayer},player2_name.is.null),and(player2_name.eq.${otherPlayer},player1_name.is.null),and(player1_id.eq.${PLAYER_IDS[otherPlayer]},player2_id.is.null),and(player2_id.eq.${PLAYER_IDS[otherPlayer]},player1_id.is.null)`)
         .order('updated_at', { ascending: false }),
@@ -122,7 +121,7 @@ export function useInbox(): UseInboxReturn {
       };
     });
 
-    // Enrich daily wordle games — turns are implicit based on last guess
+    // Enrich wordle games (daily and random) — turns are implicit based on last guess
     const enrichedWordleGames: InboxGame[] = (wordleResult.data ?? []).filter((game) => !dismissedGameIds.has(game.id)).map((game) => {
       const resolvedPlayer1Name = game.player1_name ?? (game.player1_id === PLAYER_IDS.Ricky ? 'Ricky' : game.player1_id === PLAYER_IDS.Lilian ? 'Lilian' : null);
       const resolvedPlayer2Name = game.player2_name ?? (game.player2_id === PLAYER_IDS.Ricky ? 'Ricky' : game.player2_id === PLAYER_IDS.Lilian ? 'Lilian' : null);
