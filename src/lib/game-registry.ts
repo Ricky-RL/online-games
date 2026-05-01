@@ -81,7 +81,6 @@ export const DEFAULT_GAME_ORDER: GameDefinition[] = [
     color: '#9B59B6',
   },
   {
-  {
     slug: 'math-trivia',
     title: 'Math Trivia',
     description: '15 math questions — fastest correct answers wins.',
