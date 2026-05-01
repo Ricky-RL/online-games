@@ -181,9 +181,9 @@ export function useSolitaireGame(gameId: string): UseSolitaireGameReturn {
   }, [game, gameId, myPlayerNumber, fetchGame]);
 
   const giveUp = useCallback(async (moves: number, timeSeconds: number, startedAt: string) => {
-    // If player1 gives up before player2 joins, delete the game
+    // If player1 gives up before player2 joins, end the game
     if (myPlayerNumber === 1 && !game?.player2_name) {
-      await supabase.from('games').delete().eq('id', gameId);
+      await supabase.from('games').update({ game_type: 'ended', updated_at: new Date().toISOString() }).eq('id', gameId);
       setDeleted(true);
       return;
     }
@@ -208,7 +208,6 @@ export function useSolitaireGame(gameId: string): UseSolitaireGameReturn {
       })
       .eq('id', gameId);
 
-    await supabase.from('games').delete().eq('id', gameId);
     setDeleted(true);
   }, [gameId]);
 
