@@ -18,6 +18,10 @@ interface LeaderboardStats {
     'word-search': { ricky: number; lilian: number; draws: number };
     'memory': { ricky: number; lilian: number; draws: number };
     'math-trivia': { ricky: number; lilian: number; draws: number };
+    'jeopardy': { ricky: number; lilian: number; draws: number };
+    'pool': { ricky: number; lilian: number; draws: number };
+    'cup-pong': { ricky: number; lilian: number; draws: number };
+    'reaction'?: { ricky: number; lilian: number; draws: number };
   };
   streaks: {
     ricky_current: number;
@@ -177,6 +181,32 @@ export function Leaderboard({ stats, onReset, loading }: LeaderboardProps) {
                         lilian={stats.by_game['math-trivia'].lilian}
                         draws={stats.by_game['math-trivia'].draws}
                       />
+                      <GameStat
+                        label="Jeopardy"
+                        ricky={stats.by_game['jeopardy'].ricky}
+                        lilian={stats.by_game['jeopardy'].lilian}
+                        draws={stats.by_game['jeopardy'].draws}
+                      />
+                      <GameStat
+                        label="Pool"
+                        ricky={stats.by_game['pool'].ricky}
+                        lilian={stats.by_game['pool'].lilian}
+                        draws={stats.by_game['pool'].draws}
+                      />
+                      <GameStat
+                        label="Cup Pong"
+                        ricky={stats.by_game['cup-pong'].ricky}
+                        lilian={stats.by_game['cup-pong'].lilian}
+                        draws={stats.by_game['cup-pong'].draws}
+                      />
+                      {stats.by_game['reaction'] && (
+                        <GameStat
+                          label="Reaction"
+                          ricky={stats.by_game['reaction'].ricky}
+                          lilian={stats.by_game['reaction'].lilian}
+                          draws={stats.by_game['reaction'].draws}
+                        />
+                      )}
                     </div>
                   </div>
                 )}

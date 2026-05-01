@@ -84,6 +84,30 @@ export const DEFAULT_GAME_ORDER: GameDefinition[] = [
     description: '15 math questions — fastest correct answers wins.',
     color: '#F97316',
   },
+  {
+    slug: 'jeopardy',
+    title: 'Jeopardy',
+    description: 'Pick categories, answer trivia. Highest score wins the board.',
+    color: '#1A3A7A',
+  },
+  {
+    slug: 'pool',
+    title: 'Pool',
+    description: 'Classic 8-ball pool. Sink your balls, pocket the 8-ball last.',
+    color: '#1B5E20',
+  },
+  {
+    slug: 'cup-pong',
+    title: 'Cup Pong',
+    description: 'Throw balls, sink cups. Classic beer pong for two.',
+    color: '#FF6B35',
+  },
+  {
+    slug: 'reaction',
+    title: 'Reaction',
+    description: 'Test your reflexes. Tap targets as fast as you can. Lowest average time wins.',
+    color: '#FF6B35',
+  },
 ];
 
 export const DEFAULT_SLUG_ORDER = DEFAULT_GAME_ORDER.map((g) => g.slug);

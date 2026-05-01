@@ -242,6 +242,27 @@ function MonopolyIcon() {
   );
 }
 
+function PoolIcon() {
+  return (
+    <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
+      <circle cx="10" cy="11" r="4" fill="#FFD700" opacity="0.9" />
+      <circle cx="18" cy="11" r="4" fill="#0000FF" opacity="0.9" />
+      <circle cx="14" cy="18" r="4" fill="#000000" opacity="0.9" />
+    </svg>
+  );
+}
+
+function CupPongIcon() {
+  return (
+    <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
+      <circle cx="14" cy="14" r="10" fill="#E63946" opacity="0.8" />
+      <circle cx="14" cy="14" r="6" fill="#E63946" opacity="0.5" />
+      <circle cx="14" cy="14" r="3" fill="rgba(0,0,0,0.2)" />
+      <circle cx="22" cy="8" r="3" fill="#FFFFFF" opacity="0.9" />
+    </svg>
+  );
+}
+
 function MemoryIcon() {
   return (
     <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
@@ -261,6 +282,14 @@ function MathTriviaIcon() {
       <rect x="2" y="2" width="24" height="24" rx="3" stroke="#F97316" strokeWidth="2" fill="none" opacity="0.8" />
       <text x="5" y="13" fontSize="7" fill="#F97316" opacity="0.9" fontFamily="monospace" fontWeight="bold">1+2</text>
       <text x="5" y="23" fontSize="7" fill="#F97316" opacity="0.7" fontFamily="monospace" fontWeight="bold">3×4</text>
+    </svg>
+  );
+}
+
+function ReactionIcon() {
+  return (
+    <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
+      <path d="M16 3L6 16h6l-2 9 10-13h-6l2-9z" fill="#FF6B35" opacity="0.9" />
     </svg>
   );
 }
@@ -912,6 +941,9 @@ function GameSelection({ playerName, onChangePlayer }: { playerName: PlayerName;
     'monopoly': { icon: <MonopolyIcon />, onClick: handlePlayMonopolyGame, loading: connecting === 'monopoly' },
     'memory': { icon: <MemoryIcon />, onClick: () => router.push('/memory') },
     'math-trivia': { icon: <MathTriviaIcon />, onClick: () => router.push('/math-trivia') },
+    'pool': { icon: <PoolIcon />, onClick: () => router.push('/pool') },
+    'cup-pong': { icon: <CupPongIcon />, onClick: () => router.push('/cup-pong') },
+    'reaction': { icon: <ReactionIcon />, onClick: () => router.push('/reaction') },
   };
 
   return (

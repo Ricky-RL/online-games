@@ -12,9 +12,13 @@ const GAME_LABELS: Record<string, string> = {
   "snakes-and-ladders": "Snakes & Ladders",
   "word-search": "Word Search",
   memory: "Memory",
+  jeopardy: "Jeopardy",
+  pool: "Pool",
+  reaction: "Reaction",
   whiteboard: "Whiteboard",
   wordle: "Wordle",
   "math-trivia": "Math Trivia",
+  "cup-pong": "Cup Pong",
 };
 
 interface TurnPayload {

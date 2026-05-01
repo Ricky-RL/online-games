@@ -27,5 +27,8 @@ When adding a new game type, integrate it with ALL of these systems:
 8. Add icon and label cases in `src/components/MatchHistory.tsx`
 9. Call `recordMatchResult()` on game completion in your game hook
 
+### Favorites
+10. Add the game slug to `GAME_REGISTRY` in `src/lib/game-registry.ts` (this automatically makes it eligible for favoriting via the heart icon on the card)
+
 ### Async Play
-10. Games must support async play: Player 1 can start and immediately take their turn without waiting for Player 2 to join. The matchmaking creates a game row with one player slot filled and the other null. Polling picks up the opponent when they join.
+11. Games must support async play: Player 1 can start and immediately take their turn without waiting for Player 2 to join. The matchmaking creates a game row with one player slot filled and the other null. Polling picks up the opponent when they join.

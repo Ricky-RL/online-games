@@ -7,7 +7,7 @@ const POLL_INTERVAL_MS = 5000;
 
 export interface MatchResult {
   id: string;
-  game_type: 'connect-four' | 'tic-tac-toe' | 'wordle' | 'mini-golf' | 'jenga' | 'snakes-and-ladders' | 'word-search' | 'monopoly' | 'battleship' | 'memory' | 'math-trivia';
+  game_type: 'connect-four' | 'tic-tac-toe' | 'wordle' | 'mini-golf' | 'jenga' | 'snakes-and-ladders' | 'word-search' | 'monopoly' | 'battleship' | 'memory' | 'math-trivia' | 'jeopardy' | 'pool' | 'cup-pong' | 'reaction';
   winner_id: string | null;
   winner_name: string | null;
   loser_id: string | null;
@@ -36,6 +36,10 @@ export interface LeaderboardStats {
     'word-search': { ricky: number; lilian: number; draws: number };
     'memory': { ricky: number; lilian: number; draws: number };
     'math-trivia': { ricky: number; lilian: number; draws: number };
+    'jeopardy': { ricky: number; lilian: number; draws: number };
+    'pool': { ricky: number; lilian: number; draws: number };
+    'cup-pong': { ricky: number; lilian: number; draws: number };
+    'reaction': { ricky: number; lilian: number; draws: number };
   };
   streaks: {
     ricky_current: number;
@@ -74,6 +78,10 @@ function computeStats(results: MatchResult[]): LeaderboardStats {
     'word-search': { ricky: 0, lilian: 0, draws: 0 },
     'memory': { ricky: 0, lilian: 0, draws: 0 },
     'math-trivia': { ricky: 0, lilian: 0, draws: 0 },
+    'jeopardy': { ricky: 0, lilian: 0, draws: 0 },
+    'pool': { ricky: 0, lilian: 0, draws: 0 },
+    'cup-pong': { ricky: 0, lilian: 0, draws: 0 },
+    'reaction': { ricky: 0, lilian: 0, draws: 0 },
   };
 
   let wordle_played = 0;

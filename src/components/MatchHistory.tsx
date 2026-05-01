@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 interface MatchResult {
   id: string;
-  game_type: 'connect-four' | 'tic-tac-toe' | 'wordle' | 'mini-golf' | 'jenga' | 'snakes-and-ladders' | 'word-search' | 'monopoly' | 'battleship' | 'memory' | 'math-trivia';
+  game_type: 'connect-four' | 'tic-tac-toe' | 'wordle' | 'mini-golf' | 'jenga' | 'snakes-and-ladders' | 'word-search' | 'monopoly' | 'battleship' | 'memory' | 'math-trivia' | 'jeopardy' | 'pool' | 'cup-pong' | 'reaction';
   winner_id: string | null;
   winner_name: string | null;
   loser_id: string | null;
@@ -47,6 +47,10 @@ function gameIcon(gameType: MatchResult['game_type']): string {
     case 'battleship': return '🎯';
     case 'memory': return '🧠';
     case 'math-trivia': return '🧮';
+    case 'jeopardy': return '❓';
+    case 'pool': return '🎱';
+    case 'cup-pong': return '🏓';
+    case 'reaction': return '⚡';
   }
 }
 function gameLabel(gameType: MatchResult['game_type']): string {
@@ -62,6 +66,10 @@ function gameLabel(gameType: MatchResult['game_type']): string {
     case 'battleship': return 'Battleship';
     case 'memory': return 'Memory';
     case 'math-trivia': return 'Math Trivia';
+    case 'jeopardy': return 'Jeopardy';
+    case 'pool': return 'Pool';
+    case 'cup-pong': return 'Cup Pong';
+    case 'reaction': return 'Reaction';
   }
 }
 function outcomeText(result: MatchResult): string {
