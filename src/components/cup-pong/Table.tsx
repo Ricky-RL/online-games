@@ -32,6 +32,21 @@ interface TableProps {
   winner: Player | null;
 }
 
+/**
+ * Flip Y coordinates so the current player always sees their own cups at the
+ * bottom and the opponent's cups at the top. Player 1's cups are stored at
+ * y~0.15 and Player 2's at y~0.85 in the data model — for Player 1 we invert
+ * so their cups render at the bottom (0.85) and the target renders at the top (0.15).
+ * Player 2 already has the correct orientation without flipping.
+ */
+function flipCupsForPlayer(cups: Cup[], myPlayer: Player): Cup[] {
+  if (myPlayer === 2) return cups;
+  return cups.map((cup) => ({
+    ...cup,
+    position: { x: cup.position.x, y: 1 - cup.position.y },
+  }));
+}
+
 const TABLE_WIDTH = 320;
 const TABLE_HEIGHT = 560;
 
@@ -66,10 +81,16 @@ export function Table({
     setAimIndicator(null);
   }, []);
 
-  // My cups are the cups at my defensive end (the ones my opponent aims at)
-  // I throw at my opponent's cups
-  const opponentCups = myPlayer === 1 ? player2Cups : player1Cups;
-  const throwerSide: 'bottom' | 'top' = myPlayer === 1 ? 'bottom' : 'top';
+  // Flip cup positions so the current player always sees their own cups at
+  // the bottom and opponent's cups at the top of the table.
+  const displayP1Cups = flipCupsForPlayer(player1Cups, myPlayer);
+  const displayP2Cups = flipCupsForPlayer(player2Cups, myPlayer);
+
+  // Opponent's cups (in display coordinates) are what the ball targets.
+  const displayOpponentCups = myPlayer === 1 ? displayP2Cups : displayP1Cups;
+
+  // After the flip, every player always throws from bottom toward the top.
+  const throwerSide: 'bottom' | 'top' = 'bottom';
 
   return (
     <motion.div
@@ -133,17 +154,17 @@ export function Table({
           }}
         />
 
-        {/* Player 1's cups (positioned at y~0.15 in normalized coords — top portion on screen) */}
+        {/* Player 1's cups (after flip: at bottom for P1, at top for P2) */}
         <CupFormation
-          cups={player1Cups}
+          cups={displayP1Cups}
           player={1}
           containerWidth={TABLE_WIDTH}
           containerHeight={TABLE_HEIGHT}
         />
 
-        {/* Player 2's cups (positioned at y~0.85 in normalized coords — bottom portion on screen) */}
+        {/* Player 2's cups (after flip: at top for P1, at bottom for P2) */}
         <CupFormation
-          cups={player2Cups}
+          cups={displayP2Cups}
           player={2}
           containerWidth={TABLE_WIDTH}
           containerHeight={TABLE_HEIGHT}
@@ -177,12 +198,8 @@ export function Table({
         {lastThrowResult && (
           <BallAnimation
             throwResult={lastThrowResult}
-            throwerSide={
-              // The animation always shows the local player's throw
-              // (opponent throws come in via polling as state changes, not animated)
-              myPlayer === 1 ? 'bottom' : 'top'
-            }
-            targetCups={opponentCups}
+            throwerSide={throwerSide}
+            targetCups={displayOpponentCups}
             tableWidth={TABLE_WIDTH}
             tableHeight={TABLE_HEIGHT}
             onComplete={onAnimationComplete}
