@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useState, useEffect, useCallback } from 'react';
+import { useRef, useState, useEffect, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion, useInView, AnimatePresence } from 'framer-motion';
 import { SettingsButton } from '@/components/SettingsButton';
@@ -27,7 +27,7 @@ import {
 } from '@dnd-kit/sortable';
 import { SortableGameCard } from '@/components/SortableGameCard';
 import { useGameOrder } from '@/hooks/useGameOrder';
-import { DEFAULT_GAME_ORDER, DEFAULT_SLUG_ORDER } from '@/lib/game-registry';
+import { DEFAULT_GAME_ORDER, DEFAULT_SLUG_ORDER, type GameCategory } from '@/lib/game-registry';
 
 interface ClickableGameCardProps {
   title: string;
@@ -396,6 +396,8 @@ function GameSelection({ playerName, onChangePlayer }: { playerName: PlayerName;
   const { favorites, toggleFavorite, isFavorite } = useFavorites(playerName);
   const [editMode, setEditMode] = useState(false);
   const [editOrder, setEditOrder] = useState<string[]>(order);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [activeCategories, setActiveCategories] = useState<GameCategory[]>([]);
 
   useEffect(() => {
     if (!editMode) {
@@ -407,6 +409,49 @@ function GameSelection({ playerName, onChangePlayer }: { playerName: PlayerName;
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
     useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 5 } }),
   );
+
+  // Derive all categories that exist in the registry
+  const allCategories = useMemo<GameCategory[]>(() => {
+    const cats = new Set<GameCategory>();
+    DEFAULT_GAME_ORDER.forEach((g) => g.categories.forEach((c) => cats.add(c)));
+    return Array.from(cats);
+  }, []);
+
+  // Filter the order list based on search query and active category filters
+  const filteredOrder = useMemo(() => {
+    const currentOrder = editMode ? editOrder : order;
+    if (!searchQuery && activeCategories.length === 0) return currentOrder;
+
+    return currentOrder.filter((slug) => {
+      const game = DEFAULT_GAME_ORDER.find((g) => g.slug === slug);
+      if (!game) return false;
+
+      // Search filter (AND with categories)
+      if (searchQuery) {
+        const q = searchQuery.toLowerCase();
+        const matchesSearch =
+          game.title.toLowerCase().includes(q) ||
+          game.description.toLowerCase().includes(q);
+        if (!matchesSearch) return false;
+      }
+
+      // Category filter (OR logic among active categories)
+      if (activeCategories.length > 0) {
+        const matchesCategory = activeCategories.some((cat) =>
+          game.categories.includes(cat),
+        );
+        if (!matchesCategory) return false;
+      }
+
+      return true;
+    });
+  }, [editMode, editOrder, order, searchQuery, activeCategories]);
+
+  function toggleCategory(cat: GameCategory) {
+    setActiveCategories((prev) =>
+      prev.includes(cat) ? prev.filter((c) => c !== cat) : [...prev, cat],
+    );
+  }
 
   function handleDragEnd(event: DragEndEvent) {
     const { active, over } = event;
@@ -1067,6 +1112,48 @@ function GameSelection({ playerName, onChangePlayer }: { playerName: PlayerName;
         </div>
       )}
 
+      {/* Search and category filters (hidden in edit mode) */}
+      {!editMode && (
+        <div className="max-w-5xl mx-auto mb-8 space-y-4">
+          {/* Search input */}
+          <div className="relative">
+            <svg
+              className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-text-secondary/50"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              strokeWidth={2}
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search games..."
+              className="w-full pl-12 pr-4 py-3 rounded-2xl border border-border bg-surface text-text-primary placeholder:text-text-secondary/50 focus:outline-none focus:ring-2 focus:ring-[#E63946]/30 focus:border-[#E63946]/50 transition-all"
+            />
+          </div>
+
+          {/* Category filter pills */}
+          <div className="flex flex-wrap gap-2">
+            {allCategories.map((cat) => (
+              <button
+                key={cat}
+                onClick={() => toggleCategory(cat)}
+                className={`px-4 py-1.5 text-sm font-medium rounded-full border transition-all cursor-pointer ${
+                  activeCategories.includes(cat)
+                    ? 'bg-player1 text-white border-transparent'
+                    : 'border-border text-text-secondary hover:text-text-primary hover:bg-surface-hover'
+                }`}
+              >
+                {cat}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Leaderboard */}
       {stats && (
         <Leaderboard
@@ -1136,69 +1223,101 @@ function GameSelection({ playerName, onChangePlayer }: { playerName: PlayerName;
         >
           <SortableContext items={editMode ? editOrder : order} strategy={rectSortingStrategy}>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-              {(editMode ? editOrder : order).map((slug, index) => {
-                const game = DEFAULT_GAME_ORDER.find((g) => g.slug === slug);
-                const props = gameProps[slug];
-                if (!game || !props) return null;
+              <AnimatePresence mode="popLayout">
+                {filteredOrder.map((slug, index) => {
+                  const game = DEFAULT_GAME_ORDER.find((g) => g.slug === slug);
+                  const props = gameProps[slug];
+                  if (!game || !props) return null;
 
-                if (slug === 'wordle' && !editMode && showWordleMode) {
-                  return (
-                    <SortableGameCard key={slug} id={slug} editMode={false}>
+                  if (slug === 'wordle' && !editMode && showWordleMode) {
+                    return (
                       <motion.div
-                        initial={{ opacity: 0, scale: 0.95 }}
+                        key={slug}
+                        layout
+                        initial={{ opacity: 0, scale: 0.9 }}
                         animate={{ opacity: 1, scale: 1 }}
-                        className="relative rounded-3xl border border-border bg-surface p-6 flex flex-col items-center justify-center gap-4"
+                        exit={{ opacity: 0, scale: 0.9 }}
+                        transition={{ duration: 0.25 }}
                       >
-                        <button
-                          onClick={() => setShowWordleMode(false)}
-                          className="absolute top-3 right-3 text-text-secondary hover:text-text-primary text-lg cursor-pointer"
-                        >
-                          ✕
-                        </button>
-                        <div className="text-2xl">
-                          <WordleIcon />
-                        </div>
-                        <p className="text-sm font-medium text-text-secondary">Choose mode</p>
-                        <div className="flex gap-3 w-full">
-                          <button
-                            onClick={() => { setShowWordleMode(false); handlePlayWordle(); }}
-                            disabled={connecting === 'wordle'}
-                            className="flex-1 px-4 py-2.5 text-sm font-medium rounded-xl border border-border bg-surface text-text-primary hover:bg-surface-hover shadow-sm hover:shadow transition-all cursor-pointer disabled:opacity-50"
+                        <SortableGameCard id={slug} editMode={false}>
+                          <motion.div
+                            initial={{ opacity: 0, scale: 0.95 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            className="relative rounded-3xl border border-border bg-surface p-6 flex flex-col items-center justify-center gap-4"
                           >
-                            Random
-                          </button>
-                          <button
-                            onClick={() => { setShowWordleMode(false); handlePlayDailyWordle(); }}
-                            disabled={connecting === 'wordle'}
-                            className="flex-1 px-4 py-2.5 text-sm font-medium rounded-xl border border-[#538D4E]/30 bg-[#538D4E]/10 text-[#538D4E] hover:bg-[#538D4E]/20 shadow-sm hover:shadow transition-all cursor-pointer disabled:opacity-50"
-                          >
-                            Daily
-                          </button>
-                        </div>
+                            <button
+                              onClick={() => setShowWordleMode(false)}
+                              className="absolute top-3 right-3 text-text-secondary hover:text-text-primary text-lg cursor-pointer"
+                            >
+                              ✕
+                            </button>
+                            <div className="text-2xl">
+                              <WordleIcon />
+                            </div>
+                            <p className="text-sm font-medium text-text-secondary">Choose mode</p>
+                            <div className="flex gap-3 w-full">
+                              <button
+                                onClick={() => { setShowWordleMode(false); handlePlayWordle(); }}
+                                disabled={connecting === 'wordle'}
+                                className="flex-1 px-4 py-2.5 text-sm font-medium rounded-xl border border-border bg-surface text-text-primary hover:bg-surface-hover shadow-sm hover:shadow transition-all cursor-pointer disabled:opacity-50"
+                              >
+                                Random
+                              </button>
+                              <button
+                                onClick={() => { setShowWordleMode(false); handlePlayDailyWordle(); }}
+                                disabled={connecting === 'wordle'}
+                                className="flex-1 px-4 py-2.5 text-sm font-medium rounded-xl border border-[#538D4E]/30 bg-[#538D4E]/10 text-[#538D4E] hover:bg-[#538D4E]/20 shadow-sm hover:shadow transition-all cursor-pointer disabled:opacity-50"
+                              >
+                                Daily
+                              </button>
+                            </div>
+                          </motion.div>
+                        </SortableGameCard>
                       </motion.div>
-                    </SortableGameCard>
-                  );
-                }
+                    );
+                  }
 
-                return (
-                  <SortableGameCard key={slug} id={slug} editMode={editMode}>
-                    <ClickableGameCard
-                      title={game.title}
-                      description={game.description}
-                      color={game.color}
-                      icon={props.icon}
-                      delay={index * 0.05}
-                      onClick={editMode ? () => {} : props.onClick}
-                      loading={!editMode && props.loading}
-                      isFavorite={isFavorite(slug)}
-                      onToggleFavorite={editMode ? undefined : () => toggleFavorite(slug)}
-                    />
-                  </SortableGameCard>
-                );
-              })}
+                  return (
+                    <motion.div
+                      key={slug}
+                      layout
+                      initial={{ opacity: 0, scale: 0.9 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      exit={{ opacity: 0, scale: 0.9 }}
+                      transition={{ duration: 0.25 }}
+                    >
+                      <SortableGameCard id={slug} editMode={editMode}>
+                        <ClickableGameCard
+                          title={game.title}
+                          description={game.description}
+                          color={game.color}
+                          icon={props.icon}
+                          delay={index * 0.05}
+                          onClick={editMode ? () => {} : props.onClick}
+                          loading={!editMode && props.loading}
+                          isFavorite={isFavorite(slug)}
+                          onToggleFavorite={editMode ? undefined : () => toggleFavorite(slug)}
+                        />
+                      </SortableGameCard>
+                    </motion.div>
+                  );
+                })}
+              </AnimatePresence>
             </div>
           </SortableContext>
         </DndContext>
+
+        {/* No games found message */}
+        {!editMode && filteredOrder.length === 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="flex flex-col items-center justify-center py-16 text-center"
+          >
+            <p className="text-lg text-text-secondary">No games found</p>
+            <p className="text-sm text-text-secondary/60 mt-1">Try a different search or filter</p>
+          </motion.div>
+        )}
       </div>
 
       {/* Match History */}
