@@ -11,7 +11,6 @@ import { PowerupToast } from '@/components/snakes-and-ladders/PowerupToast';
 import { TurnIndicator } from '@/components/TurnIndicator';
 import { WinCelebration } from '@/components/WinCelebration';
 import { EndGameDialog } from '@/components/EndGameDialog';
-import { SettingsButton } from '@/components/SettingsButton';
 import { useNotifications } from '@/hooks/useNotifications';
 import type { SnakesAndLaddersState } from '@/lib/types';
 import { useState, useEffect, useCallback } from 'react';
@@ -87,8 +86,6 @@ export default function SnakesAndLaddersGamePage({ params }: { params: Promise<{
 
   return (
     <div className="flex flex-col items-center min-h-screen px-4 py-8 gap-6">
-      <SettingsButton />
-
       {/* Turn replay overlay */}
       {isReplaying && replayEvents.length > 0 && (
         <TurnReplay events={replayEvents} onComplete={handleReplayComplete} onReplayMove={setReplayLastMove} />

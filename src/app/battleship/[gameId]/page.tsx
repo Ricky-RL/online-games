@@ -8,7 +8,6 @@ import { buildShipGrid, getSunkShips } from '@/lib/battleship-logic';
 import { PlayerBoard } from '@/components/battleship/PlayerBoard';
 import { TrackingBoard } from '@/components/battleship/TrackingBoard';
 import { ShipOverlay as ShipStatus } from '@/components/battleship/ShipOverlay';
-import { SettingsButton } from '@/components/SettingsButton';
 import { TurnIndicator } from '@/components/TurnIndicator';
 import { WinCelebration } from '@/components/WinCelebration';
 import { EndGameDialog } from '@/components/EndGameDialog';
@@ -134,8 +133,6 @@ export default function BattleshipGamePage({ params }: { params: Promise<{ gameI
         animate={{ opacity: 1 }}
         transition={{ duration: 0.4 }}
       >
-        <SettingsButton />
-
         <div className="flex items-center gap-4">
           {!game.winner && (
             <TurnIndicator

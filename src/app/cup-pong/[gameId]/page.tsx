@@ -6,7 +6,6 @@ import { motion } from 'framer-motion';
 import { useCupPongGame } from '@/hooks/useCupPongGame';
 import { getCupsRemaining } from '@/lib/cup-pong-logic';
 import { Table } from '@/components/cup-pong/Table';
-import { SettingsButton } from '@/components/SettingsButton';
 import { TurnIndicator } from '@/components/TurnIndicator';
 import { WinCelebration } from '@/components/WinCelebration';
 import { EndGameDialog } from '@/components/EndGameDialog';
@@ -169,8 +168,6 @@ export default function CupPongGamePage({ params }: { params: Promise<{ gameId: 
           animate={{ opacity: 1 }}
           transition={{ duration: 0.4 }}
         >
-          <SettingsButton />
-
           <WinCelebration
             winner={game.winner}
             winnerName={winnerName}
@@ -233,8 +230,6 @@ export default function CupPongGamePage({ params }: { params: Promise<{ gameId: 
         animate={{ opacity: 1 }}
         transition={{ duration: 0.4 }}
       >
-        <SettingsButton />
-
         <div className="flex items-center gap-4">
           <TurnIndicator
             currentPlayer={game.current_turn}

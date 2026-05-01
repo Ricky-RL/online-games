@@ -7,7 +7,6 @@ import { useGameSounds } from '@/hooks/useSound';
 import { Board } from '@/components/sudoku/Board';
 import { NumberPad } from '@/components/sudoku/NumberPad';
 import { EndGameDialog } from '@/components/EndGameDialog';
-import { SettingsButton } from '@/components/SettingsButton';
 import { checkWin, type SudokuBoardState } from '@/lib/sudoku-logic';
 
 function formatTime(seconds: number): string {
@@ -203,7 +202,6 @@ export default function SudokuGamePage({ params }: { params: Promise<{ gameId: s
                 Waiting for partner...
               </span>
             )}
-            <SettingsButton />
           </div>
         </div>
 

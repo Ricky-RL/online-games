@@ -14,7 +14,6 @@ import { GameOverSummary } from '@/components/monopoly/GameOverSummary';
 import { BuildMenu } from '@/components/monopoly/BuildMenu';
 import { CardDisplay } from '@/components/monopoly/CardDisplay';
 import { TurnIndicator } from '@/components/TurnIndicator';
-import { SettingsButton } from '@/components/SettingsButton';
 
 export default function MonopolyGamePage({ params }: { params: Promise<{ gameId: string }> }) {
   const { gameId } = use(params);
@@ -56,8 +55,6 @@ export default function MonopolyGamePage({ params }: { params: Promise<{ gameId:
 
   return (
     <div className="min-h-screen p-2 sm:p-4 md:p-6">
-      <SettingsButton />
-
       {/* Back button */}
       <button
         onClick={() => router.push('/')}

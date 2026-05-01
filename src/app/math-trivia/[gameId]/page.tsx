@@ -8,7 +8,6 @@ import { useNotifications } from '@/hooks/useNotifications';
 import { NotificationControls } from '@/components/NotificationControls';
 import { checkAnswer } from '@/lib/math-trivia-logic';
 import { EndGameDialog } from '@/components/EndGameDialog';
-import { SettingsButton } from '@/components/SettingsButton';
 import type { MathTriviaBoardState, PlayerAnswer, PlayerResult } from '@/lib/math-trivia-types';
 
 export default function MathTriviaGamePage({ params }: { params: Promise<{ gameId: string }> }) {
@@ -168,7 +167,6 @@ export default function MathTriviaGamePage({ params }: { params: Promise<{ gameI
     return (
       <>
         <div className="flex-1 flex flex-col items-center justify-center min-h-screen px-4 py-8">
-          <SettingsButton />
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -219,7 +217,6 @@ export default function MathTriviaGamePage({ params }: { params: Promise<{ gameI
 
     return (
       <div className="flex-1 flex flex-col items-center justify-center min-h-screen px-4 py-8">
-        <SettingsButton />
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -296,7 +293,6 @@ export default function MathTriviaGamePage({ params }: { params: Promise<{ gameI
     return (
       <>
         <div className="flex-1 flex flex-col items-center justify-center min-h-screen px-4 py-8">
-          <SettingsButton />
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -341,7 +337,6 @@ export default function MathTriviaGamePage({ params }: { params: Promise<{ gameI
 
   return (
     <div className="flex-1 flex flex-col items-center justify-center min-h-screen px-4 py-8">
-      <SettingsButton />
 
       <motion.div
         initial={{ opacity: 0, y: 20 }}
