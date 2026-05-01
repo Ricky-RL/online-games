@@ -8,6 +8,7 @@ import { Leaderboard } from '@/components/Leaderboard';
 import { MatchHistory } from '@/components/MatchHistory';
 import { ResetStatsDialog } from '@/components/ResetStatsDialog';
 import { useMatchHistory } from '@/hooks/useMatchHistory';
+import { useFavorites } from '@/hooks/useFavorites';
 import { Inbox } from '@/components/inbox';
 import { type PlayerName, PLAYER_IDS } from '@/lib/players';
 import {
@@ -36,9 +37,11 @@ interface ClickableGameCardProps {
   delay?: number;
   onClick: () => void;
   loading?: boolean;
+  isFavorite?: boolean;
+  onToggleFavorite?: () => void;
 }
 
-function ClickableGameCard({ title, description, color, icon, delay = 0, onClick, loading }: ClickableGameCardProps) {
+function ClickableGameCard({ title, description, color, icon, delay = 0, onClick, loading, isFavorite, onToggleFavorite }: ClickableGameCardProps) {
   const ref = useRef<HTMLButtonElement>(null);
   const isInView = useInView(ref, { once: true, margin: '-50px' });
 
@@ -54,6 +57,46 @@ function ClickableGameCard({ title, description, color, icon, delay = 0, onClick
         disabled={loading}
         className="group block relative overflow-hidden rounded-3xl border border-border bg-surface p-8 sm:p-10 transition-all duration-300 hover:shadow-xl hover:shadow-black/[0.03] hover:-translate-y-1 hover:border-transparent w-full text-left cursor-pointer disabled:opacity-70 disabled:cursor-wait"
       >
+        {/* Heart favorite button */}
+        {onToggleFavorite && (
+          <motion.div
+            className="absolute top-4 right-4 z-10"
+            whileTap={{ scale: 1.3 }}
+            transition={{ type: 'spring', stiffness: 400, damping: 10 }}
+          >
+            <div
+              role="switch"
+              aria-checked={isFavorite}
+              aria-label={isFavorite ? 'Remove from favorites' : 'Add to favorites'}
+              onClick={(e) => {
+                e.stopPropagation();
+                e.preventDefault();
+                onToggleFavorite();
+              }}
+              onPointerDown={(e) => e.stopPropagation()}
+              className="w-8 h-8 flex items-center justify-center rounded-full bg-surface/80 backdrop-blur-sm border border-border/50 hover:bg-surface-hover transition-colors cursor-pointer"
+            >
+              <motion.svg
+                width="18"
+                height="18"
+                viewBox="0 0 24 24"
+                fill={isFavorite ? '#E63946' : 'none'}
+                stroke={isFavorite ? '#E63946' : 'currentColor'}
+                strokeWidth={2}
+                className={isFavorite ? '' : 'text-text-secondary'}
+                animate={isFavorite ? { scale: [1, 1.2, 1] } : { scale: 1 }}
+                transition={{ duration: 0.3 }}
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"
+                />
+              </motion.svg>
+            </div>
+          </motion.div>
+        )}
+
         {/* Subtle gradient overlay on hover */}
         <div
           className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500"
@@ -324,6 +367,7 @@ function GameSelection({ playerName, onChangePlayer }: { playerName: PlayerName;
   const [showResetDialog, setShowResetDialog] = useState(false);
   const { results, stats, loading, clearAll } = useMatchHistory();
   const { order, loading: orderLoading, saveOrder, resetOrder } = useGameOrder(playerName);
+  const { favorites, toggleFavorite, isFavorite } = useFavorites(playerName);
   const [editMode, setEditMode] = useState(false);
   const [editOrder, setEditOrder] = useState<string[]>(order);
 
@@ -1007,6 +1051,54 @@ function GameSelection({ playerName, onChangePlayer }: { playerName: PlayerName;
       {/* Inbox */}
       <Inbox playerName={playerName} />
 
+      {/* Favorites section */}
+      {favorites.length > 0 && (
+        <div className="max-w-5xl mx-auto mb-10">
+          <div className="flex items-center gap-2 mb-5">
+            <svg
+              width="18"
+              height="18"
+              viewBox="0 0 24 24"
+              fill="#E63946"
+              stroke="#E63946"
+              strokeWidth={2}
+              className="opacity-80"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"
+              />
+            </svg>
+            <h2 className="text-lg font-semibold text-text-primary">Favorites</h2>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+            {order
+              .filter((slug) => favorites.includes(slug))
+              .map((slug, index) => {
+                const game = DEFAULT_GAME_ORDER.find((g) => g.slug === slug);
+                const props = gameProps[slug];
+                if (!game || !props) return null;
+
+                return (
+                  <ClickableGameCard
+                    key={`fav-${slug}`}
+                    title={game.title}
+                    description={game.description}
+                    color={game.color}
+                    icon={props.icon}
+                    delay={index * 0.05}
+                    onClick={props.onClick}
+                    loading={props.loading}
+                    isFavorite={true}
+                    onToggleFavorite={() => toggleFavorite(slug)}
+                  />
+                );
+              })}
+          </div>
+        </div>
+      )}
+
       {/* Games grid */}
       <div className="max-w-5xl mx-auto">
         <DndContext
@@ -1070,6 +1162,8 @@ function GameSelection({ playerName, onChangePlayer }: { playerName: PlayerName;
                       delay={index * 0.05}
                       onClick={editMode ? () => {} : props.onClick}
                       loading={!editMode && props.loading}
+                      isFavorite={isFavorite(slug)}
+                      onToggleFavorite={editMode ? undefined : () => toggleFavorite(slug)}
                     />
                   </SortableGameCard>
                 );
