@@ -206,12 +206,12 @@ export const LEVELS: Level[] = [
       { x1: 60, y1: 380, x2: 60, y2: 650 },
       { x1: 160, y1: 450, x2: 160, y2: 650 },
       { x1: 60, y1: 650, x2: 160, y2: 650 },
-      // Corner
-      { x1: 60, y1: 380, x2: 160, y2: 380 },
-      { x1: 160, y1: 380, x2: 340, y2: 380 },
+      // Corner — gap between x=220 and x=280 at y=380 lets ball pass through sand into upper corridor
+      { x1: 60, y1: 380, x2: 220, y2: 380 },
+      { x1: 280, y1: 380, x2: 340, y2: 380 },
       { x1: 160, y1: 450, x2: 240, y2: 450 },
       // Vertical corridor (top-right)
-      { x1: 240, y1: 60, x2: 240, y2: 450 },
+      { x1: 240, y1: 60, x2: 240, y2: 380 },
       { x1: 340, y1: 60, x2: 340, y2: 380 },
       { x1: 240, y1: 60, x2: 340, y2: 60 },
     ],
