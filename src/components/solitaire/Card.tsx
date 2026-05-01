@@ -14,9 +14,10 @@ interface CardProps {
   onClick?: () => void;
   style?: React.CSSProperties;
   className?: string;
+  zIndex?: number;
 }
 
-export function SolitaireCard({ cardId, faceUp, draggable = false, dragData, onClick, style, className = '' }: CardProps) {
+export function SolitaireCard({ cardId, faceUp, draggable = false, dragData, onClick, style, className = '', zIndex }: CardProps) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: `card-${cardId}`,
     data: dragData,
@@ -24,8 +25,8 @@ export function SolitaireCard({ cardId, faceUp, draggable = false, dragData, onC
   });
 
   const transformStyle = transform
-    ? { transform: `translate(${transform.x}px, ${transform.y}px)` }
-    : undefined;
+    ? { transform: `translate(${transform.x}px, ${transform.y}px)`, zIndex: 999 }
+    : zIndex !== undefined ? { zIndex } : undefined;
 
   if (!faceUp) {
     return (
@@ -49,8 +50,8 @@ export function SolitaireCard({ cardId, faceUp, draggable = false, dragData, onC
       ref={draggable ? setNodeRef : undefined}
       {...(draggable ? { ...listeners, ...attributes } : {})}
       onClick={onClick}
-      className={`relative w-[48px] h-[67px] sm:w-[60px] sm:h-[84px] rounded-lg border border-border bg-white shadow-sm select-none overflow-hidden ${draggable && faceUp ? 'cursor-grab active:cursor-grabbing' : ''} ${isDragging ? 'opacity-50 z-50' : ''} ${className}`}
-      style={{ ...style, ...transformStyle }}
+      className={`relative w-[48px] h-[67px] sm:w-[60px] sm:h-[84px] rounded-lg border border-border bg-white shadow-sm select-none overflow-hidden ${draggable && faceUp ? 'cursor-grab active:cursor-grabbing' : ''} ${isDragging ? 'opacity-50' : ''} ${className}`}
+      style={{ ...style, ...transformStyle, ...(draggable ? { touchAction: 'none' } : {}) }}
     >
       <div className={`p-1 ${colorClass} text-xs font-bold leading-none`}>
         <div>{RANK_LABELS[card.rank]}</div>

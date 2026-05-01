@@ -20,8 +20,8 @@ export function SolitaireBoard({ deck, onWin, savedState, onStateChange }: Board
   const [elapsed, setElapsed] = useState(0);
 
   const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
-    useSensor(TouchSensor, { activationConstraint: { delay: 150, tolerance: 5 } }),
+    useSensor(PointerSensor, { activationConstraint: { distance: 3 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 50, tolerance: 8 } }),
   );
 
   // Start timer on first interaction

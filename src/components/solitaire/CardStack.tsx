@@ -34,7 +34,8 @@ export function TableauColumn({ col, cards, faceUp, onCardClick }: TableauColumn
           draggable={faceUp.has(cardId)}
           dragData={{ source: 'tableau', col, cardIndex: idx }}
           onClick={() => faceUp.has(cardId) && onCardClick?.(cardId)}
-          style={{ marginTop: idx > 0 ? '-47px' : '0', zIndex: idx }}
+          style={{ marginTop: idx > 0 ? '-47px' : '0' }}
+          zIndex={idx}
         />
       ))}
     </div>
