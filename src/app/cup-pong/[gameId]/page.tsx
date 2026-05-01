@@ -1,6 +1,6 @@
 'use client';
 
-import { use, useCallback, useMemo, useEffect, useState } from 'react';
+import { use, useCallback, useMemo, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { useCupPongGame } from '@/hooks/useCupPongGame';
@@ -28,6 +28,7 @@ export default function CupPongGamePage({ params }: { params: Promise<{ gameId: 
   const [showEndDialog, setShowEndDialog] = useState(false);
   const [animating, setAnimating] = useState(false);
   const [displayedThrow, setDisplayedThrow] = useState<ThrowResult | null>(null);
+  const localThrowRef = useRef(false);
 
   useEffect(() => {
     setMyName(getMyName());
@@ -37,9 +38,10 @@ export default function CupPongGamePage({ params }: { params: Promise<{ gameId: 
     if (deleted) router.push('/');
   }, [deleted, router]);
 
-  // When firstThrow arrives from the hook (e.g. opponent's replayed throw), trigger the animation
+  // When firstThrow arrives from polling (opponent's replayed throw), trigger the animation.
+  // Skip if the throw was initiated locally (already handled by handleThrow).
   useEffect(() => {
-    if (firstThrow && !animating) {
+    if (firstThrow && !animating && !localThrowRef.current) {
       setDisplayedThrow(firstThrow);
       setAnimating(true);
     }
@@ -76,13 +78,14 @@ export default function CupPongGamePage({ params }: { params: Promise<{ gameId: 
 
   const handleThrow = useCallback(
     async (direction: ThrowVector, power: number) => {
+      localThrowRef.current = true;
       setAnimating(true);
       const result = await makeThrow(direction, power);
       if (result) {
         setDisplayedThrow(result);
       } else {
-        // No result (error case) — reset animating so the player isn't stuck
         setAnimating(false);
+        localThrowRef.current = false;
       }
     },
     [makeThrow]
@@ -91,6 +94,7 @@ export default function CupPongGamePage({ params }: { params: Promise<{ gameId: 
   const handleAnimationComplete = useCallback(() => {
     setAnimating(false);
     setDisplayedThrow(null);
+    localThrowRef.current = false;
   }, []);
 
   const handleEndGameClick = useCallback(() => {
