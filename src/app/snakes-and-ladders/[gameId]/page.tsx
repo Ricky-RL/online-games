@@ -6,6 +6,8 @@ import { motion } from 'framer-motion';
 import { useSnakesAndLaddersGame } from '@/hooks/useSnakesAndLaddersGame';
 import { Board } from '@/components/snakes-and-ladders/Board';
 import { DiceRoll } from '@/components/snakes-and-ladders/DiceRoll';
+import { TurnReplay } from '@/components/snakes-and-ladders/TurnReplay';
+import { PowerupToast } from '@/components/snakes-and-ladders/PowerupToast';
 import { TurnIndicator } from '@/components/TurnIndicator';
 import { WinCelebration } from '@/components/WinCelebration';
 import { EndGameDialog } from '@/components/EndGameDialog';
@@ -17,7 +19,7 @@ import { useState, useEffect } from 'react';
 export default function SnakesAndLaddersGamePage({ params }: { params: Promise<{ gameId: string }> }) {
   const { gameId } = use(params);
   const router = useRouter();
-  const { game, loading, error, lastMove, deleted, rollDice, resetGame } = useSnakesAndLaddersGame(gameId);
+  const { game, loading, error, lastMove, deleted, replayEvents, isReplaying, activePowerup, rollDice, resetGame, skipReplay, dismissPowerup } = useSnakesAndLaddersGame(gameId);
   const [showEndDialog, setShowEndDialog] = useState(false);
   const [playerName, setPlayerName] = useState<string | null>(null);
 
@@ -74,6 +76,16 @@ export default function SnakesAndLaddersGamePage({ params }: { params: Promise<{
     <div className="flex flex-col items-center min-h-screen px-4 py-8 gap-6">
       <SettingsButton />
 
+      {/* Turn replay overlay */}
+      {isReplaying && replayEvents.length > 0 && (
+        <TurnReplay events={replayEvents} onComplete={skipReplay} />
+      )}
+
+      {/* Own-move powerup toast (non-blocking) */}
+      {!isReplaying && (
+        <PowerupToast powerup={activePowerup} onDismiss={dismissPowerup} />
+      )}
+
       {/* Header */}
       <motion.div
         initial={{ opacity: 0, y: -10 }}
@@ -109,7 +121,7 @@ export default function SnakesAndLaddersGamePage({ params }: { params: Promise<{
           lastRoll={board.lastRoll}
           isMyTurn={isMyTurn}
           onRoll={rollDice}
-          disabled={!!game.winner}
+          disabled={isReplaying || !!game.winner}
         />
       )}
 

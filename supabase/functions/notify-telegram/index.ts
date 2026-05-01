@@ -11,6 +11,7 @@ const GAME_LABELS: Record<string, string> = {
   jenga: "Jenga",
   "snakes-and-ladders": "Snakes & Ladders",
   "word-search": "Word Search",
+  memory: "Memory",
   whiteboard: "Whiteboard",
   wordle: "Wordle",
 };

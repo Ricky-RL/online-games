@@ -15,6 +15,7 @@ interface LeaderboardStats {
     'snakes-and-ladders': { ricky: number; lilian: number; draws: number };
     'monopoly': { ricky: number; lilian: number; draws: number };
     'battleship': { ricky: number; lilian: number; draws: number };
+    'word-search': { ricky: number; lilian: number; draws: number };
     'memory': { ricky: number; lilian: number; draws: number };
   };
   streaks: {
@@ -156,6 +157,12 @@ export function Leaderboard({ stats, onReset, loading }: LeaderboardProps) {
                         ricky={stats.by_game['battleship'].ricky}
                         lilian={stats.by_game['battleship'].lilian}
                         draws={stats.by_game['battleship'].draws}
+                      />
+                      <GameStat
+                        label="Word Search"
+                        ricky={stats.by_game['word-search'].ricky}
+                        lilian={stats.by_game['word-search'].lilian}
+                        draws={stats.by_game['word-search'].draws}
                       />
                       <GameStat
                         label="Memory"

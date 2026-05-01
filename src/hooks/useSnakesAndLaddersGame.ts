@@ -2,9 +2,9 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
-import { makeMove as computeMove, checkWin, rollDice as generateRoll } from '@/lib/snakes-and-ladders-logic';
+import { makeMove as computeMove, checkWin, rollDice as generateRoll, handleSkipTurn, tickRespawns } from '@/lib/snakes-and-ladders-logic';
 import { recordMatchResult } from '@/lib/match-results';
-import type { Player, SnakesAndLaddersState } from '@/lib/types';
+import type { Player, SnakesAndLaddersState, MoveEvent, PowerupType } from '@/lib/types';
 
 const POLL_INTERVAL_MS = 1500;
 
@@ -35,8 +35,13 @@ interface UseSnakesAndLaddersGameReturn {
   error: string | null;
   lastMove: LastMoveInfo | null;
   deleted: boolean;
+  replayEvents: MoveEvent[];
+  isReplaying: boolean;
+  activePowerup: { type: PowerupType; effect: string } | null;
   rollDice: () => Promise<void>;
   resetGame: () => Promise<void>;
+  skipReplay: () => void;
+  dismissPowerup: () => void;
 }
 
 function getMyName(): string | null {
@@ -50,10 +55,24 @@ export function useSnakesAndLaddersGame(gameId: string): UseSnakesAndLaddersGame
   const [error, setError] = useState<string | null>(null);
   const [lastMove, setLastMove] = useState<LastMoveInfo | null>(null);
   const [deleted, setDeleted] = useState(false);
+  const [replayEvents, setReplayEvents] = useState<MoveEvent[]>([]);
+  const [isReplaying, setIsReplaying] = useState(false);
+  const [activePowerup, setActivePowerup] = useState<{ type: PowerupType; effect: string } | null>(null);
   const optimisticBoard = useRef<SnakesAndLaddersState | null>(null);
   const gameRef = useRef<SnakesAndLaddersGame | null>(null);
   const matchRecorded = useRef(false);
   const lastUpdatedAt = useRef<string | null>(null);
+  const lastSeenMoveNumber = useRef<number>(0);
+  const pendingMoveEvents = useRef<MoveEvent[]>([]);
+
+  const skipReplay = useCallback(() => {
+    setReplayEvents([]);
+    setIsReplaying(false);
+  }, []);
+
+  const dismissPowerup = useCallback(() => {
+    setActivePowerup(null);
+  }, []);
 
   const updateGame = useCallback(
     (updater: SnakesAndLaddersGame | null | ((prev: SnakesAndLaddersGame | null) => SnakesAndLaddersGame | null)) => {
@@ -102,6 +121,8 @@ export function useSnakesAndLaddersGame(gameId: string): UseSnakesAndLaddersGame
       if (cancelled) return;
       if (gameData) {
         updateGame(gameData);
+        const board = gameData.board as SnakesAndLaddersState;
+        lastSeenMoveNumber.current = board.moveNumber ?? 0;
       }
       setLoading(false);
     }
@@ -126,28 +147,35 @@ export function useSnakesAndLaddersGame(gameId: string): UseSnakesAndLaddersGame
             optimisticBoard.current = null;
             return fresh;
           }
-          // Guard: don't regress if server is behind our optimistic state
-          if (lastUpdatedAt.current && fresh.updated_at < lastUpdatedAt.current) {
-            return prev;
-          }
-          optimisticBoard.current = null;
+          // Server hasn't confirmed our move yet — keep local state
+          return prev;
         }
 
         if (JSON.stringify(fresh) === JSON.stringify(prev)) return prev;
 
-        // Guard against out-of-order responses
         if (fresh.updated_at < prev.updated_at) return prev;
 
-        // Detect opponent's move
+        // Detect opponent's move via moveNumber
         const freshBoard = fresh.board as SnakesAndLaddersState;
         const prevBoard = prev.board as SnakesAndLaddersState;
-        if (freshBoard.lastRoll && freshBoard.lastRoll !== prevBoard.lastRoll) {
-          const movedPlayer = freshBoard.lastRoll.player;
+
+        if (freshBoard.moveNumber > lastSeenMoveNumber.current && freshBoard.lastMoveEvents.length > 0) {
+          setReplayEvents(freshBoard.lastMoveEvents);
+          setIsReplaying(true);
+          lastSeenMoveNumber.current = freshBoard.moveNumber;
+        }
+
+        const rollChanged = freshBoard.lastRoll &&
+          (freshBoard.lastRoll.player !== prevBoard.lastRoll?.player ||
+           freshBoard.lastRoll.value !== prevBoard.lastRoll?.value ||
+           freshBoard.players[freshBoard.lastRoll.player] !== prevBoard.players[freshBoard.lastRoll.player]);
+        if (rollChanged) {
+          const movedPlayer = freshBoard.lastRoll!.player;
           setLastMove({
             player: movedPlayer,
             from: prevBoard.players[movedPlayer],
             to: freshBoard.players[movedPlayer],
-            roll: freshBoard.lastRoll.value,
+            roll: freshBoard.lastRoll!.value,
           });
         }
 
@@ -188,60 +216,89 @@ export function useSnakesAndLaddersGame(gameId: string): UseSnakesAndLaddersGame
       return;
     }
 
+    let currentBoard = currentGame.board as SnakesAndLaddersState;
+
+    // Tick respawns at start of turn
+    currentBoard = tickRespawns(currentBoard);
+
+    // Check for skip
+    const skipResult = handleSkipTurn(currentBoard, myPlayerNumber);
+    if (skipResult) {
+      const nextTurn: Player = myPlayerNumber === 1 ? 2 : 1;
+      optimisticBoard.current = skipResult;
+      lastSeenMoveNumber.current = skipResult.moveNumber;
+      updateGame((prev) => prev ? { ...prev, board: skipResult, current_turn: nextTurn } : null);
+
+      const { error: skipError } = await supabase.from('games').update({
+        board: skipResult,
+        current_turn: nextTurn,
+        updated_at: new Date().toISOString(),
+      }).eq('id', gameId);
+      if (skipError) {
+        optimisticBoard.current = null;
+        const { data: freshGame } = await supabase.from('games').select('*').eq('id', gameId).single();
+        if (freshGame) updateGame(freshGame as SnakesAndLaddersGame);
+        setError(skipError.message);
+      }
+      return;
+    }
+
     const roll = generateRoll();
-    const currentBoard = currentGame.board as SnakesAndLaddersState;
     const fromPosition = currentBoard.players[myPlayerNumber];
     const newBoard = computeMove(currentBoard, myPlayerNumber, roll);
     const winner = checkWin(newBoard);
 
-    // Extra turn if rolled 6 and didn't win
     const nextTurn: Player = (roll === 6 && !winner)
       ? myPlayerNumber
       : (myPlayerNumber === 1 ? 2 : 1);
 
-    // Optimistic update
-    optimisticBoard.current = newBoard;
+    // Accumulate events for roll-6 chains
+    const currentEvent = newBoard.lastMoveEvents[newBoard.lastMoveEvents.length - 1];
+    if (currentEvent) {
+      pendingMoveEvents.current = [...pendingMoveEvents.current, currentEvent];
+    }
+
+    // When turn passes to opponent, include all accumulated events for replay
+    const boardToSave = nextTurn !== myPlayerNumber
+      ? { ...newBoard, lastMoveEvents: pendingMoveEvents.current }
+      : { ...newBoard, lastMoveEvents: [] };
+
+    // Reset pending events when turn passes
+    if (nextTurn !== myPlayerNumber) {
+      pendingMoveEvents.current = [];
+    }
+
+    optimisticBoard.current = boardToSave;
+    lastSeenMoveNumber.current = boardToSave.moveNumber;
     setLastMove({
       player: myPlayerNumber,
       from: fromPosition,
       to: newBoard.players[myPlayerNumber],
       roll,
     });
-    updateGame((prev) =>
-      prev
-        ? {
-            ...prev,
-            board: newBoard,
-            current_turn: winner ? prev.current_turn : nextTurn,
-            winner,
-          }
-        : null
-    );
+    updateGame((prev) => prev ? { ...prev, board: boardToSave, current_turn: winner ? prev.current_turn : nextTurn, winner } : null);
     setError(null);
 
-    const { error: updateError } = await supabase
-      .from('games')
-      .update({
-        board: newBoard,
-        current_turn: winner ? currentGame.current_turn : nextTurn,
-        winner,
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', gameId);
+    // Show powerup toast for own move (non-blocking)
+    if (currentEvent && currentEvent.powerups.length > 0) {
+      setActivePowerup(currentEvent.powerups[0]);
+    }
+
+    const { error: updateError } = await supabase.from('games').update({
+      board: boardToSave,
+      current_turn: winner ? currentGame.current_turn : nextTurn,
+      winner,
+      updated_at: new Date().toISOString(),
+    }).eq('id', gameId);
 
     if (updateError) {
       optimisticBoard.current = null;
-      const { data: freshGame } = await supabase
-        .from('games')
-        .select('*')
-        .eq('id', gameId)
-        .single();
+      const { data: freshGame } = await supabase.from('games').select('*').eq('id', gameId).single();
       if (freshGame) updateGame(freshGame as SnakesAndLaddersGame);
       setError(updateError.message);
       return;
     }
 
-    // Record match result on win
     if (winner && !matchRecorded.current) {
       matchRecorded.current = true;
       const winnerName = winner === 1 ? currentGame.player1_name : currentGame.player2_name;
@@ -270,7 +327,19 @@ export function useSnakesAndLaddersGame(gameId: string): UseSnakesAndLaddersGame
       .from('games')
       .update({
         game_type: 'ended',
-        board: { players: { 1: 1, 2: 1 }, snakes: {}, ladders: {}, lastRoll: null },
+        board: {
+          players: { 1: 1, 2: 1 },
+          snakes: {},
+          ladders: {},
+          lastRoll: null,
+          moveNumber: 0,
+          powerups: {},
+          powerupRespawns: [],
+          lastMoveEvents: [],
+          skipNextTurn: null,
+          shielded: null,
+          doubleDice: null,
+        },
         current_turn: 1,
         winner: null,
         player1_name: null,
@@ -299,5 +368,5 @@ export function useSnakesAndLaddersGame(gameId: string): UseSnakesAndLaddersGame
     setDeleted(true);
   }, [gameId]);
 
-  return { game, loading, error, lastMove, deleted, rollDice, resetGame };
+  return { game, loading, error, lastMove, deleted, replayEvents, isReplaying, activePowerup, rollDice, resetGame, skipReplay, dismissPowerup };
 }

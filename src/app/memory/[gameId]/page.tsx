@@ -80,6 +80,8 @@ export default function MemoryGamePage({ params }: { params: Promise<{ gameId: s
   }, [game, myPlayerNumber]);
 
   // 2.5 second reveal timer for non-matching cards
+  // The opponent (whose turn it now is) sees cards for 2.5s to memorize.
+  // The flipper's cards go back immediately since they already saw them.
   useEffect(() => {
     if (!game) return;
 
@@ -95,33 +97,39 @@ export default function MemoryGamePage({ params }: { params: Promise<{ gameId: s
     prevLastFlipped.current = lastFlipped;
 
     if (isNewFlip && lastFlipResult === 'no-match' && lastFlipped) {
-      // Show the non-matching cards
-      setRevealedCards(lastFlipped);
-
-      // Clear any existing timer
       if (revealTimerRef.current) {
         clearTimeout(revealTimerRef.current);
+        revealTimerRef.current = null;
       }
 
-      revealTimerRef.current = setTimeout(() => {
+      // I'm the opponent (it's now my turn) — show cards for 2.5s
+      if (isMyTurn) {
+        setRevealedCards(lastFlipped);
+        revealTimerRef.current = setTimeout(() => {
+          setRevealedCards(null);
+          revealTimerRef.current = null;
+        }, REVEAL_DURATION_MS);
+      } else {
+        // I'm the flipper — cards go back immediately
         setRevealedCards(null);
-        revealTimerRef.current = null;
-      }, REVEAL_DURATION_MS);
+      }
     } else if (isNewFlip && lastFlipResult === 'match') {
-      // On a match, clear any lingering reveal state immediately
       setRevealedCards(null);
       if (revealTimerRef.current) {
         clearTimeout(revealTimerRef.current);
         revealTimerRef.current = null;
       }
     }
+  }, [game, isMyTurn]);
 
+  // Cleanup timer only on unmount
+  useEffect(() => {
     return () => {
       if (revealTimerRef.current) {
         clearTimeout(revealTimerRef.current);
       }
     };
-  }, [game]);
+  }, []);
 
   const { permissionState, requestPermission, isMuted, toggleMute } = useNotifications({
     gameId,
