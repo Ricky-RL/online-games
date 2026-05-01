@@ -28,6 +28,7 @@ function getMyName(): string | null {
 }
 
 const REVEAL_DURATION_MS = 2500;
+const FLIPPER_REVEAL_DURATION_MS = 1500;
 
 export default function MemoryGamePage({ params }: { params: Promise<{ gameId: string }> }) {
   const { gameId } = use(params);
@@ -79,13 +80,20 @@ export default function MemoryGamePage({ params }: { params: Promise<{ gameId: s
     return myPlayerNumber === 1 ? game.player2_name : game.player1_name;
   }, [game, myPlayerNumber]);
 
-  // 2.5 second reveal timer for non-matching cards
-  // The opponent (whose turn it now is) sees cards for 2.5s to memorize.
-  // The flipper's cards go back immediately since they already saw them.
+  // Reveal timer for flipped cards.
+  // Opponent sees cards for 2.5s to memorize; flipper sees them for 1.2s to confirm result.
+  const isFirstMount = useRef(true);
   useEffect(() => {
     if (!game) return;
 
     const { lastFlipped, lastFlipResult } = game.board;
+
+    // Skip processing stale lastFlipped on initial mount
+    if (isFirstMount.current) {
+      isFirstMount.current = false;
+      prevLastFlipped.current = lastFlipped;
+      return;
+    }
 
     // Detect a new lastFlipped value (different from previous)
     const isNewFlip =
@@ -102,23 +110,24 @@ export default function MemoryGamePage({ params }: { params: Promise<{ gameId: s
         revealTimerRef.current = null;
       }
 
-      // I'm the opponent (it's now my turn) — show cards for 2.5s
-      if (isMyTurn) {
-        setRevealedCards(lastFlipped);
-        revealTimerRef.current = setTimeout(() => {
-          setRevealedCards(null);
-          revealTimerRef.current = null;
-        }, REVEAL_DURATION_MS);
-      } else {
-        // I'm the flipper — cards go back immediately
+      // Show both flipped cards — longer for opponent (to memorize), shorter for flipper (to see result)
+      const duration = isMyTurn ? REVEAL_DURATION_MS : FLIPPER_REVEAL_DURATION_MS;
+      setRevealedCards(lastFlipped);
+      revealTimerRef.current = setTimeout(() => {
         setRevealedCards(null);
-      }
+        revealTimerRef.current = null;
+      }, duration);
     } else if (isNewFlip && lastFlipResult === 'match') {
-      setRevealedCards(null);
+      // Cards stay revealed via matched state; clear revealedCards after a brief pause
       if (revealTimerRef.current) {
         clearTimeout(revealTimerRef.current);
         revealTimerRef.current = null;
       }
+      // Brief delay so the player sees both cards face-up together before continuing
+      revealTimerRef.current = setTimeout(() => {
+        setRevealedCards(null);
+        revealTimerRef.current = null;
+      }, FLIPPER_REVEAL_DURATION_MS);
     }
   }, [game, isMyTurn]);
 
@@ -161,9 +170,16 @@ export default function MemoryGamePage({ params }: { params: Promise<{ gameId: s
   const handleFlipCard = useCallback(
     async (cardIndex: number) => {
       play('drop');
+
+      if (firstFlip !== null && cardIndex !== firstFlip) {
+        setRevealedCards([firstFlip, cardIndex]);
+        // Defer flipCard so revealedCards renders before firstFlip is cleared
+        await new Promise((r) => setTimeout(r, 0));
+      }
+
       await flipCard(cardIndex);
     },
-    [flipCard, play]
+    [flipCard, play, firstFlip]
   );
 
   const handleReset = useCallback(async () => {
