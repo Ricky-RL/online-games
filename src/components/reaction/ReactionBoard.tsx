@@ -5,8 +5,9 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { ReactionTarget } from './ReactionTarget';
 import {
   GAME_DURATION_MS,
-  INITIAL_SPAWN_INTERVAL_MS,
-  getNextSpawnInterval,
+  CIRCLE_LIFETIME_MS,
+  getRandomPosition,
+  getRandomRespawnDelay,
 } from '@/lib/reaction-logic';
 import type { ReactionBoardState } from '@/lib/reaction-logic';
 import type { Player } from '@/lib/types';
@@ -49,28 +50,41 @@ export function ReactionBoard({
 
   const scoreRef = useRef(0);
   const circleIdRef = useRef(0);
-  const tappedRef = useRef(new Set<number>());
-  const spawnIntervalRef = useRef(INITIAL_SPAWN_INTERVAL_MS);
-  const spawnTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const respawnTimerRef = useRef<NodeJS.Timeout | null>(null);
   const gameTimerRef = useRef<NodeJS.Timeout | null>(null);
   const tickRef = useRef<NodeJS.Timeout | null>(null);
+  const lifetimeTimerRef = useRef<NodeJS.Timeout | null>(null);
   const startTimeRef = useRef(0);
+  const circlesRef = useRef<ActiveCircle[]>([]);
+  const gameActiveRef = useRef(false);
 
   const spawnCircle = useCallback(() => {
+    if (!gameActiveRef.current) return;
     const id = circleIdRef.current++;
-    const x = Math.floor(Math.random() * 60) + 20;
-    const y = Math.floor(Math.random() * 60) + 20;
-    setCircles((prev) => [...prev, { id, x, y, spawnedAt: Date.now() }]);
+    const { x, y } = getRandomPosition();
+    const newCircle = { id, x, y, spawnedAt: Date.now() };
+    circlesRef.current = [newCircle];
+    setCircles([newCircle]);
 
-    spawnIntervalRef.current = getNextSpawnInterval(spawnIntervalRef.current);
-    spawnTimerRef.current = setTimeout(spawnCircle, spawnIntervalRef.current);
+    // Auto-expire after lifetime if not tapped
+    if (lifetimeTimerRef.current) clearTimeout(lifetimeTimerRef.current);
+    lifetimeTimerRef.current = setTimeout(() => {
+      if (!gameActiveRef.current) return;
+      // Circle expired without being tapped — spawn next after random delay
+      circlesRef.current = [];
+      setCircles([]);
+      respawnTimerRef.current = setTimeout(spawnCircle, getRandomRespawnDelay());
+    }, CIRCLE_LIFETIME_MS);
   }, []);
 
   const endGame = useCallback(() => {
-    if (spawnTimerRef.current) clearTimeout(spawnTimerRef.current);
+    gameActiveRef.current = false;
+    if (respawnTimerRef.current) clearTimeout(respawnTimerRef.current);
+    if (lifetimeTimerRef.current) clearTimeout(lifetimeTimerRef.current);
     if (gameTimerRef.current) clearTimeout(gameTimerRef.current);
     if (tickRef.current) clearInterval(tickRef.current);
     setPhase('done');
+    circlesRef.current = [];
     setCircles([]);
     setTimeLeft(0);
   }, []);
@@ -91,10 +105,10 @@ export function ReactionBoard({
     setCountdown(3);
     setScore(0);
     scoreRef.current = 0;
-    tappedRef.current = new Set();
+    circlesRef.current = [];
     setCircles([]);
     setSubmitted(false);
-    spawnIntervalRef.current = INITIAL_SPAWN_INTERVAL_MS;
+    gameActiveRef.current = false;
 
     const countdownTimer = setInterval(() => {
       setCountdown((prev) => {
@@ -102,8 +116,9 @@ export function ReactionBoard({
           clearInterval(countdownTimer);
           setPhase('playing');
           startTimeRef.current = Date.now();
+          gameActiveRef.current = true;
 
-          // Start spawning circles
+          // Spawn the first circle immediately
           spawnCircle();
 
           // End game after duration
@@ -127,31 +142,31 @@ export function ReactionBoard({
 
     return () => {
       clearInterval(countdownTimer);
-      if (spawnTimerRef.current) clearTimeout(spawnTimerRef.current);
+      gameActiveRef.current = false;
+      if (respawnTimerRef.current) clearTimeout(respawnTimerRef.current);
+      if (lifetimeTimerRef.current) clearTimeout(lifetimeTimerRef.current);
       if (gameTimerRef.current) clearTimeout(gameTimerRef.current);
       if (tickRef.current) clearInterval(tickRef.current);
     };
   }, [isMyTurn, spawnCircle, endGame]);
 
   const handleCircleTap = useCallback((circleId: number) => {
-    if (tappedRef.current.has(circleId)) return;
-    tappedRef.current.add(circleId);
-    setCircles((prev) => prev.filter((c) => c.id !== circleId));
+    // Remove tapped circle
+    circlesRef.current = [];
+    setCircles([]);
     scoreRef.current += 1;
     setScore((s) => s + 1);
-  }, []);
 
-  // Remove circles after 2 seconds if not tapped
-  useEffect(() => {
-    if (phase !== 'playing') return;
+    // Clear the lifetime timer since circle was tapped
+    if (lifetimeTimerRef.current) clearTimeout(lifetimeTimerRef.current);
 
-    const cleanup = setInterval(() => {
-      const now = Date.now();
-      setCircles((prev) => prev.filter((c) => now - c.spawnedAt < 2000));
-    }, 200);
+    // Spawn next circle after a random delay (100-500ms)
+    if (respawnTimerRef.current) clearTimeout(respawnTimerRef.current);
+    respawnTimerRef.current = setTimeout(() => {
+      spawnCircle();
+    }, getRandomRespawnDelay());
+  }, [spawnCircle]);
 
-    return () => clearInterval(cleanup);
-  }, [phase]);
 
   if (!isMyTurn) {
     const opponentScore = myPlayerNumber === 1 ? board.player2Score : board.player1Score;
@@ -286,7 +301,7 @@ export function ReactionBoard({
           {phase === 'countdown'
             ? 'Get ready to tap circles!'
             : phase === 'playing'
-            ? 'Tap circles before they disappear!'
+            ? 'Tap as many circles as you can!'
             : 'Submitting your score...'}
         </p>
       </div>

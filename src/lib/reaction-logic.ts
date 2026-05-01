@@ -5,9 +5,17 @@ export interface ReactionBoardState {
 }
 
 export const GAME_DURATION_MS = 10000;
-export const INITIAL_SPAWN_INTERVAL_MS = 1200;
-export const MIN_SPAWN_INTERVAL_MS = 300;
-export const ACCELERATION_FACTOR = 0.92;
+/** Minimum delay (ms) before next circle spawns after a tap */
+export const RESPAWN_DELAY_MIN_MS = 100;
+/** Maximum delay (ms) before next circle spawns after a tap */
+export const RESPAWN_DELAY_MAX_MS = 500;
+/** How long a circle stays before disappearing if not tapped (ms) */
+export const CIRCLE_LIFETIME_MS = 2000;
+
+/** Get a random respawn delay between min and max */
+export function getRandomRespawnDelay(): number {
+  return Math.floor(Math.random() * (RESPAWN_DELAY_MAX_MS - RESPAWN_DELAY_MIN_MS + 1)) + RESPAWN_DELAY_MIN_MS;
+}
 
 export function createReactionBoard(): ReactionBoardState {
   return {
@@ -58,6 +66,9 @@ export function isDraw(board: ReactionBoardState): boolean {
   return board.player1Score === board.player2Score;
 }
 
-export function getNextSpawnInterval(currentInterval: number): number {
-  return Math.max(MIN_SPAWN_INTERVAL_MS, currentInterval * ACCELERATION_FACTOR);
+export function getRandomPosition(): { x: number; y: number } {
+  return {
+    x: Math.floor(Math.random() * 60) + 20,
+    y: Math.floor(Math.random() * 60) + 20,
+  };
 }
