@@ -12,8 +12,14 @@ const GAME_LABELS: Record<string, string> = {
   "snakes-and-ladders": "Snakes & Ladders",
   "word-search": "Word Search",
   memory: "Memory",
+  jeopardy: "Jeopardy",
+  pool: "Pool",
+  reaction: "Reaction",
+  sudoku: "Sudoku",
   whiteboard: "Whiteboard",
   wordle: "Wordle",
+  "math-trivia": "Math Trivia",
+  "cup-pong": "Cup Pong",
   solitaire: "Solitaire",
 };
 
@@ -25,7 +31,7 @@ interface TurnPayload {
   updated_at: string;
   whiteboard_action?: string;
   whiteboard_preview?: string;
-  notification_type?: "turn" | "game_won" | "game_lost" | "game_draw";
+  notification_type?: "turn" | "game_created" | "game_won" | "game_lost" | "game_draw";
 }
 
 Deno.serve(async (req) => {
@@ -99,6 +105,14 @@ Deno.serve(async (req) => {
       `*${opponent_name}* ${actionLabel} the whiteboard${previewLine}\n` +
       `*Time:* ${timestamp}\n\n` +
       `[View whiteboard](${playLink})`;
+  } else if (notification_type === "game_created") {
+    const playLink = `${appUrl}/${game_type}/${game_id}`;
+    message =
+      `🆕 *New game started!*\n\n` +
+      `*Game:* ${gameLabel}\n` +
+      `*${opponent_name}* is waiting for you\n` +
+      `*Time:* ${timestamp}\n\n` +
+      `[Join game](${playLink})`;
   } else if (game_type === "solitaire") {
     const playLink = `${appUrl}/solitaire/${game_id}`;
     // Fetch the game row to check player1's result

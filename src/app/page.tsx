@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useState, useEffect, useCallback } from 'react';
+import { useRef, useState, useEffect, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion, useInView, AnimatePresence } from 'framer-motion';
 import { SettingsButton } from '@/components/SettingsButton';
@@ -8,6 +8,7 @@ import { Leaderboard } from '@/components/Leaderboard';
 import { MatchHistory } from '@/components/MatchHistory';
 import { ResetStatsDialog } from '@/components/ResetStatsDialog';
 import { useMatchHistory } from '@/hooks/useMatchHistory';
+import { useFavorites } from '@/hooks/useFavorites';
 import { Inbox } from '@/components/inbox';
 import { type PlayerName, PLAYER_IDS } from '@/lib/players';
 import {
@@ -26,7 +27,7 @@ import {
 } from '@dnd-kit/sortable';
 import { SortableGameCard } from '@/components/SortableGameCard';
 import { useGameOrder } from '@/hooks/useGameOrder';
-import { DEFAULT_GAME_ORDER, DEFAULT_SLUG_ORDER } from '@/lib/game-registry';
+import { DEFAULT_GAME_ORDER, DEFAULT_SLUG_ORDER, type GameCategory } from '@/lib/game-registry';
 
 interface ClickableGameCardProps {
   title: string;
@@ -36,9 +37,11 @@ interface ClickableGameCardProps {
   delay?: number;
   onClick: () => void;
   loading?: boolean;
+  isFavorite?: boolean;
+  onToggleFavorite?: () => void;
 }
 
-function ClickableGameCard({ title, description, color, icon, delay = 0, onClick, loading }: ClickableGameCardProps) {
+function ClickableGameCard({ title, description, color, icon, delay = 0, onClick, loading, isFavorite, onToggleFavorite }: ClickableGameCardProps) {
   const ref = useRef<HTMLButtonElement>(null);
   const isInView = useInView(ref, { once: true, margin: '-50px' });
 
@@ -54,6 +57,46 @@ function ClickableGameCard({ title, description, color, icon, delay = 0, onClick
         disabled={loading}
         className="group block relative overflow-hidden rounded-3xl border border-border bg-surface p-8 sm:p-10 transition-all duration-300 hover:shadow-xl hover:shadow-black/[0.03] hover:-translate-y-1 hover:border-transparent w-full text-left cursor-pointer disabled:opacity-70 disabled:cursor-wait"
       >
+        {/* Heart favorite button */}
+        {onToggleFavorite && (
+          <motion.div
+            className="absolute top-4 right-4 z-10"
+            whileTap={{ scale: 1.3 }}
+            transition={{ type: 'spring', stiffness: 400, damping: 10 }}
+          >
+            <div
+              role="switch"
+              aria-checked={isFavorite}
+              aria-label={isFavorite ? 'Remove from favorites' : 'Add to favorites'}
+              onClick={(e) => {
+                e.stopPropagation();
+                e.preventDefault();
+                onToggleFavorite();
+              }}
+              onPointerDown={(e) => e.stopPropagation()}
+              className="w-8 h-8 flex items-center justify-center rounded-full bg-surface/80 backdrop-blur-sm border border-border/50 hover:bg-surface-hover transition-colors cursor-pointer"
+            >
+              <motion.svg
+                width="18"
+                height="18"
+                viewBox="0 0 24 24"
+                fill={isFavorite ? '#E63946' : 'none'}
+                stroke={isFavorite ? '#E63946' : 'currentColor'}
+                strokeWidth={2}
+                className={isFavorite ? '' : 'text-text-secondary'}
+                animate={isFavorite ? { scale: [1, 1.2, 1] } : { scale: 1 }}
+                transition={{ duration: 0.3 }}
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"
+                />
+              </motion.svg>
+            </div>
+          </motion.div>
+        )}
+
         {/* Subtle gradient overlay on hover */}
         <div
           className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500"
@@ -242,6 +285,27 @@ function MonopolyIcon() {
   );
 }
 
+function PoolIcon() {
+  return (
+    <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
+      <circle cx="10" cy="11" r="4" fill="#FFD700" opacity="0.9" />
+      <circle cx="18" cy="11" r="4" fill="#0000FF" opacity="0.9" />
+      <circle cx="14" cy="18" r="4" fill="#000000" opacity="0.9" />
+    </svg>
+  );
+}
+
+function CupPongIcon() {
+  return (
+    <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
+      <circle cx="14" cy="14" r="10" fill="#E63946" opacity="0.8" />
+      <circle cx="14" cy="14" r="6" fill="#E63946" opacity="0.5" />
+      <circle cx="14" cy="14" r="3" fill="rgba(0,0,0,0.2)" />
+      <circle cx="22" cy="8" r="3" fill="#FFFFFF" opacity="0.9" />
+    </svg>
+  );
+}
+
 function MemoryIcon() {
   return (
     <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
@@ -251,6 +315,40 @@ function MemoryIcon() {
       <rect x="15" y="15" width="10" height="10" rx="2" stroke="#9B59B6" strokeWidth="2" opacity="0.9" />
       <circle cx="8" cy="8" r="2" fill="#9B59B6" opacity="0.5" />
       <circle cx="20" cy="20" r="2" fill="#9B59B6" opacity="0.5" />
+    </svg>
+  );
+}
+
+function MathTriviaIcon() {
+  return (
+    <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
+      <rect x="2" y="2" width="24" height="24" rx="3" stroke="#F97316" strokeWidth="2" fill="none" opacity="0.8" />
+      <text x="5" y="13" fontSize="7" fill="#F97316" opacity="0.9" fontFamily="monospace" fontWeight="bold">1+2</text>
+      <text x="5" y="23" fontSize="7" fill="#F97316" opacity="0.7" fontFamily="monospace" fontWeight="bold">3×4</text>
+    </svg>
+  );
+}
+
+function ReactionIcon() {
+  return (
+    <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
+      <path d="M16 3L6 16h6l-2 9 10-13h-6l2-9z" fill="#FF6B35" opacity="0.9" />
+    </svg>
+  );
+}
+
+function SudokuIcon() {
+  return (
+    <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
+      <rect x="2" y="2" width="7" height="7" rx="1" stroke="#4A90D9" strokeWidth="1.5" opacity="0.8" />
+      <rect x="10.5" y="2" width="7" height="7" rx="1" stroke="#4A90D9" strokeWidth="1.5" opacity="0.6" />
+      <rect x="19" y="2" width="7" height="7" rx="1" stroke="#4A90D9" strokeWidth="1.5" opacity="0.8" />
+      <rect x="2" y="10.5" width="7" height="7" rx="1" stroke="#4A90D9" strokeWidth="1.5" opacity="0.6" />
+      <rect x="10.5" y="10.5" width="7" height="7" rx="1" stroke="#4A90D9" strokeWidth="1.5" opacity="0.8" />
+      <rect x="19" y="10.5" width="7" height="7" rx="1" stroke="#4A90D9" strokeWidth="1.5" opacity="0.6" />
+      <rect x="2" y="19" width="7" height="7" rx="1" stroke="#4A90D9" strokeWidth="1.5" opacity="0.8" />
+      <rect x="10.5" y="19" width="7" height="7" rx="1" stroke="#4A90D9" strokeWidth="1.5" opacity="0.6" />
+      <rect x="19" y="19" width="7" height="7" rx="1" stroke="#4A90D9" strokeWidth="1.5" opacity="0.8" />
     </svg>
   );
 }
@@ -304,8 +402,11 @@ function GameSelection({ playerName, onChangePlayer }: { playerName: PlayerName;
   const [showResetDialog, setShowResetDialog] = useState(false);
   const { results, stats, loading, clearAll } = useMatchHistory();
   const { order, loading: orderLoading, saveOrder, resetOrder } = useGameOrder(playerName);
+  const { favorites, toggleFavorite, isFavorite } = useFavorites(playerName);
   const [editMode, setEditMode] = useState(false);
   const [editOrder, setEditOrder] = useState<string[]>(order);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [activeCategories, setActiveCategories] = useState<GameCategory[]>([]);
 
   useEffect(() => {
     if (!editMode) {
@@ -317,6 +418,49 @@ function GameSelection({ playerName, onChangePlayer }: { playerName: PlayerName;
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
     useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 5 } }),
   );
+
+  // Derive all categories that exist in the registry
+  const allCategories = useMemo<GameCategory[]>(() => {
+    const cats = new Set<GameCategory>();
+    DEFAULT_GAME_ORDER.forEach((g) => g.categories.forEach((c) => cats.add(c)));
+    return Array.from(cats);
+  }, []);
+
+  // Filter the order list based on search query and active category filters
+  const filteredOrder = useMemo(() => {
+    const currentOrder = editMode ? editOrder : order;
+    if (!searchQuery && activeCategories.length === 0) return currentOrder;
+
+    return currentOrder.filter((slug) => {
+      const game = DEFAULT_GAME_ORDER.find((g) => g.slug === slug);
+      if (!game) return false;
+
+      // Search filter (AND with categories)
+      if (searchQuery) {
+        const q = searchQuery.toLowerCase();
+        const matchesSearch =
+          game.title.toLowerCase().includes(q) ||
+          game.description.toLowerCase().includes(q);
+        if (!matchesSearch) return false;
+      }
+
+      // Category filter (OR logic among active categories)
+      if (activeCategories.length > 0) {
+        const matchesCategory = activeCategories.some((cat) =>
+          game.categories.includes(cat),
+        );
+        if (!matchesCategory) return false;
+      }
+
+      return true;
+    });
+  }, [editMode, editOrder, order, searchQuery, activeCategories]);
+
+  function toggleCategory(cat: GameCategory) {
+    setActiveCategories((prev) =>
+      prev.includes(cat) ? prev.filter((c) => c !== cat) : [...prev, cat],
+    );
+  }
 
   function handleDragEnd(event: DragEndEvent) {
     const { active, over } = event;
@@ -910,6 +1054,11 @@ function GameSelection({ playerName, onChangePlayer }: { playerName: PlayerName;
     'word-search': { icon: <WordSearchIcon />, onClick: () => router.push('/word-search') },
     'monopoly': { icon: <MonopolyIcon />, onClick: handlePlayMonopolyGame, loading: connecting === 'monopoly' },
     'memory': { icon: <MemoryIcon />, onClick: () => router.push('/memory') },
+    'math-trivia': { icon: <MathTriviaIcon />, onClick: () => router.push('/math-trivia') },
+    'pool': { icon: <PoolIcon />, onClick: () => router.push('/pool') },
+    'cup-pong': { icon: <CupPongIcon />, onClick: () => router.push('/cup-pong') },
+    'reaction': { icon: <ReactionIcon />, onClick: () => router.push('/reaction') },
+    'sudoku': { icon: <SudokuIcon />, onClick: () => router.push('/sudoku') },
     'solitaire': { icon: <SolitaireIcon />, onClick: () => router.push('/solitaire') },
   };
 
@@ -973,6 +1122,48 @@ function GameSelection({ playerName, onChangePlayer }: { playerName: PlayerName;
         </div>
       )}
 
+      {/* Search and category filters (hidden in edit mode) */}
+      {!editMode && (
+        <div className="max-w-5xl mx-auto mb-8 space-y-4">
+          {/* Search input */}
+          <div className="relative">
+            <svg
+              className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-text-secondary/50"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              strokeWidth={2}
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search games..."
+              className="w-full pl-12 pr-4 py-3 rounded-2xl border border-border bg-surface text-text-primary placeholder:text-text-secondary/50 focus:outline-none focus:ring-2 focus:ring-[#E63946]/30 focus:border-[#E63946]/50 transition-all"
+            />
+          </div>
+
+          {/* Category filter pills */}
+          <div className="flex flex-wrap gap-2">
+            {allCategories.map((cat) => (
+              <button
+                key={cat}
+                onClick={() => toggleCategory(cat)}
+                className={`px-4 py-1.5 text-sm font-medium rounded-full border transition-all cursor-pointer ${
+                  activeCategories.includes(cat)
+                    ? 'bg-player1 text-white border-transparent'
+                    : 'border-border text-text-secondary hover:text-text-primary hover:bg-surface-hover'
+                }`}
+              >
+                {cat}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Leaderboard */}
       {stats && (
         <Leaderboard
@@ -985,6 +1176,54 @@ function GameSelection({ playerName, onChangePlayer }: { playerName: PlayerName;
       {/* Inbox */}
       <Inbox playerName={playerName} />
 
+      {/* Favorites section */}
+      {favorites.length > 0 && (
+        <div className="max-w-5xl mx-auto mb-10">
+          <div className="flex items-center gap-2 mb-5">
+            <svg
+              width="18"
+              height="18"
+              viewBox="0 0 24 24"
+              fill="#E63946"
+              stroke="#E63946"
+              strokeWidth={2}
+              className="opacity-80"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"
+              />
+            </svg>
+            <h2 className="text-lg font-semibold text-text-primary">Favorites</h2>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+            {order
+              .filter((slug) => favorites.includes(slug))
+              .map((slug, index) => {
+                const game = DEFAULT_GAME_ORDER.find((g) => g.slug === slug);
+                const props = gameProps[slug];
+                if (!game || !props) return null;
+
+                return (
+                  <ClickableGameCard
+                    key={`fav-${slug}`}
+                    title={game.title}
+                    description={game.description}
+                    color={game.color}
+                    icon={props.icon}
+                    delay={index * 0.05}
+                    onClick={props.onClick}
+                    loading={props.loading}
+                    isFavorite={true}
+                    onToggleFavorite={() => toggleFavorite(slug)}
+                  />
+                );
+              })}
+          </div>
+        </div>
+      )}
+
       {/* Games grid */}
       <div className="max-w-5xl mx-auto">
         <DndContext
@@ -994,67 +1233,101 @@ function GameSelection({ playerName, onChangePlayer }: { playerName: PlayerName;
         >
           <SortableContext items={editMode ? editOrder : order} strategy={rectSortingStrategy}>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-              {(editMode ? editOrder : order).map((slug, index) => {
-                const game = DEFAULT_GAME_ORDER.find((g) => g.slug === slug);
-                const props = gameProps[slug];
-                if (!game || !props) return null;
+              <AnimatePresence mode="popLayout">
+                {filteredOrder.map((slug, index) => {
+                  const game = DEFAULT_GAME_ORDER.find((g) => g.slug === slug);
+                  const props = gameProps[slug];
+                  if (!game || !props) return null;
 
-                if (slug === 'wordle' && !editMode && showWordleMode) {
-                  return (
-                    <SortableGameCard key={slug} id={slug} editMode={false}>
+                  if (slug === 'wordle' && !editMode && showWordleMode) {
+                    return (
                       <motion.div
-                        initial={{ opacity: 0, scale: 0.95 }}
+                        key={slug}
+                        layout
+                        initial={{ opacity: 0, scale: 0.9 }}
                         animate={{ opacity: 1, scale: 1 }}
-                        className="relative rounded-3xl border border-border bg-surface p-6 flex flex-col items-center justify-center gap-4"
+                        exit={{ opacity: 0, scale: 0.9 }}
+                        transition={{ duration: 0.25 }}
                       >
-                        <button
-                          onClick={() => setShowWordleMode(false)}
-                          className="absolute top-3 right-3 text-text-secondary hover:text-text-primary text-lg cursor-pointer"
-                        >
-                          ✕
-                        </button>
-                        <div className="text-2xl">
-                          <WordleIcon />
-                        </div>
-                        <p className="text-sm font-medium text-text-secondary">Choose mode</p>
-                        <div className="flex gap-3 w-full">
-                          <button
-                            onClick={() => { setShowWordleMode(false); handlePlayWordle(); }}
-                            disabled={connecting === 'wordle'}
-                            className="flex-1 px-4 py-2.5 text-sm font-medium rounded-xl border border-border bg-surface text-text-primary hover:bg-surface-hover shadow-sm hover:shadow transition-all cursor-pointer disabled:opacity-50"
+                        <SortableGameCard id={slug} editMode={false}>
+                          <motion.div
+                            initial={{ opacity: 0, scale: 0.95 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            className="relative rounded-3xl border border-border bg-surface p-6 flex flex-col items-center justify-center gap-4"
                           >
-                            Random
-                          </button>
-                          <button
-                            onClick={() => { setShowWordleMode(false); handlePlayDailyWordle(); }}
-                            disabled={connecting === 'wordle'}
-                            className="flex-1 px-4 py-2.5 text-sm font-medium rounded-xl border border-[#538D4E]/30 bg-[#538D4E]/10 text-[#538D4E] hover:bg-[#538D4E]/20 shadow-sm hover:shadow transition-all cursor-pointer disabled:opacity-50"
-                          >
-                            Daily
-                          </button>
-                        </div>
+                            <button
+                              onClick={() => setShowWordleMode(false)}
+                              className="absolute top-3 right-3 text-text-secondary hover:text-text-primary text-lg cursor-pointer"
+                            >
+                              ✕
+                            </button>
+                            <div className="text-2xl">
+                              <WordleIcon />
+                            </div>
+                            <p className="text-sm font-medium text-text-secondary">Choose mode</p>
+                            <div className="flex gap-3 w-full">
+                              <button
+                                onClick={() => { setShowWordleMode(false); handlePlayWordle(); }}
+                                disabled={connecting === 'wordle'}
+                                className="flex-1 px-4 py-2.5 text-sm font-medium rounded-xl border border-border bg-surface text-text-primary hover:bg-surface-hover shadow-sm hover:shadow transition-all cursor-pointer disabled:opacity-50"
+                              >
+                                Random
+                              </button>
+                              <button
+                                onClick={() => { setShowWordleMode(false); handlePlayDailyWordle(); }}
+                                disabled={connecting === 'wordle'}
+                                className="flex-1 px-4 py-2.5 text-sm font-medium rounded-xl border border-[#538D4E]/30 bg-[#538D4E]/10 text-[#538D4E] hover:bg-[#538D4E]/20 shadow-sm hover:shadow transition-all cursor-pointer disabled:opacity-50"
+                              >
+                                Daily
+                              </button>
+                            </div>
+                          </motion.div>
+                        </SortableGameCard>
                       </motion.div>
-                    </SortableGameCard>
-                  );
-                }
+                    );
+                  }
 
-                return (
-                  <SortableGameCard key={slug} id={slug} editMode={editMode}>
-                    <ClickableGameCard
-                      title={game.title}
-                      description={game.description}
-                      color={game.color}
-                      icon={props.icon}
-                      delay={index * 0.05}
-                      onClick={editMode ? () => {} : props.onClick}
-                      loading={!editMode && props.loading}
-                    />
-                  </SortableGameCard>
-                );
-              })}
+                  return (
+                    <motion.div
+                      key={slug}
+                      layout
+                      initial={{ opacity: 0, scale: 0.9 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      exit={{ opacity: 0, scale: 0.9 }}
+                      transition={{ duration: 0.25 }}
+                    >
+                      <SortableGameCard id={slug} editMode={editMode}>
+                        <ClickableGameCard
+                          title={game.title}
+                          description={game.description}
+                          color={game.color}
+                          icon={props.icon}
+                          delay={index * 0.05}
+                          onClick={editMode ? () => {} : props.onClick}
+                          loading={!editMode && props.loading}
+                          isFavorite={isFavorite(slug)}
+                          onToggleFavorite={editMode ? undefined : () => toggleFavorite(slug)}
+                        />
+                      </SortableGameCard>
+                    </motion.div>
+                  );
+                })}
+              </AnimatePresence>
             </div>
           </SortableContext>
         </DndContext>
+
+        {/* No games found message */}
+        {!editMode && filteredOrder.length === 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="flex flex-col items-center justify-center py-16 text-center"
+          >
+            <p className="text-lg text-text-secondary">No games found</p>
+            <p className="text-sm text-text-secondary/60 mt-1">Try a different search or filter</p>
+          </motion.div>
+        )}
       </div>
 
       {/* Match History */}

@@ -3,13 +3,13 @@ import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 interface MatchResult {
   id: string;
-  game_type: 'connect-four' | 'tic-tac-toe' | 'wordle' | 'mini-golf' | 'jenga' | 'snakes-and-ladders' | 'word-search' | 'monopoly' | 'battleship' | 'memory' | 'solitaire';
+  game_type: 'connect-four' | 'tic-tac-toe' | 'wordle' | 'mini-golf' | 'jenga' | 'snakes-and-ladders' | 'word-search' | 'monopoly' | 'battleship' | 'memory' | 'math-trivia' | 'jeopardy' | 'pool' | 'cup-pong' | 'reaction' | 'sudoku' | 'solitaire';
   winner_id: string | null;
   winner_name: string | null;
   loser_id: string | null;
   loser_name: string | null;
   is_draw: boolean;
-  metadata: { guessCount?: number; won?: boolean; totalMoves?: number; theme?: string; p1Words?: number; p2Words?: number; p1Time?: number; p2Time?: number; p1FoundWords?: string[]; p2FoundWords?: string[]; allWords?: string[] } | null;
+  metadata: { guessCount?: number; won?: boolean; totalMoves?: number; theme?: string; p1Words?: number; p2Words?: number; p1Time?: number; p2Time?: number; p1FoundWords?: string[]; p2FoundWords?: string[]; allWords?: string[]; p1Correct?: number; p2Correct?: number; difficulty?: string; moveCount?: number; timeSeconds?: number } | null;
   player1_id: string;
   player1_name: string;
   player2_id: string;
@@ -46,6 +46,12 @@ function gameIcon(gameType: MatchResult['game_type']): string {
     case 'monopoly': return '🏠';
     case 'battleship': return '🎯';
     case 'memory': return '🧠';
+    case 'math-trivia': return '🧮';
+    case 'jeopardy': return '❓';
+    case 'pool': return '🎱';
+    case 'cup-pong': return '🏓';
+    case 'reaction': return '⚡';
+    case 'sudoku': return '🧩';
     case 'solitaire': return '♠️';
   }
 }
@@ -61,6 +67,12 @@ function gameLabel(gameType: MatchResult['game_type']): string {
     case 'monopoly': return 'Monopoly';
     case 'battleship': return 'Battleship';
     case 'memory': return 'Memory';
+    case 'math-trivia': return 'Math Trivia';
+    case 'jeopardy': return 'Jeopardy';
+    case 'pool': return 'Pool';
+    case 'cup-pong': return 'Cup Pong';
+    case 'reaction': return 'Reaction';
+    case 'sudoku': return 'Sudoku';
     case 'solitaire': return 'Solitaire';
   }
 }
@@ -72,11 +84,31 @@ function outcomeText(result: MatchResult): string {
     }
     return `Failed (${guesses} guesses)`;
   }
+  if (result.game_type === 'sudoku') {
+    if (result.metadata?.won) {
+      const time = result.metadata.timeSeconds ?? 0;
+      const m = Math.floor(time / 60);
+      const s = time % 60;
+      return `Solved in ${m}:${s.toString().padStart(2, '0')}`;
+    }
+    return 'Gave up';
+  }
   if (result.game_type === 'word-search') {
     if (result.is_draw) return 'Draw';
     const meta = result.metadata;
     if (meta?.p1Words !== undefined && meta?.p2Words !== undefined) {
       return `${result.winner_name} won (${Math.max(meta.p1Words, meta.p2Words)} words)`;
+    }
+    return `${result.winner_name} won`;
+  }
+  if (result.game_type === 'math-trivia') {
+    if (result.is_draw) return 'Draw';
+    const meta = result.metadata;
+    if (meta?.p1Correct !== undefined && meta?.p2Correct !== undefined) {
+      const winnerCorrect = Math.max(meta.p1Correct, meta.p2Correct);
+      const winnerTime = result.winner_name === result.player1_name ? meta.p1Time : meta.p2Time;
+      const timeStr = winnerTime ? ` in ${formatTime(winnerTime)}` : '';
+      return `${result.winner_name} won (${winnerCorrect}/15${timeStr})`;
     }
     return `${result.winner_name} won`;
   }
@@ -98,6 +130,9 @@ function outcomeText(result: MatchResult): string {
 function outcomeColor(result: MatchResult): string {
   if (result.game_type === 'wordle') {
     return result.metadata?.won ? 'text-wordle-correct' : 'text-text-secondary';
+  }
+  if (result.game_type === 'sudoku') {
+    return result.metadata?.won ? 'text-blue-400' : 'text-text-secondary';
   }
   if (result.is_draw) return 'text-text-secondary';
   if (result.winner_name === 'Ricky') return 'text-player1';

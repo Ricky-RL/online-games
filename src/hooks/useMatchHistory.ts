@@ -7,13 +7,13 @@ const POLL_INTERVAL_MS = 5000;
 
 export interface MatchResult {
   id: string;
-  game_type: 'connect-four' | 'tic-tac-toe' | 'wordle' | 'mini-golf' | 'jenga' | 'snakes-and-ladders' | 'word-search' | 'monopoly' | 'battleship' | 'memory' | 'solitaire';
+  game_type: 'connect-four' | 'tic-tac-toe' | 'wordle' | 'mini-golf' | 'jenga' | 'snakes-and-ladders' | 'word-search' | 'monopoly' | 'battleship' | 'memory' | 'math-trivia' | 'jeopardy' | 'pool' | 'cup-pong' | 'reaction' | 'sudoku' | 'solitaire';
   winner_id: string | null;
   winner_name: string | null;
   loser_id: string | null;
   loser_name: string | null;
   is_draw: boolean;
-  metadata: { guessCount?: number; won?: boolean; isDaily?: boolean; date?: string; totalMoves?: number; theme?: string; p1Words?: number; p2Words?: number; p1Time?: number; p2Time?: number } | null;
+  metadata: { guessCount?: number; won?: boolean; isDaily?: boolean; date?: string; totalMoves?: number; theme?: string; p1Words?: number; p2Words?: number; p1Time?: number; p2Time?: number; difficulty?: string; moveCount?: number; timeSeconds?: number } | null;
   player1_id: string;
   player1_name: string;
   player2_id: string;
@@ -35,6 +35,11 @@ export interface LeaderboardStats {
     'battleship': { ricky: number; lilian: number; draws: number };
     'word-search': { ricky: number; lilian: number; draws: number };
     'memory': { ricky: number; lilian: number; draws: number };
+    'math-trivia': { ricky: number; lilian: number; draws: number };
+    'jeopardy': { ricky: number; lilian: number; draws: number };
+    'pool': { ricky: number; lilian: number; draws: number };
+    'cup-pong': { ricky: number; lilian: number; draws: number };
+    'reaction': { ricky: number; lilian: number; draws: number };
     'solitaire': { ricky: number; lilian: number; draws: number };
   };
   streaks: {
@@ -56,6 +61,11 @@ export interface LeaderboardStats {
     guess_distribution: [number, number, number, number, number, number]; // index 0 = solved in 1, index 5 = solved in 6
     history: { date: string; guesses: number; won: boolean }[];
   };
+  sudoku_stats: {
+    played: number;
+    won: number;
+    average_time: number;
+  };
 }
 
 function computeStats(results: MatchResult[]): LeaderboardStats {
@@ -73,12 +83,21 @@ function computeStats(results: MatchResult[]): LeaderboardStats {
     'monopoly': { ricky: 0, lilian: 0, draws: 0 },
     'word-search': { ricky: 0, lilian: 0, draws: 0 },
     'memory': { ricky: 0, lilian: 0, draws: 0 },
+    'math-trivia': { ricky: 0, lilian: 0, draws: 0 },
+    'jeopardy': { ricky: 0, lilian: 0, draws: 0 },
+    'pool': { ricky: 0, lilian: 0, draws: 0 },
+    'cup-pong': { ricky: 0, lilian: 0, draws: 0 },
+    'reaction': { ricky: 0, lilian: 0, draws: 0 },
     'solitaire': { ricky: 0, lilian: 0, draws: 0 },
   };
 
   let wordle_played = 0;
   let wordle_won = 0;
   let wordle_total_guesses = 0;
+
+  let sudoku_played = 0;
+  let sudoku_won = 0;
+  let sudoku_total_time = 0;
 
   const dailyWordles: { date: string; guesses: number; won: boolean }[] = [];
 
@@ -95,6 +114,15 @@ function computeStats(results: MatchResult[]): LeaderboardStats {
           guesses: r.metadata.guessCount ?? 0,
           won: !!r.metadata.won,
         });
+      }
+      continue;
+    }
+
+    if (r.game_type === 'sudoku') {
+      sudoku_played++;
+      if (r.metadata?.won) {
+        sudoku_won++;
+        sudoku_total_time += r.metadata.timeSeconds ?? 0;
       }
       continue;
     }
@@ -116,7 +144,7 @@ function computeStats(results: MatchResult[]): LeaderboardStats {
 
   // Compute streaks from most recent to oldest (non-wordle games only)
   const competitive = results
-    .filter((r) => r.game_type !== 'wordle')
+    .filter((r) => r.game_type !== 'wordle' && r.game_type !== 'sudoku')
     .sort((a, b) => new Date(b.played_at).getTime() - new Date(a.played_at).getTime());
 
   let ricky_current = 0;
@@ -246,6 +274,11 @@ function computeStats(results: MatchResult[]): LeaderboardStats {
       best_streak: computedBestStreak,
       guess_distribution,
       history: dailyHistory,
+    },
+    sudoku_stats: {
+      played: sudoku_played,
+      won: sudoku_won,
+      average_time: sudoku_won > 0 ? Math.round(sudoku_total_time / sudoku_won) : 0,
     },
   };
 }

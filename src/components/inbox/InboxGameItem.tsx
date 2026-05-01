@@ -136,6 +136,79 @@ function MemoryMini() {
   );
 }
 
+function MathTriviaMini() {
+  return (
+    <div className="w-8 h-8 rounded-lg bg-[#F97316]/10 flex items-center justify-center">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+        <text x="2" y="7" fontSize="5" fill="#F97316" opacity="0.9" fontFamily="monospace" fontWeight="bold">1+2</text>
+        <text x="2" y="14" fontSize="5" fill="#F97316" opacity="0.7" fontFamily="monospace" fontWeight="bold">3×4</text>
+      </svg>
+    </div>
+  );
+}
+
+function JeopardyMini() {
+  return (
+    <div className="w-8 h-8 rounded-lg bg-[#1A3A7A]/10 flex items-center justify-center">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+        <text x="2" y="13" fontSize="13" fill="#1A3A7A" opacity="0.8" fontFamily="serif" fontWeight="bold">J!</text>
+      </svg>
+    </div>
+  );
+}
+
+function PoolMini() {
+  return (
+    <div className="w-8 h-8 rounded-lg bg-[#1B5E20]/10 flex items-center justify-center">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+        <circle cx="8" cy="8" r="6" stroke="#1B5E20" strokeWidth="1.5" fill="none" opacity="0.6" />
+        <circle cx="6" cy="7" r="2" fill="#FFD700" opacity="0.9" />
+        <circle cx="10" cy="7" r="2" fill="#FF0000" opacity="0.9" />
+        <circle cx="8" cy="10" r="2" fill="#000" opacity="0.9" />
+      </svg>
+    </div>
+  );
+}
+
+function CupPongMini() {
+  return (
+    <div className="w-8 h-8 rounded-lg bg-[#FF6B35]/10 flex items-center justify-center">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+        <path d="M4 3h8l-1.5 10h-5L4 3z" fill="#FF6B35" opacity="0.7" />
+        <circle cx="8" cy="6" r="2" fill="white" opacity="0.6" />
+      </svg>
+    </div>
+  );
+}
+
+function ReactionMini() {
+  return (
+    <div className="w-8 h-8 rounded-lg bg-[#FF6B35]/10 flex items-center justify-center">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+        <path d="M9.5 2L5 9h3.5l-1 5L12 7H8.5l1-5z" fill="#FF6B35" opacity="0.9" />
+      </svg>
+    </div>
+  );
+}
+
+function SudokuMini() {
+  return (
+    <div className="w-8 h-8 rounded-lg bg-[#4A90D9]/10 flex items-center justify-center">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+        <rect x="1" y="1" width="4" height="4" rx="0.5" stroke="#4A90D9" strokeWidth="0.8" opacity="0.8" />
+        <rect x="6" y="1" width="4" height="4" rx="0.5" stroke="#4A90D9" strokeWidth="0.8" opacity="0.6" />
+        <rect x="11" y="1" width="4" height="4" rx="0.5" stroke="#4A90D9" strokeWidth="0.8" opacity="0.8" />
+        <rect x="1" y="6" width="4" height="4" rx="0.5" stroke="#4A90D9" strokeWidth="0.8" opacity="0.6" />
+        <rect x="6" y="6" width="4" height="4" rx="0.5" stroke="#4A90D9" strokeWidth="0.8" opacity="0.8" />
+        <rect x="11" y="6" width="4" height="4" rx="0.5" stroke="#4A90D9" strokeWidth="0.8" opacity="0.6" />
+        <rect x="1" y="11" width="4" height="4" rx="0.5" stroke="#4A90D9" strokeWidth="0.8" opacity="0.8" />
+        <rect x="6" y="11" width="4" height="4" rx="0.5" stroke="#4A90D9" strokeWidth="0.8" opacity="0.6" />
+        <rect x="11" y="11" width="4" height="4" rx="0.5" stroke="#4A90D9" strokeWidth="0.8" opacity="0.8" />
+      </svg>
+    </div>
+  );
+}
+
 function DailyWordleMini() {
   return (
     <div className="w-8 h-8 rounded-lg bg-[#538D4E]/10 flex items-center justify-center">
@@ -174,8 +247,14 @@ function GameIcon({ gameType }: { gameType: InboxGameType }) {
     case 'word-search': return <WordSearchMini />;
     case 'monopoly': return <MonopolyMini />;
     case 'memory': return <MemoryMini />;
+    case 'math-trivia': return <MathTriviaMini />;
+    case 'jeopardy': return <JeopardyMini />;
+    case 'pool': return <PoolMini />;
+    case 'reaction': return <ReactionMini />;
     case 'solitaire': return <SolitaireMini />;
     case 'daily-wordle': return <DailyWordleMini />;
+    case 'cup-pong': return <CupPongMini />;
+    case 'sudoku': return <SudokuMini />;
   }
 }
 
@@ -191,8 +270,14 @@ function gameLabel(gameType: InboxGameType): string {
     case 'word-search': return 'Word Search';
     case 'monopoly': return 'Monopoly';
     case 'memory': return 'Memory';
+    case 'math-trivia': return 'Math Trivia';
+    case 'jeopardy': return 'Jeopardy';
+    case 'pool': return 'Pool';
+    case 'reaction': return 'Reaction';
     case 'solitaire': return 'Solitaire';
     case 'daily-wordle': return 'Daily Wordle';
+    case 'cup-pong': return 'Cup Pong';
+    case 'sudoku': return 'Sudoku';
   }
 }
 
@@ -201,6 +286,15 @@ function TurnBadge({ game }: { game: InboxGame }) {
     return (
       <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 text-xs font-medium rounded-full bg-border text-text-secondary/70">
         Waiting to join...
+      </span>
+    );
+  }
+
+  if (game.isCooperative) {
+    return (
+      <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 text-xs font-semibold rounded-full bg-[#4A90D9]/10 text-[#4A90D9]">
+        <span className="w-1.5 h-1.5 rounded-full bg-[#4A90D9]" />
+        Playing
       </span>
     );
   }
