@@ -78,6 +78,12 @@ export const DEFAULT_GAME_ORDER: GameDefinition[] = [
     description: 'Flip cards, find pairs. Best memory wins the match.',
     color: '#9B59B6',
   },
+  {
+    slug: 'solitaire',
+    title: 'Solitaire',
+    description: 'Classic Klondike, competitive twist. Beat your opponent on the same deal.',
+    color: '#2D5016',
+  },
 ];
 
 export const DEFAULT_SLUG_ORDER = DEFAULT_GAME_ORDER.map((g) => g.slug);

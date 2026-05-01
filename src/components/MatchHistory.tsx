@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 interface MatchResult {
   id: string;
-  game_type: 'connect-four' | 'tic-tac-toe' | 'wordle' | 'mini-golf' | 'jenga' | 'snakes-and-ladders' | 'word-search' | 'monopoly' | 'battleship' | 'memory';
+  game_type: 'connect-four' | 'tic-tac-toe' | 'wordle' | 'mini-golf' | 'jenga' | 'snakes-and-ladders' | 'word-search' | 'monopoly' | 'battleship' | 'memory' | 'solitaire';
   winner_id: string | null;
   winner_name: string | null;
   loser_id: string | null;
@@ -46,6 +46,7 @@ function gameIcon(gameType: MatchResult['game_type']): string {
     case 'monopoly': return '🏠';
     case 'battleship': return '🎯';
     case 'memory': return '🧠';
+    case 'solitaire': return '♠️';
   }
 }
 function gameLabel(gameType: MatchResult['game_type']): string {
@@ -60,6 +61,7 @@ function gameLabel(gameType: MatchResult['game_type']): string {
     case 'monopoly': return 'Monopoly';
     case 'battleship': return 'Battleship';
     case 'memory': return 'Memory';
+    case 'solitaire': return 'Solitaire';
   }
 }
 function outcomeText(result: MatchResult): string {
@@ -75,6 +77,18 @@ function outcomeText(result: MatchResult): string {
     const meta = result.metadata;
     if (meta?.p1Words !== undefined && meta?.p2Words !== undefined) {
       return `${result.winner_name} won (${Math.max(meta.p1Words, meta.p2Words)} words)`;
+    }
+    return `${result.winner_name} won`;
+  }
+  if (result.game_type === 'solitaire') {
+    if (result.is_draw) return 'Draw (both failed)';
+    const meta = result.metadata as { p1Moves?: number; p1Time?: number; p2Moves?: number; p2Time?: number } | null;
+    const winnerMoves = result.winner_name === result.player1_name ? meta?.p1Moves : meta?.p2Moves;
+    const winnerTime = result.winner_name === result.player1_name ? meta?.p1Time : meta?.p2Time;
+    if (winnerMoves && winnerTime) {
+      const m = Math.floor(winnerTime / 60);
+      const s = winnerTime % 60;
+      return `${result.winner_name} won (${winnerMoves} moves, ${m}:${s.toString().padStart(2, '0')})`;
     }
     return `${result.winner_name} won`;
   }

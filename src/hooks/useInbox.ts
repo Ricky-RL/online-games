@@ -41,7 +41,7 @@ export function useInbox(): UseInboxReturn {
       supabase
         .from('games')
         .select('*')
-        .in('game_type', ['connect-four', 'tic-tac-toe', 'checkers', 'battleship', 'mini-golf', 'jenga', 'snakes-and-ladders', 'word-search', 'monopoly', 'memory'])
+        .in('game_type', ['connect-four', 'tic-tac-toe', 'checkers', 'battleship', 'mini-golf', 'jenga', 'snakes-and-ladders', 'word-search', 'monopoly', 'memory', 'solitaire'])
         .or(`player1_name.eq.${playerName},player2_name.eq.${playerName},player1_id.eq.${PLAYER_IDS[playerName]},player2_id.eq.${PLAYER_IDS[playerName]},and(player1_name.eq.${otherPlayer},player2_name.is.null),and(player2_name.eq.${otherPlayer},player1_name.is.null),and(player1_id.eq.${PLAYER_IDS[otherPlayer]},player2_id.is.null),and(player2_id.eq.${PLAYER_IDS[otherPlayer]},player1_id.is.null)`)
         .is('winner', null)
         .order('updated_at', { ascending: false }),
