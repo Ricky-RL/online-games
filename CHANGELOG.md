@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.1.1.1] - 2026-04-30
+
+### Fixed
+- Pool table pockets moved from short sides to long sides for correct billiards layout
+- Shot power reduced (BASE_SPEED 16 → 11) for better gameplay feel
+
 ## [0.1.1.0] - 2026-04-30
 
 ### Changed
