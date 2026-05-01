@@ -13,7 +13,6 @@ interface UseWordSearchGameReturn {
   loading: boolean;
   error: string | null;
   deleted: boolean;
-  findWord: (word: string) => Promise<void>;
   submitResult: (result: PlayerResult) => Promise<void>;
   resetGame: () => Promise<void>;
   myResult: PlayerResult | null;
@@ -125,26 +124,6 @@ export function useWordSearchGame(gameId: string): UseWordSearchGameReturn {
     }
   }, [game]);
 
-  const findWord = useCallback(async (word: string) => {
-    if (!game) return;
-    const board = game.board as WordSearchBoardState;
-    const current = board.foundWords || [];
-    if (current.includes(word)) return;
-
-    const updatedBoard: WordSearchBoardState = {
-      ...board,
-      foundWords: [...current, word],
-    };
-
-    // Optimistic update
-    setGame((prev) => prev ? { ...prev, board: updatedBoard } as WordSearchGame : null);
-
-    await supabase
-      .from('games')
-      .update({ board: updatedBoard, updated_at: new Date().toISOString() })
-      .eq('id', gameId);
-  }, [game, gameId]);
-
   const submitResult = useCallback(async (result: PlayerResult) => {
     if (!game) return;
     if (submittingRef.current) return;
@@ -247,5 +226,5 @@ export function useWordSearchGame(gameId: string): UseWordSearchGameReturn {
     ? (playerNumber === 1 ? board.player2Result : board.player1Result)
     : null;
 
-  return { game, loading, error, deleted, findWord, submitResult, resetGame, myResult, opponentResult, bothSubmitted };
+  return { game, loading, error, deleted, submitResult, resetGame, myResult, opponentResult, bothSubmitted };
 }

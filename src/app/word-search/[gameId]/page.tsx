@@ -15,7 +15,7 @@ import type { WordSearchBoardState } from '@/lib/word-search-types';
 export default function WordSearchGamePage({ params }: { params: Promise<{ gameId: string }> }) {
   const { gameId } = use(params);
   const router = useRouter();
-  const { game, loading, deleted, findWord, submitResult, resetGame, myResult, opponentResult, bothSubmitted } = useWordSearchGame(gameId);
+  const { game, loading, deleted, submitResult, resetGame, myResult, opponentResult, bothSubmitted } = useWordSearchGame(gameId);
 
   const [timerStarted, setTimerStarted] = useState(false);
   const [submitted, setSubmitted] = useState(false);
@@ -33,8 +33,7 @@ export default function WordSearchGamePage({ params }: { params: Promise<{ gameI
       startTimeRef.current = Date.now();
     }
     setMyFoundWords((prev) => prev.includes(word) ? prev : [...prev, word]);
-    findWord(word);
-  }, [timerStarted, findWord]);
+  }, [timerStarted]);
 
   const handleFirstInteraction = useCallback(() => {
     if (!timerStarted) {
@@ -79,7 +78,6 @@ export default function WordSearchGamePage({ params }: { params: Promise<{ gameI
   }
 
   const board = game.board as WordSearchBoardState;
-  if (!board.foundWords) board.foundWords = [];
   const myPlayerNumber = game.player1_name === playerName ? 1 : 2;
   const allWords = board.words.map((w) => w.word);
 
@@ -145,14 +143,14 @@ export default function WordSearchGamePage({ params }: { params: Promise<{ gameI
       <Grid
         grid={board.grid}
         words={board.words}
-        foundWords={board.foundWords}
+        foundWords={myFoundWords}
         onWordFound={handleWordFound}
         onFirstInteraction={handleFirstInteraction}
         disabled={submitted}
       />
 
       {/* Word list */}
-      <WordList words={allWords} foundWords={board.foundWords} />
+      <WordList words={allWords} foundWords={myFoundWords} />
 
       {/* Submit button */}
       <motion.button
