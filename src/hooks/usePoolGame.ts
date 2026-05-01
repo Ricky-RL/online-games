@@ -6,6 +6,7 @@ import { PoolGame, PoolBoard, Shot, ShotResult, GamePhase, BallState } from '@/l
 import { simulateShot } from '@/lib/pool/physics';
 import { determineShotResult, assignGroups, isGameOver, getWinner, createInitialBoard } from '@/lib/pool/logic';
 import { recordMatchResult } from '@/lib/match-results';
+import { getStoredPlayerName, PLAYER_IDS } from '@/lib/players';
 import { Player } from '@/lib/types';
 
 const POLL_INTERVAL_MS = 1500;
@@ -37,6 +38,7 @@ export function usePoolGame(gameId: string): UsePoolGameReturn {
   const gameRef = useRef<PoolGame | null>(null);
   const matchRecorded = useRef(false);
   const lastProcessedVersion = useRef(-1);
+  const autoJoinAttempted = useRef(false);
 
   const getPlayerNumber = useCallback((): Player | null => {
     const name = sessionStorage.getItem('player-name') || localStorage.getItem('player-name');
@@ -47,7 +49,7 @@ export function usePoolGame(gameId: string): UsePoolGameReturn {
     return null;
   }, []);
 
-  const fetchGame = useCallback(async () => {
+  const fetchGame = useCallback(async (): Promise<PoolGame | null> => {
     const { data, error: fetchError } = await supabase
       .from('games')
       .select('*')
@@ -57,12 +59,12 @@ export function usePoolGame(gameId: string): UsePoolGameReturn {
     if (fetchError || !data) {
       if (!gameRef.current) setError('Game not found');
       else setDeleted(true);
-      return;
+      return null;
     }
 
     if (data.game_type === 'ended') {
       setDeleted(true);
-      return;
+      return null;
     }
 
     const fresh = data as PoolGame;
@@ -89,11 +91,58 @@ export function usePoolGame(gameId: string): UsePoolGameReturn {
 
     gameRef.current = fresh;
     setGame(fresh);
-    setLoading(false);
+    return fresh;
   }, [gameId, getPlayerNumber]);
 
+  const tryAutoJoin = useCallback(async (gameData: PoolGame) => {
+    if (autoJoinAttempted.current) return;
+
+    const playerName = getStoredPlayerName();
+    if (!playerName) return;
+
+    const myId = PLAYER_IDS[playerName];
+    const isPlayer1 = gameData.player1_id === myId || gameData.player1_name === playerName;
+
+    if (!isPlayer1 && gameData.player2_id === null) {
+      autoJoinAttempted.current = true;
+
+      const { data: joined, error: joinError } = await supabase
+        .from('games')
+        .update({
+          player2_id: myId,
+          player2_name: playerName,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', gameId)
+        .is('player2_id', null)
+        .select()
+        .single();
+
+      if (joinError) {
+        await fetchGame();
+        return;
+      }
+
+      if (joined) {
+        const fresh = joined as PoolGame;
+        lastProcessedVersion.current = fresh.board.version;
+        gameRef.current = fresh;
+        setGame(fresh);
+      }
+    }
+  }, [gameId, fetchGame]);
+
   useEffect(() => {
-    fetchGame();
+    let cancelled = false;
+    async function init() {
+      const gameData = await fetchGame();
+      if (cancelled) return;
+      if (gameData) {
+        await tryAutoJoin(gameData);
+      }
+      setLoading(false);
+    }
+    init();
     const interval = setInterval(fetchGame, POLL_INTERVAL_MS);
 
     const channel = supabase
@@ -130,10 +179,11 @@ export function usePoolGame(gameId: string): UsePoolGameReturn {
       .subscribe();
 
     return () => {
+      cancelled = true;
       clearInterval(interval);
       supabase.removeChannel(channel);
     };
-  }, [fetchGame, gameId, getPlayerNumber]);
+  }, [fetchGame, gameId, getPlayerNumber, tryAutoJoin]);
 
   const takeShot = useCallback(async (shot: Shot) => {
     const current = gameRef.current;
