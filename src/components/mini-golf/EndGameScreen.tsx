@@ -103,18 +103,18 @@ export function EndGameScreen({
         </div>
       )}
 
-      <div className="flex gap-3">
-        <button
-          onClick={onPlayAgain}
-          className="px-5 py-2 bg-board text-white rounded-full font-medium hover:opacity-90 transition-opacity"
-        >
-          Play Again
-        </button>
+      <div className="flex items-center gap-3">
         <button
           onClick={onHome}
-          className="px-5 py-2 border border-border bg-surface rounded-full font-medium text-text-primary hover:bg-background transition-colors"
+          className="px-6 py-3 text-base font-medium rounded-xl border border-border bg-surface text-text-secondary hover:text-text-primary hover:border-text-secondary/30 shadow-sm hover:shadow transition-all cursor-pointer"
         >
           Home
+        </button>
+        <button
+          onClick={onPlayAgain}
+          className="px-6 py-3 text-base font-medium rounded-xl bg-board text-white hover:bg-board-surface transition-colors shadow-lg cursor-pointer"
+        >
+          Play Again
         </button>
       </div>
     </motion.div>
