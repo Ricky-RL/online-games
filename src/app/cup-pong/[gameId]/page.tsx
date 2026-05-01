@@ -116,22 +116,6 @@ export default function CupPongGamePage({ params }: { params: Promise<{ gameId: 
     );
   }
 
-  // Waiting for opponent to join (async play support)
-  if (!game.player2_name) {
-    return (
-      <div className="flex-1 flex flex-col items-center justify-center min-h-screen gap-4">
-        <div className="w-8 h-8 border-2 border-board border-t-transparent rounded-full animate-spin" />
-        <p className="text-text-secondary text-sm">Waiting for opponent to join...</p>
-        <button
-          onClick={() => router.push('/')}
-          className="px-4 py-2 text-sm font-medium rounded-xl border border-border bg-surface text-text-secondary hover:text-text-primary hover:border-text-secondary/30 shadow-sm hover:shadow transition-all cursor-pointer"
-        >
-          Back to Home
-        </button>
-      </div>
-    );
-  }
-
   const p1Remaining = getCupsRemaining(game.board, 1);
   const p2Remaining = getCupsRemaining(game.board, 2);
 
@@ -151,6 +135,7 @@ export default function CupPongGamePage({ params }: { params: Promise<{ gameId: 
               currentPlayer={game.current_turn}
               isMyTurn={isMyTurn}
               playerName={opponentName}
+              label={!isMyTurn && !game.player2_name ? 'Waiting for opponent to join...' : undefined}
             />
           )}
           <NotificationControls
@@ -172,7 +157,7 @@ export default function CupPongGamePage({ params }: { params: Promise<{ gameId: 
           <div className="flex items-center gap-2">
             <div className="w-3 h-3 rounded-full bg-player2" />
             <span className="text-text-primary">
-              {game.player2_name}: {10 - p2Remaining} hit
+              {game.player2_name ?? 'Waiting...'}: {10 - p2Remaining} hit
             </span>
           </div>
         </div>
