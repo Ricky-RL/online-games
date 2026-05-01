@@ -59,11 +59,14 @@ export default function MemoryLobby() {
       }
 
       if (joinableGame) {
+        // Join as player2. Explicitly set current_turn to 1 to ensure
+        // the creator (player1) always gets the first turn.
         const { error: joinError } = await supabase
           .from('games')
           .update({
             player2_id: myId,
             player2_name: name,
+            current_turn: 1,
             updated_at: new Date().toISOString(),
           })
           .eq('id', joinableGame.id)
@@ -93,11 +96,14 @@ export default function MemoryLobby() {
       }
 
       if (joinableGame) {
+        // Join as player2. Explicitly set current_turn to 1 to ensure
+        // the creator (player1) always gets the first turn.
         const { error: joinError } = await supabase
           .from('games')
           .update({
             player2_id: myId,
             player2_name: name,
+            current_turn: 1,
             updated_at: new Date().toISOString(),
           })
           .eq('id', joinableGame.id)
