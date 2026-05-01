@@ -47,6 +47,7 @@ interface UseMemoryGameReturn {
   firstFlip: number | null;
   flipCard: (cardIndex: number) => Promise<void>;
   resetGame: () => Promise<void>;
+  endGame: () => Promise<void>;
 }
 
 export function useMemoryGame(gameId: string): UseMemoryGameReturn {
@@ -340,5 +341,43 @@ export function useMemoryGame(gameId: string): UseMemoryGameReturn {
     );
   }, [gameId, updateGame]);
 
-  return { game, loading, error, deleted, firstFlip, flipCard, resetGame };
+  const endGame = useCallback(async () => {
+    // Mark the game as ended and clear player data so it won't appear in
+    // lobby queries or inbox, then delete the row entirely.
+    const { error: endError } = await supabase
+      .from('games')
+      .update({
+        game_type: 'ended',
+        board: { cards: [], player1Score: 0, player2Score: 0, lastFlipped: null, lastFlipResult: null },
+        current_turn: 1,
+        winner: null,
+        player1_name: null,
+        player2_name: null,
+        player1_id: null,
+        player2_id: null,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', gameId);
+
+    if (endError) {
+      console.error('Error ending game:', endError);
+      setError(endError.message);
+      return;
+    }
+
+    // Then delete the row entirely.
+    const { error: deleteError } = await supabase
+      .from('games')
+      .delete()
+      .eq('id', gameId);
+
+    if (deleteError) {
+      console.error('Error deleting game:', deleteError);
+      // Non-fatal: the game is already cleared, so proceed.
+    }
+
+    setDeleted(true);
+  }, [gameId]);
+
+  return { game, loading, error, deleted, firstFlip, flipCard, resetGame, endGame };
 }
