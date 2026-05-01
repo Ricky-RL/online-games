@@ -202,6 +202,7 @@ export function Table({
           <BallAnimation
             throwResult={lastThrowResult}
             throwerSide={throwerSide}
+            throwerPlayer={myPlayer}
             targetCups={displayOpponentCups}
             tableWidth={TABLE_WIDTH}
             tableHeight={TABLE_HEIGHT}
