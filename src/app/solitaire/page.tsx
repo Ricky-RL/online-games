@@ -3,7 +3,7 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
-import { createShuffledDeck } from '@/lib/solitaire-logic';
+import { createSolvableDeck } from '@/lib/solitaire-solver';
 import { type PlayerName, PLAYER_IDS, getStoredPlayerName } from '@/lib/players';
 
 export default function SolitaireLobby() {
@@ -65,7 +65,7 @@ export default function SolitaireLobby() {
 
       const insertData = {
         game_type: 'solitaire',
-        board: { deck: createShuffledDeck(), player1_result: null, player2_result: null },
+        board: { deck: createSolvableDeck(), player1_result: null, player2_result: null },
         current_turn: 1 as const,
         winner: null,
         player1_id: myId,
