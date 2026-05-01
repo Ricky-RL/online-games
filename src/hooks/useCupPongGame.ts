@@ -32,8 +32,8 @@ interface UseCupPongGameReturn {
   deleted: boolean;
   /** The first throw of the current turn (stored locally until second throw commits both) */
   firstThrow: ThrowResult | null;
-  /** Execute a throw with direction and power */
-  makeThrow: (direction: ThrowVector, power: number) => Promise<void>;
+  /** Execute a throw with direction and power. Returns the ThrowResult for animation. */
+  makeThrow: (direction: ThrowVector, power: number) => Promise<ThrowResult | null>;
   resetGame: () => Promise<void>;
   endGame: () => Promise<void>;
 }
@@ -190,19 +190,19 @@ export function useCupPongGame(gameId: string): UseCupPongGameReturn {
   }, [game]);
 
   const makeThrow = useCallback(
-    async (direction: ThrowVector, power: number) => {
+    async (direction: ThrowVector, power: number): Promise<ThrowResult | null> => {
       const currentGame = gameRef.current;
-      if (!currentGame) return;
+      if (!currentGame) return null;
 
       if (currentGame.winner !== null) {
         setError('Game is already over');
-        return;
+        return null;
       }
 
       const myName = getMyName();
       if (!myName) {
         setError('No player name set');
-        return;
+        return null;
       }
 
       const isPlayer1 = currentGame.player1_name === myName;
@@ -210,14 +210,14 @@ export function useCupPongGame(gameId: string): UseCupPongGameReturn {
 
       if (!isPlayer1 && !isPlayer2) {
         setError('You are not a player in this game');
-        return;
+        return null;
       }
 
       const myPlayerNumber: Player = isPlayer1 ? 1 : 2;
 
       if (currentGame.current_turn !== myPlayerNumber) {
         setError('Not your turn');
-        return;
+        return null;
       }
 
       // Determine throw direction based on which end we're throwing from
@@ -272,7 +272,7 @@ export function useCupPongGame(gameId: string): UseCupPongGameReturn {
             if (freshGame) updateGame(freshGame as CupPongGame);
             setError(updateError.message);
           }
-          return;
+          return throwResult;
         }
 
         setFirstThrow(throwResult);
@@ -287,7 +287,7 @@ export function useCupPongGame(gameId: string): UseCupPongGameReturn {
               }
             : null
         );
-        return;
+        return throwResult;
       }
 
       // Second throw: apply both throws and commit to server
@@ -353,6 +353,8 @@ export function useCupPongGame(gameId: string): UseCupPongGameReturn {
         if (freshGame) updateGame(freshGame as CupPongGame);
         setError(updateError.message);
       }
+
+      return throwResult;
     },
     [gameId, updateGame]
   );

@@ -37,13 +37,13 @@ export default function CupPongGamePage({ params }: { params: Promise<{ gameId: 
     if (deleted) router.push('/');
   }, [deleted, router]);
 
-  // When firstThrow arrives from the hook, trigger the animation
+  // When firstThrow arrives from the hook (e.g. opponent's replayed throw), trigger the animation
   useEffect(() => {
-    if (firstThrow) {
+    if (firstThrow && !animating) {
       setDisplayedThrow(firstThrow);
       setAnimating(true);
     }
-  }, [firstThrow]);
+  }, [firstThrow, animating]);
 
   const myPlayerNumber: Player | null = useMemo(() => {
     if (!game || !myName) return null;
@@ -77,7 +77,13 @@ export default function CupPongGamePage({ params }: { params: Promise<{ gameId: 
   const handleThrow = useCallback(
     async (direction: ThrowVector, power: number) => {
       setAnimating(true);
-      await makeThrow(direction, power);
+      const result = await makeThrow(direction, power);
+      if (result) {
+        setDisplayedThrow(result);
+      } else {
+        // No result (error case) — reset animating so the player isn't stuck
+        setAnimating(false);
+      }
     },
     [makeThrow]
   );
