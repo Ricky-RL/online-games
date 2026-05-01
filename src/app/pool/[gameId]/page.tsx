@@ -15,6 +15,7 @@ import { EndGameDialog } from '@/components/EndGameDialog';
 import { Shot } from '@/lib/pool/types';
 import { isValidCueBallPlacement } from '@/lib/pool/physics';
 import { Player } from '@/lib/types';
+import { type PlayerName } from '@/lib/players';
 
 export default function PoolGamePage({ params }: { params: Promise<{ gameId: string }> }) {
   const { gameId } = use(params);
@@ -83,12 +84,42 @@ export default function PoolGamePage({ params }: { params: Promise<{ gameId: str
     );
   }
 
-  if (error || deleted || !game || !myPlayer) {
+  if (error || deleted || !game) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
           <p className="text-text-secondary mb-4">{error || 'Game not found'}</p>
           <button onClick={handleHome} className="px-4 py-2 bg-board text-white rounded-full">Home</button>
+        </div>
+      </div>
+    );
+  }
+
+  if (!myPlayer) {
+    const handleSelectPlayer = (name: PlayerName) => {
+      sessionStorage.setItem('player-name', name);
+      localStorage.setItem('player-name', name);
+      window.location.reload();
+    };
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center space-y-6">
+          <p className="text-lg text-text-secondary">Who are you?</p>
+          <div className="flex flex-col sm:flex-row items-center gap-4">
+            <button
+              onClick={() => handleSelectPlayer('Ricky')}
+              className="px-8 py-4 text-lg font-semibold rounded-2xl bg-player1 text-white hover:opacity-90 transition-all shadow-lg cursor-pointer min-w-[160px]"
+            >
+              I&apos;m Ricky
+            </button>
+            <span className="text-text-secondary font-medium">or</span>
+            <button
+              onClick={() => handleSelectPlayer('Lilian')}
+              className="px-8 py-4 text-lg font-semibold rounded-2xl bg-player2 text-text-primary hover:opacity-90 transition-all shadow-lg cursor-pointer min-w-[160px]"
+            >
+              I&apos;m Lilian
+            </button>
+          </div>
         </div>
       </div>
     );
