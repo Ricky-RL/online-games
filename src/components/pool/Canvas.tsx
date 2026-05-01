@@ -313,7 +313,7 @@ function renderTable(
 
       if (power >= 5) {
         const angle = Math.atan2(dx, -dy);
-        const lineLen = 40 + power * 0.3;
+        const lineLen = 80 + power * 0.8;
         const endX = cueBall.x + Math.sin(angle) * lineLen;
         const endY = cueBall.y - Math.cos(angle) * lineLen;
 
