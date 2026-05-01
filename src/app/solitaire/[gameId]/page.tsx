@@ -9,11 +9,6 @@ import { WinCelebration } from '@/components/WinCelebration';
 import { determineSolitaireWinner } from '@/lib/solitaire-logic';
 import type { SolitaireGameState, SolitaireResult } from '@/lib/solitaire-types';
 
-function getMyName(): string | null {
-  if (typeof window === 'undefined') return null;
-  return sessionStorage.getItem('player-name') || localStorage.getItem('player-name');
-}
-
 function formatTime(seconds: number): string {
   const m = Math.floor(seconds / 60);
   const s = seconds % 60;
@@ -22,7 +17,7 @@ function formatTime(seconds: number): string {
 
 export default function SolitaireGamePage({ params }: { params: Promise<{ gameId: string }> }) {
   const { gameId } = use(params);
-  const { game, loading, error, deleted, myPlayerNumber, isMyRound, opponentResult, submitResult, giveUp, resetGame } = useSolitaireGame(gameId);
+  const { game, loading, error, deleted, myPlayerNumber, isMyRound, submitResult, giveUp, resetGame } = useSolitaireGame(gameId);
   const router = useRouter();
   const [showEndDialog, setShowEndDialog] = useState(false);
   const [submitted, setSubmitted] = useState(false);
