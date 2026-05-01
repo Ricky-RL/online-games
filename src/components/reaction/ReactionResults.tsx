@@ -1,7 +1,6 @@
 'use client';
 
 import { motion } from 'framer-motion';
-import { getAverageTime, ROUNDS_PER_PLAYER } from '@/lib/reaction-logic';
 import type { ReactionBoardState } from '@/lib/reaction-logic';
 
 interface ReactionResultsProps {
@@ -13,13 +12,11 @@ interface ReactionResultsProps {
 }
 
 export function ReactionResults({ board, game }: ReactionResultsProps) {
-  const p1Times = board.player1Times;
-  const p2Times = board.player2Times;
-  const p1Avg = getAverageTime(p1Times);
-  const p2Avg = getAverageTime(p2Times);
+  const p1Score = board.player1Score;
+  const p2Score = board.player2Score;
 
-  const p1Wins = p1Avg !== null && p2Avg !== null && p1Avg < p2Avg;
-  const p2Wins = p1Avg !== null && p2Avg !== null && p2Avg < p1Avg;
+  const p1Wins = p1Score !== null && p2Score !== null && p1Score > p2Score;
+  const p2Wins = p1Score !== null && p2Score !== null && p2Score > p1Score;
 
   return (
     <motion.div
@@ -28,61 +25,48 @@ export function ReactionResults({ board, game }: ReactionResultsProps) {
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4, delay: 0.2 }}
     >
-      {/* Header */}
       <div className="text-center mb-5">
         <h3 className="text-xs font-semibold uppercase tracking-wider text-text-secondary/70">
           Results
         </h3>
       </div>
 
-      {/* Player names header row */}
-      <div className="grid grid-cols-3 gap-2 mb-3">
-        <div className="text-xs font-medium text-text-secondary text-center">Round</div>
-        <div className={`text-xs font-semibold text-center ${p1Wins ? 'text-player1' : 'text-text-primary'}`}>
-          {game.player1_name ?? 'Player 1'}
+      <div className="space-y-4">
+        {/* Player 1 */}
+        <div className={`flex items-center justify-between p-4 rounded-2xl ${
+          p1Wins ? 'bg-player1/10 border border-player1/20' : 'bg-surface-alt'
+        }`}>
+          <div className="flex items-center gap-3">
+            {p1Wins && <span className="text-lg">🏆</span>}
+            <span className={`text-sm font-semibold ${p1Wins ? 'text-player1' : 'text-text-primary'}`}>
+              {game.player1_name ?? 'Player 1'}
+            </span>
+          </div>
+          <span className={`text-2xl font-bold font-mono ${p1Wins ? 'text-player1' : 'text-text-primary'}`}>
+            {p1Score !== null ? p1Score : '---'}
+          </span>
         </div>
-        <div className={`text-xs font-semibold text-center ${p2Wins ? 'text-player2' : 'text-text-primary'}`}>
-          {game.player2_name ?? 'Player 2'}
+
+        {/* Player 2 */}
+        <div className={`flex items-center justify-between p-4 rounded-2xl ${
+          p2Wins ? 'bg-player2/10 border border-player2/20' : 'bg-surface-alt'
+        }`}>
+          <div className="flex items-center gap-3">
+            {p2Wins && <span className="text-lg">🏆</span>}
+            <span className={`text-sm font-semibold ${p2Wins ? 'text-player2' : 'text-text-primary'}`}>
+              {game.player2_name ?? 'Player 2'}
+            </span>
+          </div>
+          <span className={`text-2xl font-bold font-mono ${p2Wins ? 'text-player2' : 'text-text-primary'}`}>
+            {p2Score !== null ? p2Score : '---'}
+          </span>
         </div>
       </div>
 
-      {/* Round rows */}
-      <div className="space-y-2">
-        {Array.from({ length: ROUNDS_PER_PLAYER }).map((_, i) => {
-          const p1Time = p1Times[i];
-          const p2Time = p2Times[i];
-          const p1Faster = p1Time !== null && p2Time !== null && p1Time < p2Time;
-          const p2Faster = p1Time !== null && p2Time !== null && p2Time < p1Time;
-
-          return (
-            <div key={i} className="grid grid-cols-3 gap-2 items-center">
-              <div className="text-xs text-text-secondary text-center">{i + 1}</div>
-              <div className={`text-sm font-mono text-center rounded-lg px-2 py-1.5 ${
-                p1Faster ? 'bg-player1/10 text-player1 font-semibold' : 'text-text-primary'
-              }`}>
-                {p1Time !== null ? `${p1Time}ms` : '---'}
-              </div>
-              <div className={`text-sm font-mono text-center rounded-lg px-2 py-1.5 ${
-                p2Faster ? 'bg-player2/10 text-player2 font-semibold' : 'text-text-primary'
-              }`}>
-                {p2Time !== null ? `${p2Time}ms` : '---'}
-              </div>
-            </div>
-          );
-        })}
-      </div>
-
-      {/* Average row */}
-      <div className="mt-4 pt-4 border-t border-border">
-        <div className="grid grid-cols-3 gap-2 items-center">
-          <div className="text-xs font-semibold text-text-secondary text-center">Avg</div>
-          <div className={`text-base font-mono font-bold text-center ${p1Wins ? 'text-player1' : 'text-text-primary'}`}>
-            {p1Avg !== null ? `${Math.round(p1Avg)}ms` : '---'}
-          </div>
-          <div className={`text-base font-mono font-bold text-center ${p2Wins ? 'text-player2' : 'text-text-primary'}`}>
-            {p2Avg !== null ? `${Math.round(p2Avg)}ms` : '---'}
-          </div>
-        </div>
+      <div className="text-center mt-4 pt-4 border-t border-border">
+        <p className="text-xs text-text-secondary/60">
+          Circles tapped in 10 seconds
+        </p>
       </div>
     </motion.div>
   );

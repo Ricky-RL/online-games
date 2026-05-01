@@ -3,11 +3,22 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ReactionTarget } from './ReactionTarget';
-import { ROUNDS_PER_PLAYER, MAX_REACTION_TIME_MS, getActiveTargetIndex } from '@/lib/reaction-logic';
+import {
+  GAME_DURATION_MS,
+  INITIAL_SPAWN_INTERVAL_MS,
+  getNextSpawnInterval,
+} from '@/lib/reaction-logic';
 import type { ReactionBoardState } from '@/lib/reaction-logic';
 import type { Player } from '@/lib/types';
 
-type RoundPhase = 'ready' | 'waiting' | 'target' | 'result';
+interface ActiveCircle {
+  id: number;
+  x: number;
+  y: number;
+  spawnedAt: number;
+}
+
+type GamePhase = 'countdown' | 'playing' | 'done';
 
 interface ReactionBoardProps {
   board: ReactionBoardState;
@@ -19,7 +30,7 @@ interface ReactionBoardProps {
   isMyTurn: boolean;
   myPlayerNumber: Player | null;
   opponentName: string | null;
-  onRecordRound: (reactionTimeMs: number) => Promise<void>;
+  onSubmitScore: (score: number) => Promise<void>;
 }
 
 export function ReactionBoard({
@@ -27,98 +38,156 @@ export function ReactionBoard({
   isMyTurn,
   myPlayerNumber,
   opponentName,
-  onRecordRound,
+  onSubmitScore,
 }: ReactionBoardProps) {
-  const [phase, setPhase] = useState<RoundPhase>('ready');
-  const [resultTime, setResultTime] = useState<number | null>(null);
-  const [tooSlow, setTooSlow] = useState(false);
-  const targetAppearedAt = useRef<number>(0);
-  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const phaseTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const hasRecorded = useRef(false);
+  const [phase, setPhase] = useState<GamePhase>('countdown');
+  const [countdown, setCountdown] = useState(3);
+  const [score, setScore] = useState(0);
+  const [timeLeft, setTimeLeft] = useState(GAME_DURATION_MS);
+  const [circles, setCircles] = useState<ActiveCircle[]>([]);
+  const [submitted, setSubmitted] = useState(false);
 
-  const activeIndex = getActiveTargetIndex(board);
-  const currentRound = board.activeRound + 1; // 1-indexed display
+  const scoreRef = useRef(0);
+  const circleIdRef = useRef(0);
+  const tappedRef = useRef(new Set<number>());
+  const spawnIntervalRef = useRef(INITIAL_SPAWN_INTERVAL_MS);
+  const spawnTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const gameTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const tickRef = useRef<NodeJS.Timeout | null>(null);
+  const startTimeRef = useRef(0);
 
-  // Count completed rounds for current player
-  const myTimes = myPlayerNumber === 1 ? board.player1Times : board.player2Times;
-  const completedRounds = myTimes.filter((t) => t !== null).length;
+  const spawnCircle = useCallback(() => {
+    const id = circleIdRef.current++;
+    const x = Math.floor(Math.random() * 60) + 20;
+    const y = Math.floor(Math.random() * 60) + 20;
+    setCircles((prev) => [...prev, { id, x, y, spawnedAt: Date.now() }]);
 
-  // Start the round flow when it's my turn and we have a valid active target
+    spawnIntervalRef.current = getNextSpawnInterval(spawnIntervalRef.current);
+    spawnTimerRef.current = setTimeout(spawnCircle, spawnIntervalRef.current);
+  }, []);
+
+  const endGame = useCallback(() => {
+    if (spawnTimerRef.current) clearTimeout(spawnTimerRef.current);
+    if (gameTimerRef.current) clearTimeout(gameTimerRef.current);
+    if (tickRef.current) clearInterval(tickRef.current);
+    setPhase('done');
+    setCircles([]);
+    setTimeLeft(0);
+  }, []);
+
+  // Submit score when game ends
   useEffect(() => {
-    if (!isMyTurn || activeIndex < 0) {
-      setPhase('ready');
-      return;
+    if (phase === 'done' && !submitted) {
+      setSubmitted(true);
+      onSubmitScore(scoreRef.current);
     }
+  }, [phase, submitted, onSubmitScore]);
 
-    hasRecorded.current = false;
-    setResultTime(null);
-    setTooSlow(false);
-    setPhase('ready');
+  // Countdown then start
+  useEffect(() => {
+    if (!isMyTurn) return;
 
-    // "Get Ready..." for 1 second, then waiting phase
-    phaseTimeoutRef.current = setTimeout(() => {
-      setPhase('waiting');
+    setPhase('countdown');
+    setCountdown(3);
+    setScore(0);
+    scoreRef.current = 0;
+    tappedRef.current = new Set();
+    setCircles([]);
+    setSubmitted(false);
+    spawnIntervalRef.current = INITIAL_SPAWN_INTERVAL_MS;
 
-      // Use pre-generated delay for this round
-      const delay = board.delays[activeIndex] ?? 2500;
+    const countdownTimer = setInterval(() => {
+      setCountdown((prev) => {
+        if (prev <= 1) {
+          clearInterval(countdownTimer);
+          setPhase('playing');
+          startTimeRef.current = Date.now();
 
-      phaseTimeoutRef.current = setTimeout(() => {
-        setPhase('target');
-        targetAppearedAt.current = Date.now();
+          // Start spawning circles
+          spawnCircle();
 
-        // Auto-timeout after MAX_REACTION_TIME_MS
-        timeoutRef.current = setTimeout(() => {
-          if (!hasRecorded.current) {
-            hasRecorded.current = true;
-            setTooSlow(true);
-            setResultTime(MAX_REACTION_TIME_MS);
-            setPhase('result');
-            onRecordRound(MAX_REACTION_TIME_MS);
-          }
-        }, MAX_REACTION_TIME_MS);
-      }, delay);
+          // End game after duration
+          gameTimerRef.current = setTimeout(endGame, GAME_DURATION_MS);
+
+          // Update time-left display
+          tickRef.current = setInterval(() => {
+            const elapsed = Date.now() - startTimeRef.current;
+            const remaining = Math.max(0, GAME_DURATION_MS - elapsed);
+            setTimeLeft(remaining);
+            if (remaining <= 0) {
+              clearInterval(tickRef.current!);
+            }
+          }, 50);
+
+          return 0;
+        }
+        return prev - 1;
+      });
     }, 1000);
 
     return () => {
-      if (phaseTimeoutRef.current) clearTimeout(phaseTimeoutRef.current);
-      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+      clearInterval(countdownTimer);
+      if (spawnTimerRef.current) clearTimeout(spawnTimerRef.current);
+      if (gameTimerRef.current) clearTimeout(gameTimerRef.current);
+      if (tickRef.current) clearInterval(tickRef.current);
     };
-  }, [isMyTurn, activeIndex, onRecordRound]);
+  }, [isMyTurn, spawnCircle, endGame]);
 
-  const handleTargetTap = useCallback(() => {
-    if (hasRecorded.current) return;
-    hasRecorded.current = true;
+  const handleCircleTap = useCallback((circleId: number) => {
+    if (tappedRef.current.has(circleId)) return;
+    tappedRef.current.add(circleId);
+    setCircles((prev) => prev.filter((c) => c.id !== circleId));
+    scoreRef.current += 1;
+    setScore((s) => s + 1);
+  }, []);
 
-    if (timeoutRef.current) clearTimeout(timeoutRef.current);
+  // Remove circles after 2 seconds if not tapped
+  useEffect(() => {
+    if (phase !== 'playing') return;
 
-    const reactionTime = Date.now() - targetAppearedAt.current;
-    setResultTime(reactionTime);
-    setTooSlow(false);
-    setPhase('result');
+    const cleanup = setInterval(() => {
+      const now = Date.now();
+      setCircles((prev) => prev.filter((c) => now - c.spawnedAt < 2000));
+    }, 200);
 
-    onRecordRound(reactionTime);
-  }, [onRecordRound]);
-
-  // Get target position for current round
-  const target = activeIndex >= 0 ? board.targets[activeIndex] : null;
+    return () => clearInterval(cleanup);
+  }, [phase]);
 
   if (!isMyTurn) {
+    const opponentScore = myPlayerNumber === 1 ? board.player2Score : board.player1Score;
+    const myScore = myPlayerNumber === 1 ? board.player1Score : board.player2Score;
+    const waitingForOpponent = myScore !== null;
+
     return (
       <div className="w-full max-w-md mx-auto">
         <div className="text-center mb-4">
           <span className="text-xs font-semibold uppercase tracking-wider text-text-secondary/70">
-            Reaction Speed Test
+            Tap Frenzy
           </span>
         </div>
         <div className="relative w-full aspect-square rounded-3xl bg-[#1a1a2e] border border-border flex items-center justify-center">
-          <motion.p
-            className="text-lg text-text-secondary text-center px-6"
-            animate={{ opacity: [0.5, 1, 0.5] }}
-            transition={{ duration: 2, repeat: Infinity }}
-          >
-            Waiting for {opponentName ?? 'opponent'}...
-          </motion.p>
+          {waitingForOpponent ? (
+            <div className="text-center px-6">
+              <p className="text-3xl font-bold text-[#FF6B35] mb-2">
+                Your score: {myScore}
+              </p>
+              <motion.p
+                className="text-lg text-text-secondary"
+                animate={{ opacity: [0.5, 1, 0.5] }}
+                transition={{ duration: 2, repeat: Infinity }}
+              >
+                Waiting for {opponentName ?? 'opponent'}...
+              </motion.p>
+            </div>
+          ) : (
+            <motion.p
+              className="text-lg text-text-secondary text-center px-6"
+              animate={{ opacity: [0.5, 1, 0.5] }}
+              transition={{ duration: 2, repeat: Infinity }}
+            >
+              Waiting for {opponentName ?? 'opponent'}...
+            </motion.p>
+          )}
         </div>
       </div>
     );
@@ -126,90 +195,99 @@ export function ReactionBoard({
 
   return (
     <div className="w-full max-w-md mx-auto">
-      {/* Round counter */}
-      <div className="text-center mb-4">
-        <span className="text-xs font-semibold uppercase tracking-wider text-text-secondary/70">
-          Round {currentRound}/{ROUNDS_PER_PLAYER}
-        </span>
+      {/* Header */}
+      <div className="flex items-center justify-between mb-4">
+        <div className="text-center flex-1">
+          <span className="text-xs font-semibold uppercase tracking-wider text-text-secondary/70">
+            Tap Frenzy
+          </span>
+        </div>
       </div>
+
+      {/* Stats bar */}
+      {phase === 'playing' && (
+        <div className="flex items-center justify-between mb-3 px-2">
+          <div className="text-sm font-bold text-[#FF6B35]">
+            Score: {score}
+          </div>
+          <div className="text-sm font-mono text-text-secondary">
+            {(timeLeft / 1000).toFixed(1)}s
+          </div>
+        </div>
+      )}
 
       {/* Play area */}
       <div className="relative w-full aspect-square rounded-3xl bg-[#1a1a2e] border border-border overflow-hidden select-none">
-        <AnimatePresence mode="wait">
-          {phase === 'ready' && (
+        <AnimatePresence>
+          {phase === 'countdown' && (
             <motion.div
-              key="ready"
+              key="countdown"
               className="absolute inset-0 flex items-center justify-center"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              transition={{ duration: 0.2 }}
-            >
-              <p className="text-2xl font-bold text-[#FF6B35]">Get Ready...</p>
-            </motion.div>
-          )}
-
-          {phase === 'waiting' && (
-            <motion.div
-              key="waiting"
-              className="absolute inset-0 flex items-center justify-center"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.2 }}
             >
               <motion.p
-                className="text-lg text-text-secondary/60"
-                animate={{ opacity: [0.4, 0.8, 0.4] }}
-                transition={{ duration: 1.5, repeat: Infinity }}
+                key={countdown}
+                className="text-6xl font-bold text-[#FF6B35]"
+                initial={{ scale: 0.5, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 1.5, opacity: 0 }}
+                transition={{ duration: 0.3 }}
               >
-                Wait for it...
+                {countdown === 0 ? 'GO!' : countdown}
               </motion.p>
             </motion.div>
           )}
 
-          {phase === 'target' && target && (
-            <ReactionTarget
-              key={`target-${activeIndex}`}
-              x={target.x}
-              y={target.y}
-              onTap={handleTargetTap}
-            />
-          )}
+          {phase === 'playing' &&
+            circles.map((circle) => (
+              <ReactionTarget
+                key={circle.id}
+                x={circle.x}
+                y={circle.y}
+                onTap={() => handleCircleTap(circle.id)}
+              />
+            ))}
 
-          {phase === 'result' && (
+          {phase === 'done' && (
             <motion.div
-              key="result"
+              key="done"
               className="absolute inset-0 flex items-center justify-center"
               initial={{ opacity: 0, scale: 0.8 }}
               animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0 }}
               transition={{ type: 'spring', stiffness: 300, damping: 20 }}
             >
               <div className="text-center">
-                {tooSlow ? (
-                  <p className="text-3xl font-bold text-player1">Too slow!</p>
-                ) : (
-                  <p className="text-4xl font-bold text-[#FF6B35]">
-                    {resultTime}ms
-                  </p>
-                )}
+                <p className="text-lg text-text-secondary mb-2">Time&apos;s up!</p>
+                <p className="text-5xl font-bold text-[#FF6B35]">{score}</p>
+                <p className="text-sm text-text-secondary mt-2">circles tapped</p>
               </div>
             </motion.div>
           )}
         </AnimatePresence>
+
+        {/* Progress bar */}
+        {phase === 'playing' && (
+          <div className="absolute bottom-0 left-0 right-0 h-1 bg-border/30">
+            <motion.div
+              className="h-full bg-[#FF6B35]"
+              initial={{ width: '100%' }}
+              animate={{ width: '0%' }}
+              transition={{ duration: GAME_DURATION_MS / 1000, ease: 'linear' }}
+            />
+          </div>
+        )}
       </div>
 
       {/* Instructions */}
       <div className="text-center mt-3">
         <p className="text-xs text-text-secondary/60">
-          {phase === 'target'
-            ? 'Tap the target!'
-            : phase === 'waiting'
-            ? 'Wait for the orange circle...'
-            : phase === 'result'
-            ? (completedRounds + 1 < ROUNDS_PER_PLAYER ? 'Next round starting...' : 'All rounds complete!')
-            : 'Get ready to react'}
+          {phase === 'countdown'
+            ? 'Get ready to tap circles!'
+            : phase === 'playing'
+            ? 'Tap circles before they disappear!'
+            : 'Submitting your score...'}
         </p>
       </div>
     </div>

@@ -4,10 +4,12 @@ import { use, useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { useReactionGame } from '@/hooks/useReactionGame';
+import { useNotifications } from '@/hooks/useNotifications';
 import { ReactionBoard } from '@/components/reaction/ReactionBoard';
 import { ReactionResults } from '@/components/reaction/ReactionResults';
 import { WinCelebration } from '@/components/WinCelebration';
 import { EndGameDialog } from '@/components/EndGameDialog';
+import { NotificationControls } from '@/components/NotificationControls';
 import { isGameComplete, computeWinner } from '@/lib/reaction-logic';
 import type { Player } from '@/lib/types';
 
@@ -18,7 +20,7 @@ function getMyName(): string | null {
 
 export default function ReactionGamePage({ params }: { params: Promise<{ gameId: string }> }) {
   const { gameId } = use(params);
-  const { game, loading, deleted, recordRound, resetGame } = useReactionGame(gameId);
+  const { game, loading, deleted, submitScore, resetGame } = useReactionGame(gameId);
   const router = useRouter();
   const [showEndDialog, setShowEndDialog] = useState(false);
   const [myName, setMyName] = useState<string | null>(null);
@@ -51,6 +53,13 @@ export default function ReactionGamePage({ params }: { params: Promise<{ gameId:
     if (!game || !myPlayerNumber) return null;
     return myPlayerNumber === 1 ? game.player2_name : game.player1_name;
   }, [game, myPlayerNumber]);
+
+  const { permissionState, requestPermission, isMuted, toggleMute } = useNotifications({
+    gameId,
+    isMyTurn,
+    opponentName,
+    gameType: 'reaction',
+  });
 
   const handleEndGame = useCallback(async () => {
     await resetGame();
@@ -120,7 +129,7 @@ export default function ReactionGamePage({ params }: { params: Promise<{ gameId:
           <p className="text-2xl font-semibold text-text-secondary mb-2">
             It&apos;s a tie!
           </p>
-          <p className="text-sm text-text-secondary">Identical reflexes.</p>
+          <p className="text-sm text-text-secondary">Same number of taps!</p>
         </div>
         <ReactionResults board={board} game={game} />
         <button
@@ -147,7 +156,7 @@ export default function ReactionGamePage({ params }: { params: Promise<{ gameId:
           isMyTurn={isMyTurn}
           myPlayerNumber={myPlayerNumber}
           opponentName={opponentName}
-          onRecordRound={recordRound}
+          onSubmitScore={submitScore}
         />
 
         <div className="flex items-center gap-3">
@@ -163,6 +172,12 @@ export default function ReactionGamePage({ params }: { params: Promise<{ gameId:
           >
             End Game
           </button>
+          <NotificationControls
+            permissionState={permissionState}
+            requestPermission={requestPermission}
+            isMuted={isMuted}
+            toggleMute={toggleMute}
+          />
         </div>
       </motion.div>
       <EndGameDialog

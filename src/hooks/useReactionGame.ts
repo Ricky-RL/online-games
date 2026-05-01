@@ -5,11 +5,10 @@ import { supabase } from '@/lib/supabase';
 import { useRouter } from 'next/navigation';
 import {
   createReactionBoard,
-  recordRoundResult,
+  recordPlayerScore,
   computeWinner,
   isGameComplete,
   isDraw,
-  getAverageTime,
   type ReactionBoardState,
 } from '@/lib/reaction-logic';
 import { recordMatchResult } from '@/lib/match-results';
@@ -36,7 +35,7 @@ interface UseReactionGameReturn {
   loading: boolean;
   error: string | null;
   deleted: boolean;
-  recordRound: (timeMs: number) => Promise<void>;
+  submitScore: (score: number) => Promise<void>;
   resetGame: () => Promise<void>;
 }
 
@@ -88,7 +87,6 @@ export function useReactionGame(gameId: string): UseReactionGameReturn {
     return data as ReactionGame;
   }, [gameId, updateGame]);
 
-  // Auto-join: if player2 slot is empty and I'm not player 1
   const tryAutoJoin = useCallback(async (gameData: ReactionGame) => {
     if (autoJoinAttempted.current) return;
 
@@ -98,11 +96,9 @@ export function useReactionGame(gameId: string): UseReactionGameReturn {
     const myId = PLAYER_IDS[playerName];
     const isPlayer1 = gameData.player1_id === myId || gameData.player1_name === playerName;
 
-    // Only auto-join if I'm not player 1 and player 2 slot is empty
     if (!isPlayer1 && gameData.player2_id === null) {
       autoJoinAttempted.current = true;
 
-      // If Player 1 already finished, transition phase to p2_playing
       const boardUpdate =
         gameData.board.phase === 'p1_done'
           ? { ...gameData.board, phase: 'p2_playing' as const }
@@ -124,7 +120,6 @@ export function useReactionGame(gameId: string): UseReactionGameReturn {
         return;
       }
 
-      // Update local state
       updateGame((prev) =>
         prev
           ? {
@@ -138,7 +133,6 @@ export function useReactionGame(gameId: string): UseReactionGameReturn {
     }
   }, [gameId, updateGame]);
 
-  // Initial fetch
   useEffect(() => {
     let cancelled = false;
     async function init() {
@@ -157,7 +151,6 @@ export function useReactionGame(gameId: string): UseReactionGameReturn {
     };
   }, [fetchGame, updateGame, tryAutoJoin]);
 
-  // Poll for changes
   useEffect(() => {
     if (deleted) return;
 
@@ -173,7 +166,6 @@ export function useReactionGame(gameId: string): UseReactionGameReturn {
             optimisticBoard.current = null;
             return fresh;
           }
-          // Keep optimistic state if server hasn't caught up yet
           optimisticBoard.current = null;
         }
 
@@ -181,22 +173,20 @@ export function useReactionGame(gameId: string): UseReactionGameReturn {
         return fresh;
       });
 
-      // Auto-join on poll too (in case initial fetch missed it)
       await tryAutoJoin(fresh);
     }, POLL_INTERVAL_MS);
 
     return () => clearInterval(interval);
   }, [gameId, fetchGame, updateGame, deleted, tryAutoJoin]);
 
-  // Navigate home if deleted
   useEffect(() => {
     if (deleted) {
       router.push('/');
     }
   }, [deleted, router]);
 
-  const recordRound = useCallback(
-    async (timeMs: number) => {
+  const submitScore = useCallback(
+    async (score: number) => {
       const currentGame = gameRef.current;
       if (!currentGame) return;
 
@@ -218,7 +208,6 @@ export function useReactionGame(gameId: string): UseReactionGameReturn {
       const myPlayerNumber: 1 | 2 = isPlayer1 ? 1 : 2;
       const board = currentGame.board;
 
-      // Validate it's my turn
       if (myPlayerNumber === 1 && board.phase !== 'p1_playing') {
         setError('Not your turn');
         return;
@@ -233,16 +222,14 @@ export function useReactionGame(gameId: string): UseReactionGameReturn {
         return;
       }
 
-      // Record the result
       let newBoard: ReactionBoardState;
       try {
-        newBoard = recordRoundResult(board, myPlayerNumber, board.activeRound, timeMs);
+        newBoard = recordPlayerScore(board, myPlayerNumber, score);
       } catch (e) {
         setError(e instanceof Error ? e.message : 'Invalid move');
         return;
       }
 
-      // Optimistic update
       optimisticBoard.current = newBoard;
       const gameOver = isGameComplete(newBoard);
       const winner = gameOver ? computeWinner(newBoard) : null;
@@ -259,20 +246,16 @@ export function useReactionGame(gameId: string): UseReactionGameReturn {
       );
       setError(null);
 
-      // Determine what to write to Supabase
       const updates: Record<string, unknown> = {
         board: newBoard,
         updated_at: new Date().toISOString(),
       };
 
-      // On P1's final round: set current_turn to 2
-      // If Player 2 already joined, transition directly to 'p2_playing'
       if (myPlayerNumber === 1 && newBoard.phase === 'p1_done') {
         updates.current_turn = 2;
         if (currentGame.player2_id !== null) {
           newBoard = { ...newBoard, phase: 'p2_playing' };
           updates.board = newBoard;
-          // Update optimistic state with the corrected phase
           optimisticBoard.current = newBoard;
           updateGame((prev) =>
             prev ? { ...prev, board: newBoard, current_turn: 2, winner } : null
@@ -280,7 +263,6 @@ export function useReactionGame(gameId: string): UseReactionGameReturn {
         }
       }
 
-      // On P2's final round: compute winner, set winner column
       if (myPlayerNumber === 2 && newBoard.phase === 'complete') {
         updates.winner = winner;
       }
@@ -302,11 +284,8 @@ export function useReactionGame(gameId: string): UseReactionGameReturn {
         return;
       }
 
-      // Record match result on game completion
       if (gameOver && !matchRecorded.current) {
         matchRecorded.current = true;
-        const p1Avg = getAverageTime(newBoard.player1Times);
-        const p2Avg = getAverageTime(newBoard.player2Times);
         const gameIsDraw = isDraw(newBoard);
 
         const winnerName = winner === 1 ? currentGame.player1_name : winner === 2 ? currentGame.player2_name : null;
@@ -323,10 +302,8 @@ export function useReactionGame(gameId: string): UseReactionGameReturn {
           loser_name: loserName,
           is_draw: gameIsDraw,
           metadata: {
-            p1Avg,
-            p2Avg,
-            p1Times: newBoard.player1Times,
-            p2Times: newBoard.player2Times,
+            player1Score: newBoard.player1Score,
+            player2Score: newBoard.player2Score,
           },
           player1_id: currentGame.player1_id!,
           player1_name: currentGame.player1_name!,
@@ -372,5 +349,5 @@ export function useReactionGame(gameId: string): UseReactionGameReturn {
     setDeleted(true);
   }, [gameId]);
 
-  return { game, loading, error, deleted, recordRound, resetGame };
+  return { game, loading, error, deleted, submitScore, resetGame };
 }

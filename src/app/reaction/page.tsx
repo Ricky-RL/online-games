@@ -35,6 +35,7 @@ export default function ReactionLobby() {
         if (!games) return { activeGame: null, joinableGame: null };
 
         const activeGame = games.find((g) => {
+          if (g.board?.phase === 'complete') return false;
           return g.player1_name === name || g.player2_name === name;
         }) || null;
 
