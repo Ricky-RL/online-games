@@ -42,6 +42,7 @@ export function MiniGolfCanvas({
   const { player1Color, player2Color } = useColors();
 
   const aimingRef = useRef(false);
+  const [aiming, setAiming] = useState(false);
   const dragStartRef = useRef<{ x: number; y: number } | null>(null);
   const dragCurrentRef = useRef<{ x: number; y: number } | null>(null);
   const [, setRenderTick] = useState(0);
@@ -130,6 +131,7 @@ export function MiniGolfCanvas({
 
     (e.target as HTMLElement).setPointerCapture(e.pointerId);
     aimingRef.current = true;
+    setAiming(true);
     dragStartRef.current = pos;
     dragCurrentRef.current = pos;
     setRenderTick(t => t + 1);
@@ -138,17 +140,20 @@ export function MiniGolfCanvas({
   const handlePointerMove = useCallback((e: React.PointerEvent) => {
     if (!aimingRef.current) return;
     dragCurrentRef.current = canvasToWorld(e.clientX, e.clientY);
+    setRenderTick(t => t + 1);
   }, [canvasToWorld]);
 
   const handlePointerUp = useCallback(() => {
     if (!aimingRef.current || !dragStartRef.current || !dragCurrentRef.current || !physicsRef.current) {
       aimingRef.current = false;
+      setAiming(false);
       setRenderTick(t => t + 1);
       return;
     }
 
     if (!isMyTurnRef.current) {
       aimingRef.current = false;
+      setAiming(false);
       dragStartRef.current = null;
       dragCurrentRef.current = null;
       setRenderTick(t => t + 1);
@@ -162,6 +167,7 @@ export function MiniGolfCanvas({
 
     if (power < 5) {
       aimingRef.current = false;
+      setAiming(false);
       dragStartRef.current = null;
       dragCurrentRef.current = null;
       setRenderTick(t => t + 1);
@@ -178,6 +184,7 @@ export function MiniGolfCanvas({
     holeCompletedRef.current = false;
     setAnimating(true);
     aimingRef.current = false;
+    setAiming(false);
     dragStartRef.current = null;
     dragCurrentRef.current = null;
   }, [onShotTaken]);
@@ -241,7 +248,7 @@ export function MiniGolfCanvas({
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    const shouldRender = animating || aimingRef.current;
+    const shouldRender = animating || aiming;
     if (!shouldRender) {
       renderOneFrame(ctx, canvas, level, scaleRef.current, dprRef.current, playerNumber, player1Color, player2Color, physicsRef.current, aimingRef.current, dragCurrentRef.current, isMyTurnRef.current, timeRef.current);
       return;
@@ -254,7 +261,7 @@ export function MiniGolfCanvas({
 
     renderFrameRef.current = requestAnimationFrame(render);
     return () => cancelAnimationFrame(renderFrameRef.current);
-  }, [animating, level, player1Color, player2Color, playerNumber]);
+  }, [animating, aiming, level, player1Color, player2Color, playerNumber]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -431,6 +438,45 @@ function renderOneFrame(
     ctx.lineTo(endX, endY);
     ctx.stroke();
     ctx.setLineDash([]);
+
+    // Arrowhead at end of aim line
+    if (power >= 5) {
+      const arrowSize = 8;
+      const arrowAngle = Math.atan2(endY - ball.y, endX - ball.x);
+      ctx.fillStyle = lineColor;
+      ctx.beginPath();
+      ctx.moveTo(endX, endY);
+      ctx.lineTo(
+        endX - arrowSize * Math.cos(arrowAngle - Math.PI / 6),
+        endY - arrowSize * Math.sin(arrowAngle - Math.PI / 6)
+      );
+      ctx.lineTo(
+        endX - arrowSize * Math.cos(arrowAngle + Math.PI / 6),
+        endY - arrowSize * Math.sin(arrowAngle + Math.PI / 6)
+      );
+      ctx.closePath();
+      ctx.fill();
+    }
+
+    // Power bar
+    if (isMyTurn && power >= 5) {
+      const barWidth = 60;
+      const barHeight = 6;
+      const barX = ball.x - barWidth / 2;
+      const barY = ball.y + BALL_RADIUS + 12;
+      const fillRatio = power / MAX_POWER;
+
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.4)';
+      ctx.fillRect(barX, barY, barWidth, barHeight);
+
+      const powerColor = fillRatio >= 0.95 ? '#FF4444' : fillRatio >= 0.6 ? '#FFAA00' : '#44FF44';
+      ctx.fillStyle = powerColor;
+      ctx.fillRect(barX, barY, barWidth * fillRatio, barHeight);
+
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(barX, barY, barWidth, barHeight);
+    }
 
     if (!isMyTurn) {
       ctx.fillStyle = '#888888';

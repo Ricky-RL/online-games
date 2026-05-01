@@ -53,9 +53,6 @@ export function useMiniGolfGame(gameId: string): UseMiniGolfGameReturn {
     }
 
     const fresh = data as MiniGolfGame;
-    const prev = gameRef.current;
-
-    if (prev && fresh.board.version < prev.board.version) return;
 
     gameRef.current = fresh;
     setGame(fresh);

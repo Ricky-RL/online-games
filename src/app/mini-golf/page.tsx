@@ -57,7 +57,6 @@ export default function MiniGolfLobby() {
           .update({
             player2_id: playerId,
             player2_name: name,
-            board: { ...joinable.board, phase: 'aiming' },
             updated_at: new Date().toISOString(),
           })
           .eq('id', joinable.id)
@@ -88,7 +87,6 @@ export default function MiniGolfLobby() {
           .update({
             player2_id: playerId,
             player2_name: name,
-            board: { ...joinable.board, phase: 'aiming' },
             updated_at: new Date().toISOString(),
           })
           .eq('id', joinable.id)
