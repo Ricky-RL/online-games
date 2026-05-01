@@ -166,8 +166,8 @@ export function simulateShot(balls: BallState[], shot: Shot): { finalBalls: Ball
 
 export function getDefaultCueBallPosition(): Point {
   return {
-    x: CUSHION_WIDTH + (TABLE_WIDTH - 2 * CUSHION_WIDTH) * 0.25,
-    y: TABLE_HEIGHT / 2,
+    x: TABLE_WIDTH / 2,
+    y: CUSHION_WIDTH + (TABLE_HEIGHT - 2 * CUSHION_WIDTH) * 0.75,
   };
 }
 

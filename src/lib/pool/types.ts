@@ -58,15 +58,15 @@ export interface PoolGame {
   updated_at: string;
 }
 
-// Table dimensions (in canvas units)
-export const TABLE_WIDTH = 400;
-export const TABLE_HEIGHT = 200;
+// Table dimensions (in canvas units) — portrait orientation for mobile
+export const TABLE_WIDTH = 200;
+export const TABLE_HEIGHT = 400;
 export const BALL_RADIUS = 7;
 export const POCKET_RADIUS = 14;
 export const CUSHION_WIDTH = 12;
 
 // Physics constants
-export const MAX_POWER = 200;
+export const MAX_POWER = 100;
 export const BASE_SPEED = 16;
 export const FRICTION_RATE = 0.015;
 export const MIN_SPEED = 0.15;
