@@ -40,8 +40,10 @@ export default function CupPongGamePage({ params }: { params: Promise<{ gameId: 
 
   // When firstThrow arrives from polling (opponent's replayed throw), trigger the animation.
   // Skip if the throw was initiated locally (already handled by handleThrow).
+  const animatedThrowRef = useRef<ThrowResult | null>(null);
   useEffect(() => {
-    if (firstThrow && !animating && !localThrowRef.current) {
+    if (firstThrow && !animating && !localThrowRef.current && firstThrow !== animatedThrowRef.current) {
+      animatedThrowRef.current = firstThrow;
       setDisplayedThrow(firstThrow);
       setAnimating(true);
     }
@@ -83,6 +85,17 @@ export default function CupPongGamePage({ params }: { params: Promise<{ gameId: 
       const result = await makeThrow(direction, power);
       if (result) {
         setDisplayedThrow(result);
+        animatedThrowRef.current = result;
+        // Safety: auto-clear animation after max duration in case onComplete never fires
+        setTimeout(() => {
+          setAnimating((prev) => {
+            if (prev) {
+              setDisplayedThrow(null);
+              localThrowRef.current = false;
+            }
+            return false;
+          });
+        }, 1500);
       } else {
         setAnimating(false);
         localThrowRef.current = false;
