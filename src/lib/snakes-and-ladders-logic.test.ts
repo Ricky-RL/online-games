@@ -93,6 +93,8 @@ describe('makeMove', () => {
     skipNextTurn: null,
     shielded: null,
     doubleDice: null,
+    luckySeven: null,
+    lastPowerupType: null,
   };
 
   it('advances player by roll value', () => {
@@ -123,6 +125,8 @@ describe('makeMove', () => {
       skipNextTurn: null,
       shielded: null,
       doubleDice: null,
+    luckySeven: null,
+    lastPowerupType: null,
     };
     const result = makeMove(state, 1, 3);
     expect(result.players[1]).toBe(30);
@@ -141,6 +145,8 @@ describe('makeMove', () => {
       skipNextTurn: null,
       shielded: null,
       doubleDice: null,
+    luckySeven: null,
+    lastPowerupType: null,
     };
     const result = makeMove(state, 1, 3);
     expect(result.players[1]).toBe(10);
@@ -159,6 +165,8 @@ describe('makeMove', () => {
       skipNextTurn: null,
       shielded: null,
       doubleDice: null,
+    luckySeven: null,
+    lastPowerupType: null,
     };
     const result = makeMove(state, 1, 5);
     expect(result.players[1]).toBe(97);
@@ -177,6 +185,8 @@ describe('makeMove', () => {
       skipNextTurn: null,
       shielded: null,
       doubleDice: null,
+    luckySeven: null,
+    lastPowerupType: null,
     };
     const result = makeMove(state, 1, 5);
     expect(result.players[1]).toBe(20);
@@ -195,6 +205,8 @@ describe('makeMove', () => {
       skipNextTurn: null,
       shielded: null,
       doubleDice: null,
+    luckySeven: null,
+    lastPowerupType: null,
     };
     const result = makeMove(state, 1, 4);
     expect(result.players[1]).toBe(100);
@@ -213,6 +225,8 @@ describe('makeMove', () => {
       skipNextTurn: null,
       shielded: null,
       doubleDice: null,
+    luckySeven: null,
+    lastPowerupType: null,
     };
     const result = makeMove(state, 1, 3);
     expect(result.players[1]).toBe(100);
@@ -233,6 +247,8 @@ describe('checkWin', () => {
       skipNextTurn: null,
       shielded: null,
       doubleDice: null,
+    luckySeven: null,
+    lastPowerupType: null,
     };
     expect(checkWin(state)).toBeNull();
   });
@@ -250,6 +266,8 @@ describe('checkWin', () => {
       skipNextTurn: null,
       shielded: null,
       doubleDice: null,
+    luckySeven: null,
+    lastPowerupType: null,
     };
     expect(checkWin(state)).toBe(1);
   });
@@ -267,6 +285,8 @@ describe('checkWin', () => {
       skipNextTurn: null,
       shielded: null,
       doubleDice: null,
+    luckySeven: null,
+    lastPowerupType: null,
     };
     expect(checkWin(state)).toBe(2);
   });
@@ -285,6 +305,8 @@ describe('getSquareEntity', () => {
     skipNextTurn: null,
     shielded: null,
     doubleDice: null,
+    luckySeven: null,
+    lastPowerupType: null,
   };
 
   it('returns snake info for a snake head', () => {
@@ -301,9 +323,9 @@ describe('getSquareEntity', () => {
 });
 
 describe('spawnPowerups', () => {
-  it('places 7 powerups on a fresh board', () => {
+  it('places 11 powerups on a fresh board', () => {
     const board = generateBoard();
-    expect(Object.keys(board.powerups)).toHaveLength(7);
+    expect(Object.keys(board.powerups)).toHaveLength(11);
   });
 
   it('powerups are not placed on tile 1 or 100', () => {
@@ -359,6 +381,8 @@ describe('makeMove with powerups', () => {
     skipNextTurn: null,
     shielded: null,
     doubleDice: null,
+    luckySeven: null,
+    lastPowerupType: null,
   };
 
   it('triggers teleport powerup and moves player forward', () => {
@@ -534,6 +558,8 @@ describe('skipTurn', () => {
     skipNextTurn: null,
     shielded: null,
     doubleDice: null,
+    luckySeven: null,
+    lastPowerupType: null,
   };
 
   it('handleSkipTurn consumes skipNextTurn and returns skipped event', () => {
@@ -570,6 +596,8 @@ describe('tickRespawns', () => {
     skipNextTurn: null,
     shielded: null,
     doubleDice: null,
+    luckySeven: null,
+    lastPowerupType: null,
   };
 
   it('decrements respawn timers', () => {

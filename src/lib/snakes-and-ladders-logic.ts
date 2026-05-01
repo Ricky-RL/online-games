@@ -5,9 +5,10 @@ const MAX_ATTEMPTS = 100;
 export const POWERUP_TYPES: PowerupType[] = [
   'double_dice', 'shield', 'reverse', 'teleport',
   'freeze', 'swap', 'earthquake', 'magnet',
+  'lucky_seven', 'sniper', 'clone', 'gravity',
 ];
 
-const INITIAL_POWERUP_COUNT = 7;
+const INITIAL_POWERUP_COUNT = 11;
 
 function randomInt(min: number, max: number): number {
   return Math.floor(Math.random() * (max - min + 1)) + min;
@@ -107,6 +108,8 @@ export function generateBoard(): SnakesAndLaddersState {
     skipNextTurn: null,
     shielded: null,
     doubleDice: null,
+    luckySeven: null,
+    lastPowerupType: null,
   };
 
   baseState.powerups = spawnPowerups(baseState, INITIAL_POWERUP_COUNT);
@@ -243,9 +246,69 @@ function applyPowerup(
       }
       break;
     }
+    case 'lucky_seven':
+      newState = { ...newState, luckySeven: { player } };
+      effect = 'Your next roll will be lucky 7!';
+      break;
+    case 'sniper': {
+      const snakeHeads = Object.keys(newState.snakes).map(Number).sort((a, b) => b - a);
+      if (snakeHeads.length > 0) {
+        const targetHead = snakeHeads[0];
+        const targetTail = newState.snakes[targetHead];
+        newState = { ...newState, players: { ...newState.players, [otherPlayer]: targetTail } };
+        effect = `Sniped opponent onto snake! Sent to tile ${targetTail}!`;
+      } else {
+        const amount = randomInt(8, 15);
+        const opponentPos = Math.max(1, newState.players[otherPlayer] - amount);
+        newState = { ...newState, players: { ...newState.players, [otherPlayer]: opponentPos } };
+        effect = `No snakes to target — opponent sent back ${amount}!`;
+      }
+      break;
+    }
+    case 'clone': {
+      const lastPowerup = newState.lastPowerupType;
+      if (lastPowerup && lastPowerup.player === player && lastPowerup.type !== 'clone') {
+        // Re-apply the last powerup this player triggered
+        const cloneResult = applyPowerup(
+          { ...newState, powerups: { ...newState.powerups, [position]: lastPowerup.type } },
+          player,
+          position,
+          depth + 1
+        );
+        effect = `Cloned ${lastPowerup.type.replace('_', ' ')}!`;
+        return {
+          state: cloneResult.state,
+          position: cloneResult.position,
+          events: [{ tile: position, type, effect }, ...cloneResult.events],
+        };
+      } else {
+        // No previous powerup to clone — grant a small forward boost
+        newPosition = Math.min(100, position + 3);
+        effect = 'Nothing to clone — moved forward 3!';
+      }
+      break;
+    }
+    case 'gravity': {
+      const opponentPos = newState.players[otherPlayer];
+      const snakeTails = Object.values(newState.snakes).map(Number).filter(t => t < opponentPos).sort((a, b) => b - a);
+      if (snakeTails.length > 0) {
+        const targetTail = snakeTails[0];
+        newState = { ...newState, players: { ...newState.players, [otherPlayer]: targetTail } };
+        effect = `Gravity pulled opponent down to tile ${targetTail}!`;
+      } else {
+        const amount = randomInt(5, 10);
+        const newOpponentPos = Math.max(1, opponentPos - amount);
+        newState = { ...newState, players: { ...newState.players, [otherPlayer]: newOpponentPos } };
+        effect = `No snake tail below opponent — dragged back ${amount}!`;
+      }
+      break;
+    }
   }
 
   const events = [{ tile: position, type, effect }];
+
+  // Track the last powerup activated by this player (for clone)
+  newState = { ...newState, lastPowerupType: { player, type } };
 
   if (type === 'teleport' || type === 'magnet') {
     const chain = applyPowerup(newState, player, newPosition, depth + 1);
@@ -269,7 +332,13 @@ export function makeMove(
     newDoubleDice = null;
   }
 
-  let workingState: SnakesAndLaddersState = { ...state, doubleDice: newDoubleDice };
+  let newLuckySeven = state.luckySeven;
+  if (state.luckySeven && state.luckySeven.player === player) {
+    effectiveRoll = 7;
+    newLuckySeven = null;
+  }
+
+  let workingState: SnakesAndLaddersState = { ...state, doubleDice: newDoubleDice, luckySeven: newLuckySeven };
 
   let newPosition = workingState.players[player] + effectiveRoll;
   if (newPosition > 100) {

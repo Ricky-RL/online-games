@@ -13,6 +13,10 @@ const POWERUP_INFO: Record<PowerupType, { icon: string; name: string }> = {
   swap: { icon: '🔄', name: 'Swap' },
   earthquake: { icon: '🌋', name: 'Earthquake' },
   magnet: { icon: '🧲', name: 'Magnet' },
+  lucky_seven: { icon: '🍀', name: 'Lucky Seven' },
+  sniper: { icon: '🎯', name: 'Sniper' },
+  clone: { icon: '🪞', name: 'Clone' },
+  gravity: { icon: '🕳️', name: 'Gravity' },
 };
 
 interface PowerupToastProps {

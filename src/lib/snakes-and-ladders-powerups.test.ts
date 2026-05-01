@@ -14,6 +14,8 @@ const baseState: SnakesAndLaddersState = {
   skipNextTurn: null,
   shielded: null,
   doubleDice: null,
+  luckySeven: null,
+  lastPowerupType: null,
 };
 
 describe('handleSkipTurn edge cases', () => {

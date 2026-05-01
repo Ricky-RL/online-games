@@ -158,13 +158,23 @@ export default function SnakesAndLaddersGamePage({ params }: { params: Promise<{
         <span>{game.player2_name || 'Player 2'}: square {board.players[2]}</span>
       </div>
 
-      {/* Home button */}
-      <button
-        onClick={() => router.push('/')}
-        className="px-5 py-2 text-sm font-medium rounded-xl border border-border bg-surface text-text-secondary hover:text-text-primary hover:border-text-secondary/30 shadow-sm hover:shadow transition-all cursor-pointer"
-      >
-        Home
-      </button>
+      {/* Home / End Game buttons */}
+      <div className="flex items-center gap-3">
+        <button
+          onClick={() => router.push('/')}
+          className="px-4 py-2 text-sm font-medium rounded-xl border border-border bg-surface text-text-secondary hover:text-text-primary hover:border-text-secondary/30 shadow-sm hover:shadow transition-all cursor-pointer"
+        >
+          Home
+        </button>
+        {isParticipant && !game.winner && (
+          <button
+            onClick={() => setShowEndDialog(true)}
+            className="px-4 py-2 text-sm font-medium rounded-xl border border-player1/20 bg-player1/5 text-player1/80 hover:bg-player1/10 hover:border-player1/40 hover:text-player1 shadow-sm hover:shadow transition-all cursor-pointer"
+          >
+            End Game
+          </button>
+        )}
+      </div>
 
       {/* Error */}
       {error && (

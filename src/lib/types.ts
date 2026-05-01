@@ -113,6 +113,10 @@ export type PowerupType =
   | 'swap'
   | 'earthquake'
   | 'magnet'
+  | 'lucky_seven'
+  | 'sniper'
+  | 'clone'
+  | 'gravity'
 
 export interface MoveEvent {
   player: 1 | 2
@@ -138,4 +142,6 @@ export interface SnakesAndLaddersState {
   skipNextTurn: { player: 1 | 2 } | null
   shielded: { player: 1 | 2 } | null
   doubleDice: { player: 1 | 2 } | null
+  luckySeven: { player: 1 | 2 } | null
+  lastPowerupType: { player: 1 | 2; type: PowerupType } | null
 }

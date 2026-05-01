@@ -367,6 +367,8 @@ export function useSnakesAndLaddersGame(gameId: string): UseSnakesAndLaddersGame
           skipNextTurn: null,
           shielded: null,
           doubleDice: null,
+          luckySeven: null,
+          lastPowerupType: null,
         },
         current_turn: 1,
         winner: null,
