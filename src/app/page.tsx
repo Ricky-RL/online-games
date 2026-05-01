@@ -276,6 +276,14 @@ function MemoryIcon() {
   );
 }
 
+function ReactionIcon() {
+  return (
+    <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
+      <path d="M16 3L6 16h6l-2 9 10-13h-6l2-9z" fill="#FF6B35" opacity="0.9" />
+    </svg>
+  );
+}
+
 
 function PlayerSelector({ onSelect }: { onSelect: (name: PlayerName) => void }) {
   return (
@@ -924,6 +932,7 @@ function GameSelection({ playerName, onChangePlayer }: { playerName: PlayerName;
     'memory': { icon: <MemoryIcon />, onClick: () => router.push('/memory') },
     'pool': { icon: <PoolIcon />, onClick: () => router.push('/pool') },
     'cup-pong': { icon: <CupPongIcon />, onClick: () => router.push('/cup-pong') },
+    'reaction': { icon: <ReactionIcon />, onClick: () => router.push('/reaction') },
   };
 
   return (
