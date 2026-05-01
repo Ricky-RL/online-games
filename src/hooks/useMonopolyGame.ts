@@ -24,6 +24,7 @@ interface UseMonopolyGameReturn {
   game: MonopolyGame | null;
   loading: boolean;
   error: string | null;
+  deleted: boolean;
   myPlayer: Player | null;
   isMyTurn: boolean;
   lastMove: MonopolyLastMove | null;
@@ -45,6 +46,7 @@ export function useMonopolyGame(gameId: string): UseMonopolyGameReturn {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [lastMove, setLastMove] = useState<MonopolyLastMove | null>(null);
+  const [deleted, setDeleted] = useState(false);
   const gameRef = useRef<MonopolyGame | null>(null);
   const prevPositionsRef = useRef<[number, number] | null>(null);
   const matchRecorded = useRef(false);
@@ -70,6 +72,12 @@ export function useMonopolyGame(gameId: string): UseMonopolyGameReturn {
 
     if (fetchError || !data) {
       if (!gameRef.current) setError('Game not found');
+      else setDeleted(true);
+      return;
+    }
+
+    if (data.game_type === 'ended') {
+      setDeleted(true);
       return;
     }
 
@@ -117,10 +125,11 @@ export function useMonopolyGame(gameId: string): UseMonopolyGameReturn {
   }, [gameId]);
 
   useEffect(() => {
+    if (deleted) return;
     fetchGame();
     const interval = setInterval(fetchGame, POLL_INTERVAL_MS);
     return () => clearInterval(interval);
-  }, [fetchGame]);
+  }, [fetchGame, deleted]);
 
   // Record match result when game ends
   useEffect(() => {
@@ -264,26 +273,41 @@ export function useMonopolyGame(gameId: string): UseMonopolyGameReturn {
   }, [myPlayer, updateBoard]);
 
   const resetGame = useCallback(async () => {
-    const newBoard = createInitialBoard();
-    const { error: updateError } = await supabase
+    const { error: resetError } = await supabase
       .from('games')
       .update({
-        board: newBoard,
+        game_type: 'ended',
+        board: createInitialBoard(),
         current_turn: 1,
         winner: null,
+        player1_name: null,
+        player2_name: null,
+        player1_id: null,
+        player2_id: null,
         updated_at: new Date().toISOString(),
       })
       .eq('id', gameId);
 
-    if (!updateError) {
-      matchRecorded.current = false;
-      gameRef.current = null;
-      await fetchGame();
+    if (resetError) {
+      console.error('Error resetting game:', resetError);
+      return;
     }
-  }, [gameId, fetchGame]);
+
+    const { error: deleteError } = await supabase
+      .from('games')
+      .delete()
+      .eq('id', gameId);
+
+    if (deleteError) {
+      console.error('Error deleting game:', deleteError);
+    }
+
+    gameRef.current = null;
+    setDeleted(true);
+  }, [gameId]);
 
   return {
-    game, loading, error, myPlayer, isMyTurn, lastMove,
+    game, loading, error, deleted, myPlayer, isMyTurn, lastMove,
     roll, buy, pass, build, endMyTurn, payJailFee, rollForDoubles, dismissCard,
     buildableProperties, resetGame, forfeitGame,
   };

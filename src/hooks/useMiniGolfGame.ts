@@ -52,6 +52,11 @@ export function useMiniGolfGame(gameId: string): UseMiniGolfGameReturn {
       return;
     }
 
+    if (data.game_type === 'ended') {
+      setDeleted(true);
+      return;
+    }
+
     const fresh = data as MiniGolfGame;
 
     gameRef.current = fresh;

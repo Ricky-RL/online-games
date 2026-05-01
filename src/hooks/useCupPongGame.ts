@@ -290,8 +290,8 @@ export function useCupPongGame(gameId: string): UseCupPongGameReturn {
         return throwResult;
       }
 
-      // Second throw: apply both throws and commit to server
-      const boardAfterSecond = applyThrow(currentGame.board, myPlayerNumber, throwResult);
+      // Second throw: apply to the current board (which includes first throw's effects)
+      const boardAfterSecond = applyThrow(gameRef.current!.board, myPlayerNumber, throwResult);
 
       // Check for winner after second throw
       const winner = checkWinner(boardAfterSecond);
