@@ -242,6 +242,16 @@ function MonopolyIcon() {
   );
 }
 
+function PoolIcon() {
+  return (
+    <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
+      <circle cx="10" cy="11" r="4" fill="#FFD700" opacity="0.9" />
+      <circle cx="18" cy="11" r="4" fill="#0000FF" opacity="0.9" />
+      <circle cx="14" cy="18" r="4" fill="#000000" opacity="0.9" />
+    </svg>
+  );
+}
+
 function MemoryIcon() {
   return (
     <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
@@ -901,6 +911,7 @@ function GameSelection({ playerName, onChangePlayer }: { playerName: PlayerName;
     'word-search': { icon: <WordSearchIcon />, onClick: () => router.push('/word-search') },
     'monopoly': { icon: <MonopolyIcon />, onClick: handlePlayMonopolyGame, loading: connecting === 'monopoly' },
     'memory': { icon: <MemoryIcon />, onClick: () => router.push('/memory') },
+    'pool': { icon: <PoolIcon />, onClick: () => router.push('/pool') },
   };
 
   return (

@@ -84,6 +84,12 @@ export const DEFAULT_GAME_ORDER: GameDefinition[] = [
     description: 'Pick categories, answer trivia. Highest score wins the board.',
     color: '#1A3A7A',
   },
+  {
+    slug: 'pool',
+    title: 'Pool',
+    description: 'Classic 8-ball pool. Sink your balls, pocket the 8-ball last.',
+    color: '#1B5E20',
+  },
 ];
 
 export const DEFAULT_SLUG_ORDER = DEFAULT_GAME_ORDER.map((g) => g.slug);

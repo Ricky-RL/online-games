@@ -1,5 +1,5 @@
 
-export type InboxGameType = 'connect-four' | 'tic-tac-toe' | 'checkers' | 'battleship' | 'mini-golf' | 'monopoly' | 'jenga' | 'snakes-and-ladders' | 'word-search' | 'daily-wordle' | 'memory' | 'jeopardy';
+export type InboxGameType = 'connect-four' | 'tic-tac-toe' | 'checkers' | 'battleship' | 'mini-golf' | 'monopoly' | 'jenga' | 'snakes-and-ladders' | 'word-search' | 'daily-wordle' | 'memory' | 'jeopardy' | 'pool';
 
 export interface InboxGame {
   id: string;
