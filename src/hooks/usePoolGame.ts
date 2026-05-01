@@ -295,6 +295,28 @@ export function usePoolGame(gameId: string): UsePoolGameReturn {
     if (!updateError) {
       gameRef.current = { ...current, board, winner };
       setGame({ ...current, board, winner });
+
+      if (!matchRecorded.current && current.player1_id && current.player2_id && current.player1_name && current.player2_name) {
+        matchRecorded.current = true;
+        const winnerName = winner === 1 ? current.player1_name : current.player2_name;
+        const loserName = winner === 1 ? current.player2_name : current.player1_name;
+        const winnerId = winner === 1 ? current.player1_id : current.player2_id;
+        const loserId = winner === 1 ? current.player2_id : current.player1_id;
+        recordMatchResult({
+          game_type: 'pool',
+          game_id: gameId,
+          winner_id: winnerId,
+          winner_name: winnerName,
+          loser_id: loserId,
+          loser_name: loserName,
+          is_draw: false,
+          metadata: null,
+          player1_id: current.player1_id,
+          player1_name: current.player1_name,
+          player2_id: current.player2_id,
+          player2_name: current.player2_name,
+        });
+      }
     }
   }, [gameId, getPlayerNumber]);
 

@@ -35,6 +35,7 @@ interface UseCupPongGameReturn {
   /** Execute a throw with direction and power */
   makeThrow: (direction: ThrowVector, power: number) => Promise<void>;
   resetGame: () => Promise<void>;
+  endGame: () => Promise<void>;
 }
 
 export function useCupPongGame(gameId: string): UseCupPongGameReturn {
@@ -357,7 +358,41 @@ export function useCupPongGame(gameId: string): UseCupPongGameReturn {
   );
 
   const resetGame = useCallback(async () => {
+    const newBoard = createInitialBoard();
     const { error: resetError } = await supabase
+      .from('games')
+      .update({
+        board: newBoard,
+        current_turn: 1,
+        winner: null,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', gameId);
+
+    if (resetError) {
+      console.error('Error resetting game:', resetError);
+      setError(resetError.message);
+      return;
+    }
+
+    matchRecorded.current = false;
+    setFirstThrow(null);
+    updateGame((prev) =>
+      prev
+        ? {
+            ...prev,
+            board: newBoard,
+            current_turn: 1 as const,
+            winner: null,
+          }
+        : null
+    );
+  }, [gameId, updateGame]);
+
+  const endGame = useCallback(async () => {
+    // Mark the game as ended and clear player data so it won't appear in
+    // lobby queries or inbox, then delete the row entirely.
+    const { error: endError } = await supabase
       .from('games')
       .update({
         game_type: 'ended',
@@ -372,12 +407,13 @@ export function useCupPongGame(gameId: string): UseCupPongGameReturn {
       })
       .eq('id', gameId);
 
-    if (resetError) {
-      console.error('Error resetting game:', resetError);
-      setError(resetError.message);
+    if (endError) {
+      console.error('Error ending game:', endError);
+      setError(endError.message);
       return;
     }
 
+    // Then delete the row entirely.
     const { error: deleteError } = await supabase
       .from('games')
       .delete()
@@ -385,10 +421,11 @@ export function useCupPongGame(gameId: string): UseCupPongGameReturn {
 
     if (deleteError) {
       console.error('Error deleting game:', deleteError);
+      // Non-fatal: the game is already cleared, so proceed.
     }
 
     setDeleted(true);
   }, [gameId]);
 
-  return { game, loading, error, deleted, firstThrow, makeThrow, resetGame };
+  return { game, loading, error, deleted, firstThrow, makeThrow, resetGame, endGame };
 }
