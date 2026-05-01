@@ -68,9 +68,7 @@ export function Table({
 
   // My cups are the cups at my defensive end (the ones my opponent aims at)
   // I throw at my opponent's cups
-  const myCups = myPlayer === 1 ? player1Cups : player2Cups;
   const opponentCups = myPlayer === 1 ? player2Cups : player1Cups;
-  const opponentPlayer: Player = myPlayer === 1 ? 2 : 1;
   const throwerSide: 'bottom' | 'top' = myPlayer === 1 ? 'bottom' : 'top';
 
   return (
@@ -180,14 +178,11 @@ export function Table({
           <BallAnimation
             throwResult={lastThrowResult}
             throwerSide={
-              // Determine who threw based on current turn context
-              currentTurn === myPlayer
-                ? (myPlayer === 1 ? 'bottom' : 'top')
-                : (myPlayer === 1 ? 'top' : 'bottom')
+              // The animation always shows the local player's throw
+              // (opponent throws come in via polling as state changes, not animated)
+              myPlayer === 1 ? 'bottom' : 'top'
             }
-            targetCups={
-              currentTurn === myPlayer ? opponentCups : myCups
-            }
+            targetCups={opponentCups}
             tableWidth={TABLE_WIDTH}
             tableHeight={TABLE_HEIGHT}
             onComplete={onAnimationComplete}
