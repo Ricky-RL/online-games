@@ -55,11 +55,15 @@ export default function ReactionLobby() {
       }
 
       if (joinableGame) {
+        const boardUpdate = joinableGame.board?.phase === 'p1_done'
+          ? { ...joinableGame.board, phase: 'p2_playing' }
+          : undefined;
         const { error: joinError } = await supabase
           .from('games')
           .update({
             player2_id: myId,
             player2_name: name,
+            ...(boardUpdate ? { board: boardUpdate } : {}),
             updated_at: new Date().toISOString(),
           })
           .eq('id', joinableGame.id)
@@ -88,11 +92,15 @@ export default function ReactionLobby() {
       }
 
       if (joinableGame) {
+        const boardUpdate = joinableGame.board?.phase === 'p1_done'
+          ? { ...joinableGame.board, phase: 'p2_playing' }
+          : undefined;
         const { error: joinError } = await supabase
           .from('games')
           .update({
             player2_id: myId,
             player2_name: name,
+            ...(boardUpdate ? { board: boardUpdate } : {}),
             updated_at: new Date().toISOString(),
           })
           .eq('id', joinableGame.id)
