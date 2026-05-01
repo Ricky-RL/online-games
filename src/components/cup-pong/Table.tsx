@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { CupFormation } from './CupFormation';
 import { BallAnimation } from './BallAnimation';
@@ -83,11 +83,14 @@ export function Table({
 
   // Flip cup positions so the current player always sees their own cups at
   // the bottom and opponent's cups at the top of the table.
-  const displayP1Cups = flipCupsForPlayer(player1Cups, myPlayer);
-  const displayP2Cups = flipCupsForPlayer(player2Cups, myPlayer);
+  const displayP1Cups = useMemo(() => flipCupsForPlayer(player1Cups, myPlayer), [player1Cups, myPlayer]);
+  const displayP2Cups = useMemo(() => flipCupsForPlayer(player2Cups, myPlayer), [player2Cups, myPlayer]);
 
   // Opponent's cups (in display coordinates) are what the ball targets.
-  const displayOpponentCups = myPlayer === 1 ? displayP2Cups : displayP1Cups;
+  const displayOpponentCups = useMemo(
+    () => (myPlayer === 1 ? displayP2Cups : displayP1Cups),
+    [myPlayer, displayP1Cups, displayP2Cups]
+  );
 
   // After the flip, every player always throws from bottom toward the top.
   const throwerSide: 'bottom' | 'top' = 'bottom';
