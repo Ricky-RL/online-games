@@ -124,12 +124,19 @@ export function useTicTacToeGame(gameId: string): UseTicTacToeGameReturn {
       updateGame((prev) => {
         if (!prev) return fresh;
 
+        const freshMoves = totalMoves(fresh.board);
+        const prevMoves = totalMoves(prev.board);
+
         if (optimisticBoard.current) {
           if (JSON.stringify(fresh.board) === JSON.stringify(optimisticBoard.current)) {
             optimisticBoard.current = null;
             return fresh;
           }
-          if (totalMoves(fresh.board) < totalMoves(prev.board)) {
+          if (freshMoves > totalMoves(optimisticBoard.current)) {
+            optimisticBoard.current = null;
+            return fresh;
+          }
+          if (freshMoves < prevMoves) {
             return {
               ...prev,
               player1_name: fresh.player1_name,
@@ -143,13 +150,8 @@ export function useTicTacToeGame(gameId: string): UseTicTacToeGameReturn {
 
         if (JSON.stringify(fresh) === JSON.stringify(prev)) return prev;
 
-        // Guard against out-of-order poll responses regressing state
-        if (totalMoves(fresh.board) < totalMoves(prev.board)) {
-          return prev;
-        }
-
         // Detect the opponent's last move
-        if (totalMoves(fresh.board) > totalMoves(prev.board)) {
+        if (freshMoves > prevMoves) {
           for (let row = 0; row < 3; row++) {
             for (let col = 0; col < 3; col++) {
               if (prev.board[row][col] === null && fresh.board[row][col] !== null) {
@@ -157,6 +159,24 @@ export function useTicTacToeGame(gameId: string): UseTicTacToeGameReturn {
               }
             }
           }
+        }
+
+        // Guard against out-of-order polls regressing state, but always
+        // accept a full reset (0 moves = game ended)
+        if (freshMoves < prevMoves && freshMoves > 0) {
+          if (fresh.player1_name !== prev.player1_name ||
+              fresh.player2_name !== prev.player2_name ||
+              fresh.player1_id !== prev.player1_id ||
+              fresh.player2_id !== prev.player2_id) {
+            return {
+              ...prev,
+              player1_name: fresh.player1_name,
+              player2_name: fresh.player2_name,
+              player1_id: fresh.player1_id,
+              player2_id: fresh.player2_id,
+            };
+          }
+          return prev;
         }
 
         return fresh;
@@ -223,7 +243,7 @@ export function useTicTacToeGame(gameId: string): UseTicTacToeGameReturn {
       );
       setError(null);
 
-      const { error: updateError } = await supabase
+      const { data: updatedGame, error: updateError } = await supabase
         .from('games')
         .update({
           board: newBoard,
@@ -231,9 +251,11 @@ export function useTicTacToeGame(gameId: string): UseTicTacToeGameReturn {
           winner,
           updated_at: new Date().toISOString(),
         })
-        .eq('id', gameId);
+        .eq('id', gameId)
+        .select()
+        .single();
 
-      if (updateError) {
+      if (updateError || !updatedGame) {
         optimisticBoard.current = null;
         const { data: freshGame } = await supabase
           .from('games')
@@ -241,9 +263,12 @@ export function useTicTacToeGame(gameId: string): UseTicTacToeGameReturn {
           .eq('id', gameId)
           .single();
         if (freshGame) updateGame(freshGame as TicTacToeGame);
-        setError(updateError.message);
+        if (updateError) setError(updateError.message);
         return;
       }
+
+      optimisticBoard.current = null;
+      updateGame(updatedGame as TicTacToeGame);
 
       // Record match result on win
       if (winner && !matchRecorded.current) {
