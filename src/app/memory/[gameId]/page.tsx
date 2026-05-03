@@ -88,19 +88,18 @@ export default function MemoryGamePage({ params }: { params: Promise<{ gameId: s
 
     const { lastFlipped, lastFlipResult } = game.board;
 
-    // Skip processing stale lastFlipped on initial mount
+    const isFirstTime = isFirstMount.current;
     if (isFirstMount.current) {
       isFirstMount.current = false;
-      prevLastFlipped.current = lastFlipped;
-      return;
     }
 
-    // Detect a new lastFlipped value (different from previous)
+    // Detect a new lastFlipped value OR if we need to show the opponent's flip on initial load
     const isNewFlip =
       lastFlipped !== null &&
       (prevLastFlipped.current === null ||
         prevLastFlipped.current[0] !== lastFlipped[0] ||
-        prevLastFlipped.current[1] !== lastFlipped[1]);
+        prevLastFlipped.current[1] !== lastFlipped[1] ||
+        (isFirstTime && isMyTurn && lastFlipResult === 'no-match'));
 
     prevLastFlipped.current = lastFlipped;
 
