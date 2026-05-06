@@ -48,6 +48,8 @@ const SUIT_ORDER: BigTwoSuit[] = ['D', 'C', 'H', 'S'];
 const FIVE_CARD_TYPE_ORDER: BigTwoCombinationType[] = ['straight', 'flush', 'full-house', 'four-kind', 'straight-flush'];
 const COMBINATION_TYPE_ORDER: BigTwoCombinationType[] = ['single', 'pair', 'triple', 'straight', 'flush', 'full-house', 'four-kind', 'straight-flush'];
 const PLAYER_COUNT = 2;
+const HAND_SIZE = 24;
+const BURNED_CARD_COUNT = 4;
 
 const STRAIGHT_SEQUENCES: BigTwoRank[][] = [
   ['3', '4', '5', '6', '7'],
@@ -296,6 +298,25 @@ export function getPossibleCombinations(cards: BigTwoCard[], player: Player): Bi
   });
 }
 
+export function getPlayableCombinations(
+  cards: BigTwoCard[],
+  player: Player,
+  activeCombination: BigTwoCombination | null,
+  moveCount: number
+): BigTwoCombination[] {
+  return getPossibleCombinations(cards, player).filter((candidate) => {
+    if (!canBeatCombination(candidate, activeCombination)) {
+      return false;
+    }
+
+    if (moveCount === 0 && !candidate.cards.some((card) => card.id === '3D')) {
+      return false;
+    }
+
+    return true;
+  });
+}
+
 export function compareCombinations(a: BigTwoCombination, b: BigTwoCombination): number {
   if (a.size !== b.size) {
     throw new Error('Cannot compare combinations with different sizes');
@@ -312,9 +333,10 @@ export function canBeatCombination(candidate: BigTwoCombination, target: BigTwoC
 export function createBigTwoBoard(firstPlayer: Player = 1, random: () => number = Math.random): BigTwoBoardState {
   const deck = shuffle(makeDeck(), random);
   const hands: Record<'1' | '2', BigTwoCard[]> = {
-    '1': deck.slice(0, 26),
-    '2': deck.slice(26, 52),
+    '1': deck.slice(0, HAND_SIZE),
+    '2': deck.slice(HAND_SIZE, HAND_SIZE * 2),
   };
+  const burnedCards = deck.slice(HAND_SIZE * 2, HAND_SIZE * 2 + BURNED_CARD_COUNT);
 
   const firstKey = playerKey(firstPlayer);
   const otherKey = playerKey(otherPlayer(firstPlayer));
@@ -325,6 +347,13 @@ export function createBigTwoBoard(firstPlayer: Player = 1, random: () => number 
       const swapCard = hands[firstKey][0];
       hands[firstKey][0] = hands[otherKey][indexInOtherHand];
       hands[otherKey][indexInOtherHand] = swapCard;
+    } else {
+      const indexInBurned = burnedCards.findIndex((card) => card.id === '3D');
+      if (indexInBurned >= 0) {
+        const swapCard = hands[firstKey][0];
+        hands[firstKey][0] = burnedCards[indexInBurned];
+        burnedCards[indexInBurned] = swapCard;
+      }
     }
   }
 

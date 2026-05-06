@@ -18,7 +18,7 @@ import {
   describeCombination,
   evaluateCombination,
   getCardLabel,
-  getPossibleCombinations,
+  getPlayableCombinations,
   type BigTwoCombinationType,
   type BigTwoCard,
 } from '@/lib/big-2-logic';
@@ -105,16 +105,21 @@ export default function Big2GamePage({ params }: { params: Promise<{ gameId: str
     return game.board.hands[myPlayerNumber === 1 ? '2' : '1'].length;
   }, [game, myPlayerNumber]);
 
-  const possibleCombinationsByType = useMemo(() => {
-    if (!myPlayerNumber) return new Map<BigTwoCombinationType, BigTwoCard[][]>();
+  const playableCombinationsByType = useMemo(() => {
+    if (!myPlayerNumber || !game) return new Map<BigTwoCombinationType, BigTwoCard[][]>();
 
     const grouped = new Map<BigTwoCombinationType, BigTwoCard[][]>();
-    const possible = getPossibleCombinations(myHand, myPlayerNumber);
-    for (const combination of possible) {
+    const playable = getPlayableCombinations(
+      myHand,
+      myPlayerNumber,
+      game.board.currentTrick.activeCombination,
+      game.board.moveCount
+    );
+    for (const combination of playable) {
       grouped.set(combination.type, [...(grouped.get(combination.type) ?? []), combination.cards]);
     }
     return grouped;
-  }, [myHand, myPlayerNumber]);
+  }, [game, myHand, myPlayerNumber]);
 
   const turnLabel = useMemo(() => {
     if (!game) return '';
@@ -302,20 +307,20 @@ export default function Big2GamePage({ params }: { params: Promise<{ gameId: str
                   </h3>
                   <span className="text-xs text-text-secondary">
                     {COMBINATION_DISPLAY_ORDER.reduce(
-                      (total, type) => total + (possibleCombinationsByType.get(type)?.length ?? 0),
+                      (total, type) => total + (playableCombinationsByType.get(type)?.length ?? 0),
                       0
                     )} combos
                   </span>
                 </div>
 
-                {COMBINATION_DISPLAY_ORDER.every((type) => (possibleCombinationsByType.get(type)?.length ?? 0) === 0) ? (
+                {COMBINATION_DISPLAY_ORDER.every((type) => (playableCombinationsByType.get(type)?.length ?? 0) === 0) ? (
                   <p className="rounded-xl border border-dashed border-border bg-background/60 px-3 py-4 text-center text-sm text-text-secondary">
-                    No valid combinations in your hand right now.
+                    No playable combinations right now.
                   </p>
                 ) : (
                   <div className="space-y-3">
                     {COMBINATION_DISPLAY_ORDER.map((type) => {
-                      const combos = possibleCombinationsByType.get(type) ?? [];
+                      const combos = playableCombinationsByType.get(type) ?? [];
                       if (combos.length === 0) return null;
 
                       return (

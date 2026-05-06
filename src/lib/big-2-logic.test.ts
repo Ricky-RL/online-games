@@ -3,6 +3,7 @@ import {
   canBeatCombination,
   createBigTwoBoard,
   evaluateCombination,
+  getPlayableCombinations,
   getPossibleCombinations,
   getCardLabel,
   passTurn,
@@ -17,12 +18,12 @@ function card(id: string): BigTwoCard {
 }
 
 describe('big-2 logic', () => {
-  it('deals 26 cards to each player and gives the first player 3D', () => {
+  it('deals 24 cards to each player and gives the first player 3D', () => {
     const board = createBigTwoBoard(1, () => 0.42);
 
-    expect(board.hands['1']).toHaveLength(26);
-    expect(board.hands['2']).toHaveLength(26);
-    expect(new Set([...board.hands['1'], ...board.hands['2']].map((c) => c.id)).size).toBe(52);
+    expect(board.hands['1']).toHaveLength(24);
+    expect(board.hands['2']).toHaveLength(24);
+    expect(new Set([...board.hands['1'], ...board.hands['2']].map((c) => c.id)).size).toBe(48);
     expect(board.hands['1'].some((c) => c.id === '3D')).toBe(true);
   });
 
@@ -66,7 +67,7 @@ describe('big-2 logic', () => {
 
     expect(() => playCards(board, 1, [nonOpeningCard.id])).toThrow('3♦');
     const result = playCards(board, 1, ['3D']);
-    expect(result.board.hands['1']).toHaveLength(25);
+    expect(result.board.hands['1']).toHaveLength(23);
     expect(result.winner).toBeNull();
   });
 
@@ -117,5 +118,29 @@ describe('big-2 logic', () => {
     expect(types.has('straight')).toBe(true);
     expect(types.has('flush')).toBe(true);
     expect(types.has('full-house')).toBe(true);
+  });
+
+  it('filters playable combinations to only those that beat the active trick', () => {
+    const hand = [card('5D'), card('5S'), card('6D'), card('6S')];
+    const activePair = evaluateCombination([card('5C'), card('5S')], 2)!;
+
+    const playable = getPlayableCombinations(hand, 1, activePair, 3);
+
+    expect(playable).toHaveLength(1);
+    expect(playable[0].type).toBe('pair');
+    expect(playable[0].cards.map((c) => c.id)).toEqual(['6D', '6S']);
+  });
+
+  it('enforces opening 3D rule for playable combinations on move 0', () => {
+    const hand = [card('3D'), card('4D'), card('4C')];
+
+    const playable = getPlayableCombinations(hand, 1, null, 0);
+
+    expect(playable.every((combo) => combo.cards.some((c) => c.id === '3D'))).toBe(true);
+  });
+
+  it('moves 3D from burned cards into the opening player hand when needed', () => {
+    const board = createBigTwoBoard(1, () => 0);
+    expect(board.hands['1'].some((c) => c.id === '3D')).toBe(true);
   });
 });
