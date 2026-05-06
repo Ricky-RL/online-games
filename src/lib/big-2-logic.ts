@@ -46,6 +46,7 @@ export interface BigTwoBoardState {
 const RANK_ORDER: BigTwoRank[] = ['3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A', '2'];
 const SUIT_ORDER: BigTwoSuit[] = ['D', 'C', 'H', 'S'];
 const FIVE_CARD_TYPE_ORDER: BigTwoCombinationType[] = ['straight', 'flush', 'full-house', 'four-kind', 'straight-flush'];
+const COMBINATION_TYPE_ORDER: BigTwoCombinationType[] = ['single', 'pair', 'triple', 'straight', 'flush', 'full-house', 'four-kind', 'straight-flush'];
 const PLAYER_COUNT = 2;
 
 const STRAIGHT_SEQUENCES: BigTwoRank[][] = [
@@ -209,6 +210,31 @@ function evaluateFiveCardHand(cards: BigTwoCard[], player: Player): BigTwoCombin
   return null;
 }
 
+function combinationsOfSize<T>(items: T[], size: number): T[][] {
+  const results: T[][] = [];
+  const current: T[] = [];
+
+  function build(startIndex: number): void {
+    if (current.length === size) {
+      results.push([...current]);
+      return;
+    }
+
+    const remaining = size - current.length;
+    for (let i = startIndex; i <= items.length - remaining; i++) {
+      current.push(items[i]);
+      build(i + 1);
+      current.pop();
+    }
+  }
+
+  if (size > 0 && size <= items.length) {
+    build(0);
+  }
+
+  return results;
+}
+
 export function evaluateCombination(cards: BigTwoCard[], player: Player): BigTwoCombination | null {
   const sorted = sortCards(cards);
   if (sorted.length === 1) {
@@ -230,6 +256,44 @@ export function evaluateCombination(cards: BigTwoCard[], player: Player): BigTwo
     return evaluateFiveCardHand(sorted, player);
   }
   return null;
+}
+
+export function getPossibleCombinations(cards: BigTwoCard[], player: Player): BigTwoCombination[] {
+  const hand = sortCards(cards);
+  if (hand.length === 0) return [];
+
+  const allCombinations: BigTwoCombination[] = [];
+  const seen = new Set<string>();
+
+  function push(combination: BigTwoCombination | null): void {
+    if (!combination) return;
+    const key = combination.cards.map((card) => card.id).join(',');
+    if (seen.has(key)) return;
+    seen.add(key);
+    allCombinations.push(combination);
+  }
+
+  for (const card of hand) {
+    push(evaluateCombination([card], player));
+  }
+
+  for (const pair of combinationsOfSize(hand, 2)) {
+    push(evaluateCombination(pair, player));
+  }
+
+  for (const triple of combinationsOfSize(hand, 3)) {
+    push(evaluateCombination(triple, player));
+  }
+
+  for (const fiveCards of combinationsOfSize(hand, 5)) {
+    push(evaluateCombination(fiveCards, player));
+  }
+
+  return allCombinations.sort((a, b) => {
+    const typeDiff = COMBINATION_TYPE_ORDER.indexOf(a.type) - COMBINATION_TYPE_ORDER.indexOf(b.type);
+    if (typeDiff !== 0) return typeDiff;
+    return compareStrength(a.strength, b.strength);
+  });
 }
 
 export function compareCombinations(a: BigTwoCombination, b: BigTwoCombination): number {

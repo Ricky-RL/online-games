@@ -14,7 +14,14 @@ import { Big2Table } from '@/components/big-2/Big2Table';
 import { useBig2Game } from '@/hooks/useBig2Game';
 import { useGameSounds } from '@/hooks/useSound';
 import { useNotifications } from '@/hooks/useNotifications';
-import { describeCombination, evaluateCombination, getCardLabel, type BigTwoCard } from '@/lib/big-2-logic';
+import {
+  describeCombination,
+  evaluateCombination,
+  getCardLabel,
+  getPossibleCombinations,
+  type BigTwoCombinationType,
+  type BigTwoCard,
+} from '@/lib/big-2-logic';
 import type { Player } from '@/lib/types';
 
 function getMyName(): string | null {
@@ -22,23 +29,16 @@ function getMyName(): string | null {
   return sessionStorage.getItem('player-name') || localStorage.getItem('player-name');
 }
 
-function getPossiblePairs(cards: BigTwoCard[]): BigTwoCard[][] {
-  const byRank = new Map<string, BigTwoCard[]>();
-  for (const card of cards) {
-    byRank.set(card.rank, [...(byRank.get(card.rank) ?? []), card]);
-  }
-
-  const pairs: BigTwoCard[][] = [];
-  for (const rankCards of byRank.values()) {
-    if (rankCards.length < 2) continue;
-    for (let i = 0; i < rankCards.length - 1; i++) {
-      for (let j = i + 1; j < rankCards.length; j++) {
-        pairs.push([rankCards[i], rankCards[j]]);
-      }
-    }
-  }
-  return pairs;
-}
+const COMBINATION_DISPLAY_ORDER: BigTwoCombinationType[] = [
+  'single',
+  'pair',
+  'triple',
+  'straight',
+  'flush',
+  'full-house',
+  'four-kind',
+  'straight-flush',
+];
 
 const rulebookHands = [
   { label: 'Single', detail: 'Any one card. Higher rank wins; suit breaks ties.' },
@@ -59,7 +59,7 @@ export default function Big2GamePage({ params }: { params: Promise<{ gameId: str
   const [myName] = useState<string | null>(() => getMyName());
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [showEndDialog, setShowEndDialog] = useState(false);
-  const [showPairsInfo, setShowPairsInfo] = useState(false);
+  const [showStrengthInfo, setShowStrengthInfo] = useState(false);
 
   useEffect(() => {
     if (deleted) router.push('/');
@@ -105,7 +105,16 @@ export default function Big2GamePage({ params }: { params: Promise<{ gameId: str
     return game.board.hands[myPlayerNumber === 1 ? '2' : '1'].length;
   }, [game, myPlayerNumber]);
 
-  const possiblePairs = useMemo(() => getPossiblePairs(myHand), [myHand]);
+  const possibleCombinationsByType = useMemo(() => {
+    if (!myPlayerNumber) return new Map<BigTwoCombinationType, BigTwoCard[][]>();
+
+    const grouped = new Map<BigTwoCombinationType, BigTwoCard[][]>();
+    const possible = getPossibleCombinations(myHand, myPlayerNumber);
+    for (const combination of possible) {
+      grouped.set(combination.type, [...(grouped.get(combination.type) ?? []), combination.cards]);
+    }
+    return grouped;
+  }, [myHand, myPlayerNumber]);
 
   const turnLabel = useMemo(() => {
     if (!game) return '';
@@ -207,10 +216,10 @@ export default function Big2GamePage({ params }: { params: Promise<{ gameId: str
     <>
       <SettingsButton />
       <button
-        onClick={() => setShowPairsInfo((open) => !open)}
+        onClick={() => setShowStrengthInfo((open) => !open)}
         className="fixed top-5 right-[4.25rem] z-40 w-10 h-10 flex items-center justify-center rounded-full bg-surface border border-border shadow-md hover:shadow-lg transition-shadow cursor-pointer text-text-secondary hover:text-text-primary"
-        aria-label="Show possible pairs"
-        title="Show possible pairs"
+        aria-label="Show hand strengths"
+        title="Show hand strengths"
       >
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
           <circle cx="12" cy="12" r="9" />
@@ -220,7 +229,7 @@ export default function Big2GamePage({ params }: { params: Promise<{ gameId: str
       </button>
 
       <AnimatePresence>
-        {showPairsInfo && (
+        {showStrengthInfo && (
           <motion.div
             initial={{ opacity: 0, y: -8, scale: 0.98 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
@@ -231,12 +240,12 @@ export default function Big2GamePage({ params }: { params: Promise<{ gameId: str
             <div className="mb-3 flex items-start justify-between gap-3">
               <div>
                 <h2 className="text-sm font-semibold text-text-primary">Big 2 Reference</h2>
-                <p className="text-xs text-text-secondary">Your pairs and hand strength</p>
+                <p className="text-xs text-text-secondary">Rulebook and your possible combinations</p>
               </div>
               <button
-                onClick={() => setShowPairsInfo(false)}
+                onClick={() => setShowStrengthInfo(false)}
                 className="rounded-lg p-1 text-text-secondary hover:bg-background hover:text-text-primary cursor-pointer"
-                aria-label="Close possible pairs"
+                aria-label="Close hand strengths"
               >
                 <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
                   <path d="M4 4L12 12M12 4L4 12" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
@@ -245,43 +254,6 @@ export default function Big2GamePage({ params }: { params: Promise<{ gameId: str
             </div>
 
             <div className="max-h-[70vh] space-y-5 overflow-y-auto pr-1">
-              <section>
-                <div className="mb-2 flex items-center justify-between gap-3">
-                  <h3 className="text-xs font-semibold uppercase tracking-wider text-text-secondary/70">
-                    Possible Pairs
-                  </h3>
-                  <span className="text-xs text-text-secondary">{possiblePairs.length}</span>
-                </div>
-
-                {possiblePairs.length === 0 ? (
-                  <p className="rounded-xl border border-dashed border-border bg-background/60 px-3 py-4 text-center text-sm text-text-secondary">
-                    No pairs in your hand right now.
-                  </p>
-                ) : (
-                  <div className="space-y-3">
-                    {possiblePairs.map((pair) => (
-                      <button
-                        key={pair.map((card) => card.id).join('-')}
-                        onClick={() => {
-                          setSelectedIds(pair.map((card) => card.id));
-                          setShowPairsInfo(false);
-                        }}
-                        className="flex w-full items-center justify-between gap-3 rounded-xl border border-border bg-background/50 px-3 py-2 text-left hover:border-text-secondary/30 hover:bg-background cursor-pointer"
-                      >
-                        <div className="flex items-center gap-1.5">
-                          {pair.map((card) => (
-                            <Big2Card key={card.id} card={card} compact />
-                          ))}
-                        </div>
-                        <span className="text-xs font-medium text-text-secondary">
-                          {pair.map(getCardLabel).join(' ')}
-                        </span>
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </section>
-
               <section className="space-y-3">
                 <div>
                   <h3 className="text-xs font-semibold uppercase tracking-wider text-text-secondary/70">
@@ -321,6 +293,63 @@ export default function Big2GamePage({ params }: { params: Promise<{ gameId: str
                 <p className="rounded-xl border border-player1/15 bg-player1/5 px-3 py-2 text-xs leading-relaxed text-text-secondary">
                   A pair only fights another pair, a triple only fights another triple, and a five-card hand only fights another five-card hand.
                 </p>
+              </section>
+
+              <section>
+                <div className="mb-2 flex items-center justify-between gap-3">
+                  <h3 className="text-xs font-semibold uppercase tracking-wider text-text-secondary/70">
+                    Your Hand Strength
+                  </h3>
+                  <span className="text-xs text-text-secondary">
+                    {COMBINATION_DISPLAY_ORDER.reduce(
+                      (total, type) => total + (possibleCombinationsByType.get(type)?.length ?? 0),
+                      0
+                    )} combos
+                  </span>
+                </div>
+
+                {COMBINATION_DISPLAY_ORDER.every((type) => (possibleCombinationsByType.get(type)?.length ?? 0) === 0) ? (
+                  <p className="rounded-xl border border-dashed border-border bg-background/60 px-3 py-4 text-center text-sm text-text-secondary">
+                    No valid combinations in your hand right now.
+                  </p>
+                ) : (
+                  <div className="space-y-3">
+                    {COMBINATION_DISPLAY_ORDER.map((type) => {
+                      const combos = possibleCombinationsByType.get(type) ?? [];
+                      if (combos.length === 0) return null;
+
+                      return (
+                        <div key={type} className="space-y-2">
+                          <div className="flex items-center justify-between gap-3 rounded-xl border border-border bg-background/50 px-3 py-2">
+                            <p className="text-xs font-semibold text-text-primary">{describeCombination(type)}</p>
+                            <span className="text-xs text-text-secondary">{combos.length}</span>
+                          </div>
+                          <div className="space-y-2">
+                            {combos.map((comboCards) => (
+                              <button
+                                key={comboCards.map((card) => card.id).join('-')}
+                                onClick={() => {
+                                  setSelectedIds(comboCards.map((card) => card.id));
+                                  setShowStrengthInfo(false);
+                                }}
+                                className="flex w-full items-center justify-between gap-3 rounded-xl border border-border bg-background/40 px-3 py-2 text-left hover:border-text-secondary/30 hover:bg-background cursor-pointer"
+                              >
+                                <div className="flex items-center gap-1.5">
+                                  {comboCards.map((card) => (
+                                    <Big2Card key={card.id} card={card} compact />
+                                  ))}
+                                </div>
+                                <span className="text-xs font-medium text-text-secondary">
+                                  {comboCards.map(getCardLabel).join(' ')}
+                                </span>
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </section>
             </div>
           </motion.div>

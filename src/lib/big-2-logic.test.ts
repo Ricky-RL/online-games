@@ -3,6 +3,7 @@ import {
   canBeatCombination,
   createBigTwoBoard,
   evaluateCombination,
+  getPossibleCombinations,
   getCardLabel,
   passTurn,
   playCards,
@@ -92,5 +93,29 @@ describe('big-2 logic', () => {
 
     expect(result.winner).toBe(1);
     expect(result.board.scores).toEqual({ '1': 9, '2': -9 });
+  });
+
+  it('finds all major combination types available in a hand', () => {
+    const hand = [
+      card('3D'),
+      card('3C'),
+      card('3H'),
+      card('4D'),
+      card('4C'),
+      card('5D'),
+      card('6D'),
+      card('7D'),
+      card('8D'),
+    ];
+
+    const combinations = getPossibleCombinations(hand, 1);
+    const types = new Set(combinations.map((combo) => combo.type));
+
+    expect(types.has('single')).toBe(true);
+    expect(types.has('pair')).toBe(true);
+    expect(types.has('triple')).toBe(true);
+    expect(types.has('straight')).toBe(true);
+    expect(types.has('flush')).toBe(true);
+    expect(types.has('full-house')).toBe(true);
   });
 });
