@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 interface MatchResult {
   id: string;
-  game_type: 'connect-four' | 'tic-tac-toe' | 'wordle' | 'mini-golf' | 'jenga' | 'snakes-and-ladders' | 'word-search' | 'monopoly' | 'battleship' | 'memory' | 'math-trivia' | 'jeopardy' | 'pool' | 'cup-pong' | 'reaction' | 'sudoku' | 'solitaire';
+  game_type: 'connect-four' | 'tic-tac-toe' | 'wordle' | 'mini-golf' | 'jenga' | 'snakes-and-ladders' | 'word-search' | 'monopoly' | 'battleship' | 'memory' | 'big-2' | 'math-trivia' | 'jeopardy' | 'pool' | 'cup-pong' | 'reaction' | 'sudoku' | 'solitaire';
   winner_id: string | null;
   winner_name: string | null;
   loser_id: string | null;
@@ -46,6 +46,7 @@ function gameIcon(gameType: MatchResult['game_type']): string {
     case 'monopoly': return '🏠';
     case 'battleship': return '🎯';
     case 'memory': return '🧠';
+    case 'big-2': return '2';
     case 'math-trivia': return '🧮';
     case 'jeopardy': return '❓';
     case 'pool': return '🎱';
@@ -67,6 +68,7 @@ function gameLabel(gameType: MatchResult['game_type']): string {
     case 'monopoly': return 'Monopoly';
     case 'battleship': return 'Battleship';
     case 'memory': return 'Memory';
+    case 'big-2': return 'Big 2';
     case 'math-trivia': return 'Math Trivia';
     case 'jeopardy': return 'Jeopardy';
     case 'pool': return 'Pool';

@@ -1,0 +1,277 @@
+'use client';
+
+import { use, useCallback, useEffect, useMemo, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { motion } from 'framer-motion';
+import { SettingsButton } from '@/components/SettingsButton';
+import { TurnIndicator } from '@/components/TurnIndicator';
+import { WinCelebration } from '@/components/WinCelebration';
+import { EndGameDialog } from '@/components/EndGameDialog';
+import { NotificationControls } from '@/components/NotificationControls';
+import { Big2Hand } from '@/components/big-2/Big2Hand';
+import { Big2Table } from '@/components/big-2/Big2Table';
+import { useBig2Game } from '@/hooks/useBig2Game';
+import { useGameSounds } from '@/hooks/useSound';
+import { useNotifications } from '@/hooks/useNotifications';
+import { describeCombination, evaluateCombination, getCardLabel } from '@/lib/big-2-logic';
+import type { Player } from '@/lib/types';
+
+function getMyName(): string | null {
+  if (typeof window === 'undefined') return null;
+  return sessionStorage.getItem('player-name') || localStorage.getItem('player-name');
+}
+
+export default function Big2GamePage({ params }: { params: Promise<{ gameId: string }> }) {
+  const { gameId } = use(params);
+  const router = useRouter();
+  const { game, loading, error, deleted, playCards, pass, resetGame, endGame } = useBig2Game(gameId);
+  const { play } = useGameSounds();
+  const [myName] = useState<string | null>(() => getMyName());
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [showEndDialog, setShowEndDialog] = useState(false);
+
+  useEffect(() => {
+    if (deleted) router.push('/');
+  }, [deleted, router]);
+
+  const myPlayerNumber: Player | null = useMemo(() => {
+    if (!game || !myName) return null;
+    if (game.player1_name === myName) return 1;
+    if (game.player2_name === myName) return 2;
+    return null;
+  }, [game, myName]);
+
+  const isMyTurn = !!game && !!myPlayerNumber && game.current_turn === myPlayerNumber && game.winner === null;
+  const opponentName = useMemo(() => {
+    if (!game || !myPlayerNumber) return null;
+    return myPlayerNumber === 1 ? game.player2_name : game.player1_name;
+  }, [game, myPlayerNumber]);
+
+  const { permissionState, requestPermission, isMuted, toggleMute } = useNotifications({
+    gameId,
+    isMyTurn,
+    opponentName,
+    gameType: 'big-2',
+  });
+
+  const myHand = useMemo(() => {
+    if (!game || !myPlayerNumber) return [];
+    return game.board.hands[myPlayerNumber === 1 ? '1' : '2'];
+  }, [game, myPlayerNumber]);
+
+  const selectedCards = useMemo(
+    () => myHand.filter((card) => selectedIds.includes(card.id)),
+    [myHand, selectedIds]
+  );
+
+  const selectedCombination = useMemo(() => {
+    if (!myPlayerNumber || selectedCards.length === 0) return null;
+    return evaluateCombination(selectedCards, myPlayerNumber);
+  }, [myPlayerNumber, selectedCards]);
+
+  const opponentCardsLeft = useMemo(() => {
+    if (!game || !myPlayerNumber) return 0;
+    return game.board.hands[myPlayerNumber === 1 ? '2' : '1'].length;
+  }, [game, myPlayerNumber]);
+
+  const turnLabel = useMemo(() => {
+    if (!game) return '';
+    if (game.winner) return 'Game over';
+    if (isMyTurn) {
+      if (!game.board.currentTrick.activeCombination) return 'Your lead';
+      return 'Your turn';
+    }
+    return `Waiting for ${opponentName ?? 'opponent'}...`;
+  }, [game, isMyTurn, opponentName]);
+
+  const toggleCard = useCallback((cardId: string) => {
+    setSelectedIds((prev) =>
+      prev.includes(cardId)
+        ? prev.filter((id) => id !== cardId)
+        : prev.length >= 5
+          ? prev
+          : [...prev, cardId]
+    );
+  }, []);
+
+  const handlePlay = useCallback(async () => {
+    if (selectedIds.length === 0) return;
+    play('drop');
+    await playCards(selectedIds);
+    setSelectedIds([]);
+  }, [play, playCards, selectedIds]);
+
+  const handlePass = useCallback(async () => {
+    play('turn');
+    await pass();
+  }, [pass, play]);
+
+  const handleEndGameConfirm = useCallback(async () => {
+    setShowEndDialog(false);
+    await endGame();
+    router.push('/');
+  }, [endGame, router]);
+
+  if (loading) {
+    return (
+      <div className="flex-1 flex items-center justify-center">
+        <div className="text-text-secondary text-sm">Loading Big 2...</div>
+      </div>
+    );
+  }
+
+  if (deleted || !game) {
+    return (
+      <div className="flex-1 flex flex-col items-center justify-center gap-4">
+        <div className="text-text-secondary text-sm">Game not found</div>
+        <button
+          onClick={() => router.push('/big-2')}
+          className="px-4 py-2 text-sm font-medium rounded-xl border border-border bg-surface text-text-secondary hover:text-text-primary hover:border-text-secondary/30 shadow-sm hover:shadow transition-all cursor-pointer"
+        >
+          Back to Big 2
+        </button>
+      </div>
+    );
+  }
+
+  if (game.winner) {
+    const winnerName = game.winner === 1 ? game.player1_name : game.player2_name;
+    const isMe = game.winner === myPlayerNumber;
+
+    return (
+      <div className="flex-1 flex flex-col items-center justify-center gap-6 p-4">
+        <SettingsButton />
+        <WinCelebration
+          winner={game.winner}
+          winnerName={winnerName}
+          isMe={isMe}
+          onPlayAgain={resetGame}
+          onHome={() => router.push('/')}
+        />
+        <div className="rounded-2xl border border-border bg-surface px-6 py-4 text-center">
+          <p className="text-sm text-text-secondary">Final score</p>
+          <p className="mt-1 text-lg font-semibold text-text-primary">
+            <span className="text-player1">{game.player1_name}: {game.board.scores['1']}</span>
+            <span className="mx-3 text-text-secondary/40">|</span>
+            <span className="text-player2">{game.player2_name}: {game.board.scores['2']}</span>
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  const canPass = isMyTurn && !!game.board.currentTrick.activeCombination;
+  const canPlay = isMyTurn && selectedIds.length > 0 && !!selectedCombination;
+  const selectedLabel = selectedCards.length
+    ? selectedCombination
+      ? `${describeCombination(selectedCombination.type)}: ${selectedCards.map(getCardLabel).join(' ')}`
+      : 'Invalid combination'
+    : game.board.currentTrick.activeCombination
+      ? 'Match the table or pass'
+      : 'Select 1, 2, 3, or 5 cards';
+
+  return (
+    <>
+      <SettingsButton />
+      <div className="flex-1 flex flex-col items-center gap-5 p-4 pt-16">
+        {(!game.player1_id || !game.player2_id) && (
+          <div className="rounded-xl border border-border bg-surface px-4 py-2 text-sm text-text-secondary">
+            Waiting for opponent to join. You can play the opening turn now.
+          </div>
+        )}
+
+        <div className="w-full max-w-3xl">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h1 className="text-3xl font-bold tracking-tight text-text-primary">Big 2</h1>
+              <p className="text-sm text-text-secondary">
+                You have {myHand.length} cards. {opponentName ?? 'Opponent'} has {opponentCardsLeft} cards.
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              <TurnIndicator
+                currentPlayer={game.current_turn}
+                isMyTurn={isMyTurn}
+                playerName={opponentName}
+                label={turnLabel}
+              />
+              <NotificationControls
+                permissionState={permissionState}
+                requestPermission={requestPermission}
+                isMuted={isMuted}
+                toggleMute={toggleMute}
+              />
+            </div>
+          </div>
+        </div>
+
+        <Big2Table
+          activeCombination={game.board.currentTrick.activeCombination}
+          lastPlayedBy={game.board.currentTrick.lastPlayedBy}
+          player1Name={game.player1_name}
+          player2Name={game.player2_name}
+          discardsCount={game.board.discards.length}
+        />
+
+        <motion.div
+          key={selectedLabel}
+          initial={{ opacity: 0, y: 4 }}
+          animate={{ opacity: 1, y: 0 }}
+          className={`text-sm ${selectedCombination || selectedCards.length === 0 ? 'text-text-secondary' : 'text-player1'}`}
+        >
+          {selectedLabel}
+        </motion.div>
+
+        {error && (
+          <div className="rounded-xl border border-player1/20 bg-player1/5 px-4 py-2 text-sm text-player1">
+            {error}
+          </div>
+        )}
+
+        <div className="w-full max-w-5xl">
+          <Big2Hand
+            cards={myHand}
+            selectedIds={selectedIds}
+            disabled={!isMyTurn}
+            onToggleCard={toggleCard}
+          />
+        </div>
+
+        <div className="flex flex-wrap items-center justify-center gap-3">
+          <button
+            onClick={handlePlay}
+            disabled={!canPlay}
+            className="px-5 py-2.5 text-sm font-semibold rounded-xl bg-player1 text-white hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed transition-all shadow-sm cursor-pointer"
+          >
+            Play Cards
+          </button>
+          <button
+            onClick={handlePass}
+            disabled={!canPass}
+            className="px-5 py-2.5 text-sm font-medium rounded-xl border border-border bg-surface text-text-secondary hover:text-text-primary hover:border-text-secondary/30 disabled:opacity-40 disabled:cursor-not-allowed transition-all cursor-pointer"
+          >
+            Pass
+          </button>
+          <button
+            onClick={() => router.push('/')}
+            className="px-4 py-2 text-sm font-medium rounded-xl border border-border bg-surface text-text-secondary hover:text-text-primary hover:border-text-secondary/30 transition-all cursor-pointer"
+          >
+            Home
+          </button>
+          <button
+            onClick={() => setShowEndDialog(true)}
+            className="px-4 py-2 text-sm font-medium rounded-xl border border-player1/20 bg-player1/5 text-player1/80 hover:bg-player1/10 hover:border-player1/40 hover:text-player1 transition-all cursor-pointer"
+          >
+            End Game
+          </button>
+        </div>
+      </div>
+
+      <EndGameDialog
+        open={showEndDialog}
+        onConfirm={handleEndGameConfirm}
+        onCancel={() => setShowEndDialog(false)}
+      />
+    </>
+  );
+}

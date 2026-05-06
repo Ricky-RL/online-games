@@ -96,6 +96,13 @@ export const DEFAULT_GAME_ORDER: GameDefinition[] = [
     categories: ['strategy'],
   },
   {
+    slug: 'big-2',
+    title: 'Big 2',
+    description: 'Shed cards with poker hands. Pass, beat the table, empty your hand.',
+    color: '#C2410C',
+    categories: ['strategy'],
+  },
+  {
     slug: 'math-trivia',
     title: 'Math Trivia',
     description: '15 math questions — fastest correct answers wins.',

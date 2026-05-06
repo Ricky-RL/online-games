@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useCallback, useState } from 'react';
 
-type GameType = 'connect-four' | 'tic-tac-toe' | 'mini-golf' | 'battleship' | 'snakes-and-ladders' | 'memory' | 'jeopardy' | 'pool' | 'cup-pong' | 'math-trivia' | 'reaction';
+type GameType = 'connect-four' | 'tic-tac-toe' | 'mini-golf' | 'battleship' | 'snakes-and-ladders' | 'memory' | 'jeopardy' | 'pool' | 'cup-pong' | 'math-trivia' | 'reaction' | 'big-2';
 
 interface UseNotificationsOptions {
   gameId: string;
@@ -134,6 +134,7 @@ export function useNotifications({
         'cup-pong': 'Cup Pong',
         'math-trivia': 'Math Trivia',
         'reaction': 'Reaction',
+        'big-2': 'Big 2',
       };
       const body = bodyMap[gameType];
       const notification = new Notification(title, { body });

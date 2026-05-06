@@ -362,6 +362,17 @@ function SolitaireIcon() {
   );
 }
 
+function Big2Icon() {
+  return (
+    <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
+      <rect x="4" y="7" width="10" height="15" rx="2" fill="#FFFFFF" stroke="#C2410C" strokeWidth="1.5" transform="rotate(-10 4 7)" />
+      <rect x="11" y="5" width="10" height="15" rx="2" fill="#FFFFFF" stroke="#C2410C" strokeWidth="1.5" transform="rotate(8 11 5)" />
+      <text x="7" y="17" fontSize="8" fill="#C2410C" fontFamily="serif" fontWeight="bold">2</text>
+      <text x="15" y="15" fontSize="8" fill="#111827" fontFamily="serif" fontWeight="bold">A</text>
+    </svg>
+  );
+}
+
 
 function PlayerSelector({ onSelect }: { onSelect: (name: PlayerName) => void }) {
   return (
@@ -1051,6 +1062,7 @@ function GameSelection({ playerName, onChangePlayer }: { playerName: PlayerName;
     'reaction': { icon: <ReactionIcon />, onClick: () => router.push('/reaction') },
     'sudoku': { icon: <SudokuIcon />, onClick: () => router.push('/sudoku') },
     'solitaire': { icon: <SolitaireIcon />, onClick: () => router.push('/solitaire') },
+    'big-2': { icon: <Big2Icon />, onClick: () => router.push('/big-2') },
   };
 
   return (

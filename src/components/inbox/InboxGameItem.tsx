@@ -235,6 +235,18 @@ function SolitaireMini() {
   );
 }
 
+function Big2Mini() {
+  return (
+    <div className="w-8 h-8 rounded-lg bg-[#C2410C]/10 flex items-center justify-center">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+        <rect x="3" y="4" width="6" height="9" rx="1" fill="white" stroke="#C2410C" strokeWidth="1" transform="rotate(-10 3 4)" />
+        <rect x="7" y="3" width="6" height="9" rx="1" fill="white" stroke="#C2410C" strokeWidth="1" transform="rotate(8 7 3)" />
+        <text x="5" y="10" fontSize="5" fill="#C2410C" fontFamily="serif" fontWeight="bold">2</text>
+      </svg>
+    </div>
+  );
+}
+
 function GameIcon({ gameType }: { gameType: InboxGameType }) {
   switch (gameType) {
     case 'connect-four': return <ConnectFourMini />;
@@ -252,6 +264,7 @@ function GameIcon({ gameType }: { gameType: InboxGameType }) {
     case 'pool': return <PoolMini />;
     case 'reaction': return <ReactionMini />;
     case 'solitaire': return <SolitaireMini />;
+    case 'big-2': return <Big2Mini />;
     case 'daily-wordle': return <DailyWordleMini />;
     case 'cup-pong': return <CupPongMini />;
     case 'sudoku': return <SudokuMini />;
@@ -275,6 +288,7 @@ function gameLabel(gameType: InboxGameType): string {
     case 'pool': return 'Pool';
     case 'reaction': return 'Reaction';
     case 'solitaire': return 'Solitaire';
+    case 'big-2': return 'Big 2';
     case 'daily-wordle': return 'Daily Wordle';
     case 'cup-pong': return 'Cup Pong';
     case 'sudoku': return 'Sudoku';
