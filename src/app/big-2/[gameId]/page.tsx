@@ -40,6 +40,17 @@ function getPossiblePairs(cards: BigTwoCard[]): BigTwoCard[][] {
   return pairs;
 }
 
+const rulebookHands = [
+  { label: 'Single', detail: 'Any one card. Higher rank wins; suit breaks ties.' },
+  { label: 'Pair', detail: 'Two cards of the same rank. Higher rank wins; highest suit breaks ties.' },
+  { label: 'Triple', detail: 'Three cards of the same rank. Higher rank wins.' },
+  { label: 'Straight', detail: 'Five-card run. Lowest five-card hand.' },
+  { label: 'Flush', detail: 'Five cards of one suit. Beats any straight.' },
+  { label: 'Full house', detail: 'Triple plus pair. Triple rank decides.' },
+  { label: 'Four of a kind', detail: 'Four matching ranks plus any fifth card.' },
+  { label: 'Straight flush', detail: 'Five-card suited run. Highest five-card hand.' },
+];
+
 export default function Big2GamePage({ params }: { params: Promise<{ gameId: string }> }) {
   const { gameId } = use(params);
   const router = useRouter();
@@ -219,8 +230,8 @@ export default function Big2GamePage({ params }: { params: Promise<{ gameId: str
           >
             <div className="mb-3 flex items-start justify-between gap-3">
               <div>
-                <h2 className="text-sm font-semibold text-text-primary">Possible Pairs</h2>
-                <p className="text-xs text-text-secondary">Matching ranks in your hand</p>
+                <h2 className="text-sm font-semibold text-text-primary">Big 2 Reference</h2>
+                <p className="text-xs text-text-secondary">Your pairs and hand strength</p>
               </div>
               <button
                 onClick={() => setShowPairsInfo(false)}
@@ -233,33 +244,85 @@ export default function Big2GamePage({ params }: { params: Promise<{ gameId: str
               </button>
             </div>
 
-            {possiblePairs.length === 0 ? (
-              <p className="rounded-xl border border-dashed border-border bg-background/60 px-3 py-4 text-center text-sm text-text-secondary">
-                No pairs in your hand right now.
-              </p>
-            ) : (
-              <div className="max-h-80 space-y-3 overflow-y-auto pr-1">
-                {possiblePairs.map((pair) => (
-                  <button
-                    key={pair.map((card) => card.id).join('-')}
-                    onClick={() => {
-                      setSelectedIds(pair.map((card) => card.id));
-                      setShowPairsInfo(false);
-                    }}
-                    className="flex w-full items-center justify-between gap-3 rounded-xl border border-border bg-background/50 px-3 py-2 text-left hover:border-text-secondary/30 hover:bg-background cursor-pointer"
-                  >
-                    <div className="flex items-center gap-1.5">
-                      {pair.map((card) => (
-                        <Big2Card key={card.id} card={card} compact />
-                      ))}
+            <div className="max-h-[70vh] space-y-5 overflow-y-auto pr-1">
+              <section>
+                <div className="mb-2 flex items-center justify-between gap-3">
+                  <h3 className="text-xs font-semibold uppercase tracking-wider text-text-secondary/70">
+                    Possible Pairs
+                  </h3>
+                  <span className="text-xs text-text-secondary">{possiblePairs.length}</span>
+                </div>
+
+                {possiblePairs.length === 0 ? (
+                  <p className="rounded-xl border border-dashed border-border bg-background/60 px-3 py-4 text-center text-sm text-text-secondary">
+                    No pairs in your hand right now.
+                  </p>
+                ) : (
+                  <div className="space-y-3">
+                    {possiblePairs.map((pair) => (
+                      <button
+                        key={pair.map((card) => card.id).join('-')}
+                        onClick={() => {
+                          setSelectedIds(pair.map((card) => card.id));
+                          setShowPairsInfo(false);
+                        }}
+                        className="flex w-full items-center justify-between gap-3 rounded-xl border border-border bg-background/50 px-3 py-2 text-left hover:border-text-secondary/30 hover:bg-background cursor-pointer"
+                      >
+                        <div className="flex items-center gap-1.5">
+                          {pair.map((card) => (
+                            <Big2Card key={card.id} card={card} compact />
+                          ))}
+                        </div>
+                        <span className="text-xs font-medium text-text-secondary">
+                          {pair.map(getCardLabel).join(' ')}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </section>
+
+              <section className="space-y-3">
+                <div>
+                  <h3 className="text-xs font-semibold uppercase tracking-wider text-text-secondary/70">
+                    Rulebook Strength
+                  </h3>
+                  <p className="mt-1 text-xs text-text-secondary">
+                    Card count must match. For five-card hands, strength rises from top to bottom.
+                  </p>
+                </div>
+
+                <div className="rounded-xl border border-border bg-background/50 p-3">
+                  <div className="mb-2 text-xs text-text-secondary">
+                    Rank: 3 &lt; 4 &lt; 5 &lt; 6 &lt; 7 &lt; 8 &lt; 9 &lt; 10 &lt; J &lt; Q &lt; K &lt; A &lt; 2
+                  </div>
+                  <div className="text-xs text-text-secondary">
+                    Suit: ♦ &lt; ♣ &lt; ♥ &lt; ♠
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  {rulebookHands.map((hand, index) => (
+                    <div
+                      key={hand.label}
+                      className="flex gap-3 rounded-xl border border-border bg-background/50 px-3 py-2"
+                    >
+                      <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-surface text-xs font-semibold text-text-secondary">
+                        {index + 1}
+                      </span>
+                      <div>
+                        <p className="text-sm font-medium text-text-primary">{hand.label}</p>
+                        <p className="text-xs leading-relaxed text-text-secondary">{hand.detail}</p>
+                      </div>
                     </div>
-                    <span className="text-xs font-medium text-text-secondary">
-                      {pair.map(getCardLabel).join(' ')}
-                    </span>
-                  </button>
-                ))}
-              </div>
-            )}
+                  ))}
+                </div>
+
+                <p className="rounded-xl border border-player1/15 bg-player1/5 px-3 py-2 text-xs leading-relaxed text-text-secondary">
+                  A pair only fights another pair, a triple only fights another triple, and a five-card hand only fights another five-card hand.
+                </p>
+              </section>
+            </div>
           </motion.div>
         )}
       </AnimatePresence>
