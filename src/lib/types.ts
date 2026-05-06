@@ -27,12 +27,13 @@ export type GameStatus = 'waiting' | 'playing' | 'won' | 'draw';
 // === Battleship Types ===
 export type BattleshipCell = string | null;
 export type BattleshipGrid = BattleshipCell[][];
-export type ShipId = 'battleship' | 'cruiser' | 'destroyer';
+export type ShipId = 'battleship' | 'cruiser' | 'destroyer' | 'l-ship';
 
 export interface ShipDefinition {
   id: ShipId;
   name: string;
   size: number;
+  shape?: [number, number][];
 }
 
 export interface ShipPlacement {

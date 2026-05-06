@@ -13,10 +13,14 @@ export const BOARD_SIZE = 7;
 export const FLEET: ShipDefinition[] = [
   { id: 'battleship', name: 'Battleship', size: 3 },
   { id: 'cruiser', name: 'Cruiser', size: 2 },
-  { id: 'destroyer', name: 'Destroyer', size: 2 },
+  { id: 'l-ship', name: 'L Ship', size: 4, shape: [[0, 0], [1, 0], [2, 0], [2, 1]] },
 ];
 
-export const TOTAL_SHIP_CELLS = 7;
+export const TOTAL_SHIP_CELLS = 9;
+
+let cachedPlacementCandidates: Map<ShipId, ShipPlacement[]> | null = null;
+let cachedPlacementLayoutCount: number | null = null;
+let cachedPlacementLayoutCounts: Map<string, number> | null = null;
 
 export function createEmptyGrid(): BattleshipGrid {
   return Array.from({ length: BOARD_SIZE }, () =>
@@ -34,50 +38,196 @@ export function createInitialBoard(): BattleshipBoardState {
   };
 }
 
-export function generateRandomPlacement(): ShipPlacement[] {
-  const placements: ShipPlacement[] = [];
-  const occupied = new Set<string>();
+export function generateRandomPlacement(random = Math.random): ShipPlacement[] {
+  const layoutCount = countValidPlacementLayouts();
+  const layoutIndex = Math.min(Math.floor(random() * layoutCount), layoutCount - 1);
+  return getPlacementLayoutAt(layoutIndex);
+}
 
-  for (const ship of FLEET) {
-    let placed = false;
+export function countValidPlacementLayouts(): number {
+  if (cachedPlacementLayoutCount !== null) {
+    return cachedPlacementLayoutCount;
+  }
 
-    while (!placed) {
-      const horizontal = Math.random() < 0.5;
-      const row = Math.floor(Math.random() * BOARD_SIZE);
-      const col = Math.floor(Math.random() * BOARD_SIZE);
+  cachedPlacementLayoutCount = countLayoutsFrom(0, new Set(), getPlacementLayoutCountMemo());
+  return cachedPlacementLayoutCount;
+}
 
-      const cells: [number, number][] = [];
-      let valid = true;
+function getPlacementLayoutAt(layoutIndex: number): ShipPlacement[] {
+  const memo = getPlacementLayoutCountMemo();
 
-      for (let i = 0; i < ship.size; i++) {
-        const r = horizontal ? row : row + i;
-        const c = horizontal ? col + i : col;
+  function select(shipIndex: number, occupied: Set<string>, targetIndex: number): ShipPlacement[] {
+    if (shipIndex === FLEET.length) {
+      return [];
+    }
 
-        if (r >= BOARD_SIZE || c >= BOARD_SIZE) {
-          valid = false;
-          break;
-        }
+    const ship = FLEET[shipIndex];
+    const candidates = getPlacementCandidatesByShip().get(ship.id) ?? [];
 
-        const key = `${r},${c}`;
-        if (occupied.has(key)) {
-          valid = false;
-          break;
-        }
-
-        cells.push([r, c]);
+    for (const candidate of candidates) {
+      if (hasOccupiedCell(candidate, occupied)) {
+        continue;
       }
 
-      if (valid) {
-        for (const [r, c] of cells) {
-          occupied.add(`${r},${c}`);
+      const nextOccupied = addPlacementToOccupied(candidate, occupied);
+      const branchCount = countLayoutsFrom(shipIndex + 1, nextOccupied, memo);
+
+      if (targetIndex < branchCount) {
+        return [clonePlacement(candidate), ...select(shipIndex + 1, nextOccupied, targetIndex)];
+      }
+
+      targetIndex -= branchCount;
+    }
+
+    throw new Error(`Placement layout index out of range: ${layoutIndex}`);
+  }
+
+  return select(0, new Set(), layoutIndex);
+}
+
+function getPlacementLayoutCountMemo(): Map<string, number> {
+  if (!cachedPlacementLayoutCounts) {
+    cachedPlacementLayoutCounts = new Map();
+  }
+  return cachedPlacementLayoutCounts;
+}
+
+function countLayoutsFrom(shipIndex: number, occupied: Set<string>, memo: Map<string, number>): number {
+  if (shipIndex === FLEET.length) {
+    return 1;
+  }
+
+  const memoKey = `${shipIndex}|${Array.from(occupied).sort().join(';')}`;
+  const memoized = memo.get(memoKey);
+  if (memoized !== undefined) {
+    return memoized;
+  }
+
+  const ship = FLEET[shipIndex];
+  const candidates = getPlacementCandidatesByShip().get(ship.id) ?? [];
+  let count = 0;
+
+  for (const candidate of candidates) {
+    if (hasOccupiedCell(candidate, occupied)) {
+      continue;
+    }
+
+    count += countLayoutsFrom(shipIndex + 1, addPlacementToOccupied(candidate, occupied), memo);
+  }
+
+  memo.set(memoKey, count);
+  return count;
+}
+
+function getPlacementCandidatesByShip(): Map<ShipId, ShipPlacement[]> {
+  if (cachedPlacementCandidates) {
+    return cachedPlacementCandidates;
+  }
+
+  cachedPlacementCandidates = new Map<ShipId, ShipPlacement[]>(
+    FLEET.map((ship) => [ship.id, getShipPlacementCandidates(ship)])
+  );
+  return cachedPlacementCandidates;
+}
+
+function getShipPlacementCandidates(ship: ShipDefinition): ShipPlacement[] {
+  const candidates: ShipPlacement[] = [];
+
+  if (ship.shape) {
+    const orientations = getShapeOrientations(ship.shape);
+
+    for (const shape of orientations) {
+      const maxRowOffset = Math.max(...shape.map(([row]) => row));
+      const maxColOffset = Math.max(...shape.map(([, col]) => col));
+
+      for (let row = 0; row < BOARD_SIZE - maxRowOffset; row++) {
+        for (let col = 0; col < BOARD_SIZE - maxColOffset; col++) {
+          candidates.push({
+            shipId: ship.id,
+            cells: shape.map(([rowOffset, colOffset]) => [
+              row + rowOffset,
+              col + colOffset,
+            ] as [number, number]),
+          });
         }
-        placements.push({ shipId: ship.id, cells });
-        placed = true;
+      }
+    }
+
+    return candidates;
+  }
+
+  for (const horizontal of [true, false]) {
+    const maxRow = horizontal ? BOARD_SIZE : BOARD_SIZE - ship.size + 1;
+    const maxCol = horizontal ? BOARD_SIZE - ship.size + 1 : BOARD_SIZE;
+
+    for (let row = 0; row < maxRow; row++) {
+      for (let col = 0; col < maxCol; col++) {
+        const cells: [number, number][] = Array.from({ length: ship.size }, (_, i) => [
+          horizontal ? row : row + i,
+          horizontal ? col + i : col,
+        ] as [number, number]);
+        candidates.push({ shipId: ship.id, cells });
       }
     }
   }
 
-  return placements;
+  return candidates;
+}
+
+function getShapeOrientations(shape: [number, number][]): [number, number][][] {
+  const orientations = new Map<string, [number, number][]>();
+
+  for (const mirror of [1, -1]) {
+    for (let rotation = 0; rotation < 4; rotation++) {
+      const transformed = shape.map(([row, col]) => {
+        const mirroredCol = col * mirror;
+        if (rotation === 0) return [row, mirroredCol] as [number, number];
+        if (rotation === 1) return [mirroredCol, -row] as [number, number];
+        if (rotation === 2) return [-row, -mirroredCol] as [number, number];
+        return [-mirroredCol, row] as [number, number];
+      });
+
+      const normalized = normalizeCells(transformed);
+      orientations.set(getShapeKey(normalized), normalized);
+    }
+  }
+
+  return Array.from(orientations.values());
+}
+
+function normalizeCells(cells: [number, number][]): [number, number][] {
+  const minRow = Math.min(...cells.map(([row]) => row));
+  const minCol = Math.min(...cells.map(([, col]) => col));
+  return cells
+    .map(([row, col]) => [row - minRow, col - minCol] as [number, number])
+    .sort(([rowA, colA], [rowB, colB]) => rowA - rowB || colA - colB);
+}
+
+function getShapeKey(cells: [number, number][]): string {
+  return normalizeCells(cells).map(([row, col]) => getCellKey(row, col)).join('|');
+}
+
+function clonePlacement(placement: ShipPlacement): ShipPlacement {
+  return {
+    shipId: placement.shipId,
+    cells: placement.cells.map(([row, col]) => [row, col] as [number, number]),
+  };
+}
+
+function hasOccupiedCell(placement: ShipPlacement, occupied: Set<string>): boolean {
+  return placement.cells.some(([row, col]) => occupied.has(getCellKey(row, col)));
+}
+
+function addPlacementToOccupied(placement: ShipPlacement, occupied: Set<string>): Set<string> {
+  const nextOccupied = new Set(occupied);
+  for (const [row, col] of placement.cells) {
+    nextOccupied.add(getCellKey(row, col));
+  }
+  return nextOccupied;
+}
+
+function getCellKey(row: number, col: number): string {
+  return `${row},${col}`;
 }
 
 export function isValidPlacement(placements: ShipPlacement[]): boolean {
@@ -87,6 +237,11 @@ export function isValidPlacement(placements: ShipPlacement[]): boolean {
     const shipDef = FLEET.find((s) => s.id === placement.shipId);
     if (!shipDef) return false;
     if (placement.cells.length !== shipDef.size) return false;
+
+    const candidateKeys = new Set(
+      getShipPlacementCandidates(shipDef).map((candidate) => getShapeKey(candidate.cells))
+    );
+    if (!candidateKeys.has(getShapeKey(placement.cells))) return false;
 
     for (const [row, col] of placement.cells) {
       if (row < 0 || row >= BOARD_SIZE || col < 0 || col >= BOARD_SIZE) {

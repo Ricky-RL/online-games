@@ -1,11 +1,11 @@
 import { describe, it, expect } from 'vitest';
 import {
   BOARD_SIZE,
-  FLEET,
   TOTAL_SHIP_CELLS,
   createEmptyGrid,
   createInitialBoard,
   generateRandomPlacement,
+  countValidPlacementLayouts,
   isValidPlacement,
   buildShipGrid,
   makeAttack,
@@ -46,6 +46,19 @@ describe('createInitialBoard', () => {
 });
 
 describe('generateRandomPlacement', () => {
+  it('samples from every complete legal layout instead of placing ships sequentially', () => {
+    expect(countValidPlacementLayouts()).toBe(863344);
+  });
+
+  it('selects complete layouts with a single random draw', () => {
+    const firstLayout = generateRandomPlacement(() => 0);
+    const lastLayout = generateRandomPlacement(() => 0.999999999);
+
+    expect(isValidPlacement(firstLayout)).toBe(true);
+    expect(isValidPlacement(lastLayout)).toBe(true);
+    expect(firstLayout).not.toEqual(lastLayout);
+  });
+
   it('returns 3 ships', () => {
     const placements = generateRandomPlacement();
     expect(placements).toHaveLength(3);
@@ -55,11 +68,11 @@ describe('generateRandomPlacement', () => {
     const placements = generateRandomPlacement();
     const battleship = placements.find((p) => p.shipId === 'battleship');
     const cruiser = placements.find((p) => p.shipId === 'cruiser');
-    const destroyer = placements.find((p) => p.shipId === 'destroyer');
+    const lShip = placements.find((p) => p.shipId === 'l-ship');
 
     expect(battleship!.cells).toHaveLength(3);
     expect(cruiser!.cells).toHaveLength(2);
-    expect(destroyer!.cells).toHaveLength(2);
+    expect(lShip!.cells).toHaveLength(4);
   });
 
   it('places all cells within bounds', () => {
@@ -103,7 +116,7 @@ describe('isValidPlacement', () => {
     const placements: ShipPlacement[] = [
       { shipId: 'battleship', cells: [[0, 0], [0, 1], [0, 2]] },
       { shipId: 'cruiser', cells: [[2, 0], [2, 1]] },
-      { shipId: 'destroyer', cells: [[4, 0], [4, 1]] },
+      { shipId: 'l-ship', cells: [[4, 0], [5, 0], [6, 0], [6, 1]] },
     ];
     expect(isValidPlacement(placements)).toBe(true);
   });
@@ -112,7 +125,7 @@ describe('isValidPlacement', () => {
     const placements: ShipPlacement[] = [
       { shipId: 'battleship', cells: [[0, 0], [0, 1], [0, 2]] },
       { shipId: 'cruiser', cells: [[0, 1], [0, 2]] }, // overlaps with battleship
-      { shipId: 'destroyer', cells: [[4, 0], [4, 1]] },
+      { shipId: 'l-ship', cells: [[4, 0], [5, 0], [6, 0], [6, 1]] },
     ];
     expect(isValidPlacement(placements)).toBe(false);
   });
@@ -121,7 +134,7 @@ describe('isValidPlacement', () => {
     const placements: ShipPlacement[] = [
       { shipId: 'battleship', cells: [[0, 5], [0, 6], [0, 7]] }, // col 7 is out of bounds
       { shipId: 'cruiser', cells: [[2, 0], [2, 1]] },
-      { shipId: 'destroyer', cells: [[4, 0], [4, 1]] },
+      { shipId: 'l-ship', cells: [[4, 0], [5, 0], [6, 0], [6, 1]] },
     ];
     expect(isValidPlacement(placements)).toBe(false);
   });
@@ -130,7 +143,16 @@ describe('isValidPlacement', () => {
     const placements: ShipPlacement[] = [
       { shipId: 'battleship', cells: [[0, 0], [0, 1]] }, // should be 3 cells
       { shipId: 'cruiser', cells: [[2, 0], [2, 1]] },
-      { shipId: 'destroyer', cells: [[4, 0], [4, 1]] },
+      { shipId: 'l-ship', cells: [[4, 0], [5, 0], [6, 0], [6, 1]] },
+    ];
+    expect(isValidPlacement(placements)).toBe(false);
+  });
+
+  it('returns false for an L ship with the wrong shape', () => {
+    const placements: ShipPlacement[] = [
+      { shipId: 'battleship', cells: [[0, 0], [0, 1], [0, 2]] },
+      { shipId: 'cruiser', cells: [[2, 0], [2, 1]] },
+      { shipId: 'l-ship', cells: [[4, 0], [4, 1], [5, 1], [5, 2]] },
     ];
     expect(isValidPlacement(placements)).toBe(false);
   });
@@ -139,7 +161,7 @@ describe('isValidPlacement', () => {
     const placements: ShipPlacement[] = [
       { shipId: 'battleship', cells: [[-1, 0], [0, 0], [1, 0]] },
       { shipId: 'cruiser', cells: [[2, 0], [2, 1]] },
-      { shipId: 'destroyer', cells: [[4, 0], [4, 1]] },
+      { shipId: 'l-ship', cells: [[4, 0], [5, 0], [6, 0], [6, 1]] },
     ];
     expect(isValidPlacement(placements)).toBe(false);
   });
@@ -150,7 +172,7 @@ describe('buildShipGrid', () => {
     const placements: ShipPlacement[] = [
       { shipId: 'battleship', cells: [[0, 0], [0, 1], [0, 2]] },
       { shipId: 'cruiser', cells: [[2, 3], [3, 3]] },
-      { shipId: 'destroyer', cells: [[5, 5], [5, 6]] },
+      { shipId: 'l-ship', cells: [[4, 5], [5, 5], [6, 5], [6, 6]] },
     ];
 
     const grid = buildShipGrid(placements);
@@ -160,10 +182,12 @@ describe('buildShipGrid', () => {
     expect(grid[0][2]).toBe('battleship');
     expect(grid[2][3]).toBe('cruiser');
     expect(grid[3][3]).toBe('cruiser');
-    expect(grid[5][5]).toBe('destroyer');
-    expect(grid[5][6]).toBe('destroyer');
+    expect(grid[4][5]).toBe('l-ship');
+    expect(grid[5][5]).toBe('l-ship');
+    expect(grid[6][5]).toBe('l-ship');
+    expect(grid[6][6]).toBe('l-ship');
     expect(grid[1][1]).toBeNull();
-    expect(grid[6][6]).toBeNull();
+    expect(grid[6][4]).toBeNull();
   });
 
   it('returns all nulls for empty placements', () => {
@@ -429,12 +453,12 @@ describe('makeAttack', () => {
     player1Ships: [
       { shipId: 'battleship', cells: [[0, 0], [0, 1], [0, 2]] },
       { shipId: 'cruiser', cells: [[2, 0], [2, 1]] },
-      { shipId: 'destroyer', cells: [[4, 0], [4, 1]] },
+      { shipId: 'l-ship', cells: [[4, 0], [5, 0], [6, 0], [6, 1]] },
     ],
     player2Ships: [
       { shipId: 'battleship', cells: [[6, 0], [6, 1], [6, 2]] },
       { shipId: 'cruiser', cells: [[5, 5], [5, 6]] },
-      { shipId: 'destroyer', cells: [[3, 3], [3, 4]] },
+      { shipId: 'l-ship', cells: [[3, 3], [4, 3], [5, 3], [5, 4]] },
     ],
     player1Attacks: [],
     player2Attacks: [],
@@ -495,18 +519,20 @@ describe('makeAttack', () => {
   });
 
   it('sets phase to finished when all enemy ships are sunk', () => {
-    // Set up a board where player 2 has only a destroyer left with 1 cell unhit
+    // Set up a board where player 2 has only an L ship left with 1 cell unhit
     const almostWonBoard: BattleshipBoardState = {
       ...baseBoardPlaying,
       player2Ships: [
-        { shipId: 'destroyer', cells: [[3, 3], [3, 4]] },
+        { shipId: 'l-ship', cells: [[3, 3], [4, 3], [5, 3], [5, 4]] },
       ],
       player1Attacks: [
-        { row: 3, col: 3, result: 'hit', shipId: 'destroyer' },
+        { row: 3, col: 3, result: 'hit', shipId: 'l-ship' },
+        { row: 4, col: 3, result: 'hit', shipId: 'l-ship' },
+        { row: 5, col: 3, result: 'hit', shipId: 'l-ship' },
       ],
     };
 
-    const result = makeAttack(almostWonBoard, 3, 4, 1);
+    const result = makeAttack(almostWonBoard, 5, 4, 1);
     expect(result.phase).toBe('finished');
   });
 

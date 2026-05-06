@@ -1,7 +1,7 @@
 'use client';
 
 import { motion } from 'framer-motion';
-import type { ShipId } from '@/lib/types';
+import type { ShipDefinition, ShipId } from '@/lib/types';
 import { FLEET } from '@/lib/battleship-logic';
 
 interface ShipStatusProps {
@@ -32,22 +32,7 @@ export function ShipOverlay({ sunkShipIds, label }: ShipStatusProps) {
               animate={isSunk ? { opacity: 0.5 } : { opacity: 1 }}
             >
               {/* Ship blocks */}
-              <div className="flex gap-0.5">
-                {Array.from({ length: ship.size }, (_, i) => (
-                  <motion.div
-                    key={i}
-                    className={`w-3 h-3 rounded-sm ${
-                      isSunk ? 'bg-red-600' : 'bg-emerald-500'
-                    }`}
-                    animate={
-                      isSunk
-                        ? { scale: [1, 0.9, 1] }
-                        : {}
-                    }
-                    transition={{ duration: 0.3 }}
-                  />
-                ))}
-              </div>
+              <ShipBlocks ship={ship} isSunk={isSunk} />
 
               {/* Ship name */}
               <span
@@ -64,5 +49,55 @@ export function ShipOverlay({ sunkShipIds, label }: ShipStatusProps) {
         })}
       </div>
     </motion.div>
+  );
+}
+
+function ShipBlocks({ ship, isSunk }: { ship: ShipDefinition; isSunk: boolean }) {
+  const colorClass = isSunk ? 'bg-red-600' : 'bg-emerald-500';
+
+  if (!ship.shape) {
+    return (
+      <div className="flex gap-0.5">
+        {Array.from({ length: ship.size }, (_, i) => (
+          <Block key={i} colorClass={colorClass} isSunk={isSunk} />
+        ))}
+      </div>
+    );
+  }
+
+  const rows = Math.max(...ship.shape.map(([row]) => row)) + 1;
+  const cols = Math.max(...ship.shape.map(([, col]) => col)) + 1;
+  const cells = new Set(ship.shape.map(([row, col]) => `${row},${col}`));
+
+  return (
+    <div
+      className="grid gap-0.5"
+      style={{
+        gridTemplateColumns: `repeat(${cols}, 0.75rem)`,
+        gridTemplateRows: `repeat(${rows}, 0.75rem)`,
+      }}
+    >
+      {Array.from({ length: rows * cols }, (_, index) => {
+        const row = Math.floor(index / cols);
+        const col = index % cols;
+        const hasBlock = cells.has(`${row},${col}`);
+
+        return hasBlock ? (
+          <Block key={index} colorClass={colorClass} isSunk={isSunk} />
+        ) : (
+          <div key={index} className="w-3 h-3" />
+        );
+      })}
+    </div>
+  );
+}
+
+function Block({ colorClass, isSunk }: { colorClass: string; isSunk: boolean }) {
+  return (
+    <motion.div
+      className={`w-3 h-3 rounded-sm ${colorClass}`}
+      animate={isSunk ? { scale: [1, 0.9, 1] } : {}}
+      transition={{ duration: 0.3 }}
+    />
   );
 }
