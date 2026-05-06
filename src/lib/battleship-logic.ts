@@ -13,7 +13,7 @@ export const BOARD_SIZE = 8;
 export const FLEET: ShipDefinition[] = [
   { id: 'battleship', name: 'Battleship', size: 3 },
   { id: 'cruiser', name: 'Cruiser', size: 2 },
-  { id: 'l-ship', name: 'L Ship', size: 4, shape: [[0, 0], [1, 0], [2, 0], [2, 1]] },
+  { id: 'l-ship', name: 'Aircraft Carrier', size: 4, shape: [[0, 0], [1, 0], [2, 0], [2, 1]] },
 ];
 
 export const TOTAL_SHIP_CELLS = 9;
