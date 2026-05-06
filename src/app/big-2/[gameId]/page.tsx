@@ -2,23 +2,42 @@
 
 import { use, useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { motion } from 'framer-motion';
+import { AnimatePresence, motion } from 'framer-motion';
 import { SettingsButton } from '@/components/SettingsButton';
 import { TurnIndicator } from '@/components/TurnIndicator';
 import { WinCelebration } from '@/components/WinCelebration';
 import { EndGameDialog } from '@/components/EndGameDialog';
 import { NotificationControls } from '@/components/NotificationControls';
+import { Big2Card } from '@/components/big-2/Big2Card';
 import { Big2Hand } from '@/components/big-2/Big2Hand';
 import { Big2Table } from '@/components/big-2/Big2Table';
 import { useBig2Game } from '@/hooks/useBig2Game';
 import { useGameSounds } from '@/hooks/useSound';
 import { useNotifications } from '@/hooks/useNotifications';
-import { describeCombination, evaluateCombination, getCardLabel } from '@/lib/big-2-logic';
+import { describeCombination, evaluateCombination, getCardLabel, type BigTwoCard } from '@/lib/big-2-logic';
 import type { Player } from '@/lib/types';
 
 function getMyName(): string | null {
   if (typeof window === 'undefined') return null;
   return sessionStorage.getItem('player-name') || localStorage.getItem('player-name');
+}
+
+function getPossiblePairs(cards: BigTwoCard[]): BigTwoCard[][] {
+  const byRank = new Map<string, BigTwoCard[]>();
+  for (const card of cards) {
+    byRank.set(card.rank, [...(byRank.get(card.rank) ?? []), card]);
+  }
+
+  const pairs: BigTwoCard[][] = [];
+  for (const rankCards of byRank.values()) {
+    if (rankCards.length < 2) continue;
+    for (let i = 0; i < rankCards.length - 1; i++) {
+      for (let j = i + 1; j < rankCards.length; j++) {
+        pairs.push([rankCards[i], rankCards[j]]);
+      }
+    }
+  }
+  return pairs;
 }
 
 export default function Big2GamePage({ params }: { params: Promise<{ gameId: string }> }) {
@@ -29,6 +48,7 @@ export default function Big2GamePage({ params }: { params: Promise<{ gameId: str
   const [myName] = useState<string | null>(() => getMyName());
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [showEndDialog, setShowEndDialog] = useState(false);
+  const [showPairsInfo, setShowPairsInfo] = useState(false);
 
   useEffect(() => {
     if (deleted) router.push('/');
@@ -73,6 +93,8 @@ export default function Big2GamePage({ params }: { params: Promise<{ gameId: str
     if (!game || !myPlayerNumber) return 0;
     return game.board.hands[myPlayerNumber === 1 ? '2' : '1'].length;
   }, [game, myPlayerNumber]);
+
+  const possiblePairs = useMemo(() => getPossiblePairs(myHand), [myHand]);
 
   const turnLabel = useMemo(() => {
     if (!game) return '';
@@ -173,6 +195,75 @@ export default function Big2GamePage({ params }: { params: Promise<{ gameId: str
   return (
     <>
       <SettingsButton />
+      <button
+        onClick={() => setShowPairsInfo((open) => !open)}
+        className="fixed top-5 right-[4.25rem] z-40 w-10 h-10 flex items-center justify-center rounded-full bg-surface border border-border shadow-md hover:shadow-lg transition-shadow cursor-pointer text-text-secondary hover:text-text-primary"
+        aria-label="Show possible pairs"
+        title="Show possible pairs"
+      >
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+          <circle cx="12" cy="12" r="9" />
+          <path d="M12 10v6" />
+          <path d="M12 7h.01" />
+        </svg>
+      </button>
+
+      <AnimatePresence>
+        {showPairsInfo && (
+          <motion.div
+            initial={{ opacity: 0, y: -8, scale: 0.98 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -8, scale: 0.98 }}
+            transition={{ duration: 0.18 }}
+            className="fixed right-5 top-[4.5rem] z-40 w-[min(22rem,calc(100vw-2rem))] rounded-2xl border border-border bg-surface p-4 shadow-xl"
+          >
+            <div className="mb-3 flex items-start justify-between gap-3">
+              <div>
+                <h2 className="text-sm font-semibold text-text-primary">Possible Pairs</h2>
+                <p className="text-xs text-text-secondary">Matching ranks in your hand</p>
+              </div>
+              <button
+                onClick={() => setShowPairsInfo(false)}
+                className="rounded-lg p-1 text-text-secondary hover:bg-background hover:text-text-primary cursor-pointer"
+                aria-label="Close possible pairs"
+              >
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                  <path d="M4 4L12 12M12 4L4 12" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+                </svg>
+              </button>
+            </div>
+
+            {possiblePairs.length === 0 ? (
+              <p className="rounded-xl border border-dashed border-border bg-background/60 px-3 py-4 text-center text-sm text-text-secondary">
+                No pairs in your hand right now.
+              </p>
+            ) : (
+              <div className="max-h-80 space-y-3 overflow-y-auto pr-1">
+                {possiblePairs.map((pair) => (
+                  <button
+                    key={pair.map((card) => card.id).join('-')}
+                    onClick={() => {
+                      setSelectedIds(pair.map((card) => card.id));
+                      setShowPairsInfo(false);
+                    }}
+                    className="flex w-full items-center justify-between gap-3 rounded-xl border border-border bg-background/50 px-3 py-2 text-left hover:border-text-secondary/30 hover:bg-background cursor-pointer"
+                  >
+                    <div className="flex items-center gap-1.5">
+                      {pair.map((card) => (
+                        <Big2Card key={card.id} card={card} compact />
+                      ))}
+                    </div>
+                    <span className="text-xs font-medium text-text-secondary">
+                      {pair.map(getCardLabel).join(' ')}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       <div className="flex-1 flex flex-col items-center gap-5 p-4 pt-16">
         {(!game.player1_id || !game.player2_id) && (
           <div className="rounded-xl border border-border bg-surface px-4 py-2 text-sm text-text-secondary">
