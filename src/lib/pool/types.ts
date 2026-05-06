@@ -63,6 +63,7 @@ export const TABLE_WIDTH = 200;
 export const TABLE_HEIGHT = 400;
 export const BALL_RADIUS = 7;
 export const POCKET_RADIUS = 14;
+export const CORNER_POCKET_RADIUS = 17;
 export const CUSHION_WIDTH = 12;
 
 // Physics constants
@@ -81,6 +82,12 @@ export const POCKETS: Point[] = [
   { x: CUSHION_WIDTH, y: TABLE_HEIGHT - CUSHION_WIDTH }, // bottom-left corner
   { x: TABLE_WIDTH - CUSHION_WIDTH, y: TABLE_HEIGHT - CUSHION_WIDTH }, // bottom-right corner
 ];
+
+export function getPocketRadius(pocketIndex: number): number {
+  return pocketIndex === 0 || pocketIndex === 1 || pocketIndex === 4 || pocketIndex === 5
+    ? CORNER_POCKET_RADIUS
+    : POCKET_RADIUS;
+}
 
 // Ball colors for rendering
 export const BALL_COLORS: Record<number, string> = {

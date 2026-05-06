@@ -3,9 +3,9 @@
 import { useRef, useEffect, useCallback, useState } from 'react';
 import {
   BallState, Shot, Point,
-  TABLE_WIDTH, TABLE_HEIGHT, BALL_RADIUS, POCKET_RADIUS,
+  TABLE_WIDTH, TABLE_HEIGHT, BALL_RADIUS,
   CUSHION_WIDTH, MAX_POWER, POCKETS, BALL_COLORS,
-  isSolid, isStripe, isEightBall,
+  getPocketRadius, isSolid, isStripe, isEightBall,
 } from '@/lib/pool/types';
 import { shootCueBall, stepPhysics, isAnyBallMoving } from '@/lib/pool/physics';
 
@@ -290,9 +290,9 @@ function renderTable(
   ctx.fillRect(CUSHION_WIDTH, CUSHION_WIDTH, TABLE_WIDTH - 2 * CUSHION_WIDTH, TABLE_HEIGHT - 2 * CUSHION_WIDTH);
 
   // Pockets
-  for (const pocket of POCKETS) {
+  for (const [pocketIndex, pocket] of POCKETS.entries()) {
     ctx.beginPath();
-    ctx.arc(pocket.x, pocket.y, POCKET_RADIUS, 0, Math.PI * 2);
+    ctx.arc(pocket.x, pocket.y, getPocketRadius(pocketIndex), 0, Math.PI * 2);
     ctx.fillStyle = '#111';
     ctx.fill();
   }

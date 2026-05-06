@@ -11,8 +11,8 @@ import {
   TABLE_WIDTH,
   TABLE_HEIGHT,
   CUSHION_WIDTH,
-  POCKET_RADIUS,
   POCKETS,
+  getPocketRadius,
 } from './types';
 
 export function shootCueBall(balls: BallState[], shot: Shot): BallState[] {
@@ -37,7 +37,7 @@ export function isAnyBallMoving(balls: BallState[]): boolean {
 }
 
 export function stepPhysics(balls: BallState[]): { balls: BallState[]; pocketed: number[] } {
-  let updated = balls.map((b) => ({ ...b }));
+  const updated = balls.map((b) => ({ ...b }));
   const newlyPocketed: number[] = [];
 
   // Move balls
@@ -85,9 +85,9 @@ export function stepPhysics(balls: BallState[]): { balls: BallState[]; pocketed:
   // Pocket detection
   for (const ball of updated) {
     if (ball.pocketed) continue;
-    for (const pocket of POCKETS) {
+    for (const [pocketIndex, pocket] of POCKETS.entries()) {
       const dist = Math.sqrt((ball.x - pocket.x) ** 2 + (ball.y - pocket.y) ** 2);
-      if (dist < POCKET_RADIUS) {
+      if (dist < getPocketRadius(pocketIndex)) {
         ball.pocketed = true;
         ball.vx = 0;
         ball.vy = 0;
