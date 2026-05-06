@@ -8,7 +8,7 @@ import type {
   BattleshipBoardState,
 } from './types';
 
-export const BOARD_SIZE = 7;
+export const BOARD_SIZE = 8;
 
 export const FLEET: ShipDefinition[] = [
   { id: 'battleship', name: 'Battleship', size: 3 },
@@ -38,10 +38,73 @@ export function createInitialBoard(): BattleshipBoardState {
   };
 }
 
-export function generateRandomPlacement(random = Math.random): ShipPlacement[] {
-  const layoutCount = countValidPlacementLayouts();
-  const layoutIndex = Math.min(Math.floor(random() * layoutCount), layoutCount - 1);
-  return getPlacementLayoutAt(layoutIndex);
+function getDefaultRandom(): number {
+  if (globalThis.crypto?.getRandomValues) {
+    const values = new Uint32Array(1);
+    globalThis.crypto.getRandomValues(values);
+    return values[0] / 0x1_0000_0000;
+  }
+  return Math.random();
+}
+
+function shuffleArray<T>(items: readonly T[], random: () => number): T[] {
+  const shuffled = [...items];
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const randomIndex = Math.min(Math.floor(random() * (i + 1)), i);
+    [shuffled[i], shuffled[randomIndex]] = [shuffled[randomIndex], shuffled[i]];
+  }
+  return shuffled;
+}
+
+export function generateRandomPlacement(random: () => number = getDefaultRandom): ShipPlacement[] {
+  const shipOrder = shuffleArray(FLEET, random);
+  const occupied = new Set<string>();
+  const placementsByShip = new Map<ShipId, ShipPlacement>();
+
+  function backtrack(shipIndex: number): boolean {
+    if (shipIndex === shipOrder.length) {
+      return true;
+    }
+
+    const ship = shipOrder[shipIndex];
+    const candidates = getPlacementCandidatesByShip().get(ship.id) ?? [];
+    const shuffledCandidates = shuffleArray(candidates, random);
+
+    for (const candidate of shuffledCandidates) {
+      if (hasOccupiedCell(candidate, occupied)) {
+        continue;
+      }
+
+      const candidateKeys = candidate.cells.map(([row, col]) => getCellKey(row, col));
+      for (const key of candidateKeys) {
+        occupied.add(key);
+      }
+      placementsByShip.set(ship.id, clonePlacement(candidate));
+
+      if (backtrack(shipIndex + 1)) {
+        return true;
+      }
+
+      placementsByShip.delete(ship.id);
+      for (const key of candidateKeys) {
+        occupied.delete(key);
+      }
+    }
+
+    return false;
+  }
+
+  if (!backtrack(0)) {
+    throw new Error('Unable to generate a valid ship placement');
+  }
+
+  return FLEET.map((ship) => {
+    const placement = placementsByShip.get(ship.id);
+    if (!placement) {
+      throw new Error(`Missing generated placement for ${ship.id}`);
+    }
+    return clonePlacement(placement);
+  });
 }
 
 export function countValidPlacementLayouts(): number {

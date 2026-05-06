@@ -13,7 +13,7 @@ interface TrackingBoardProps {
   lastAttack?: Attack | null;
 }
 
-const COL_LABELS = ['A', 'B', 'C', 'D', 'E', 'F', 'G'];
+const COL_LABELS = Array.from({ length: BOARD_SIZE }, (_, index) => String.fromCharCode(65 + index));
 
 export function TrackingBoard({
   myAttacks,
@@ -61,7 +61,10 @@ export function TrackingBoard({
 
       <div className="bg-slate-900 rounded-xl p-2 border border-border">
         {/* Column labels */}
-        <div className="grid grid-cols-[auto_repeat(7,1fr)] gap-0.5 mb-0.5">
+        <div
+          className="grid gap-0.5 mb-0.5"
+          style={{ gridTemplateColumns: `auto repeat(${BOARD_SIZE}, minmax(0, 1fr))` }}
+        >
           <div className="w-5" />
           {COL_LABELS.map((label) => (
             <div
@@ -75,7 +78,11 @@ export function TrackingBoard({
 
         {/* Grid with row labels */}
         {Array.from({ length: BOARD_SIZE }, (_, row) => (
-          <div key={row} className="grid grid-cols-[auto_repeat(7,1fr)] gap-0.5">
+          <div
+            key={row}
+            className="grid gap-0.5"
+            style={{ gridTemplateColumns: `auto repeat(${BOARD_SIZE}, minmax(0, 1fr))` }}
+          >
             {/* Row label */}
             <div className="w-5 flex items-center justify-center text-xs text-text-secondary font-mono">
               {row + 1}
