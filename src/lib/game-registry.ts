@@ -103,6 +103,13 @@ export const DEFAULT_GAME_ORDER: GameDefinition[] = [
     categories: ['strategy'],
   },
   {
+    slug: 'uno',
+    title: 'UNO',
+    description: 'Match colors and symbols. Use action cards to empty your hand first.',
+    color: '#DC2626',
+    categories: ['strategy', 'chance'],
+  },
+  {
     slug: 'math-trivia',
     title: 'Math Trivia',
     description: '15 math questions — fastest correct answers wins.',

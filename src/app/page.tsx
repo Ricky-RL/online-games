@@ -373,6 +373,15 @@ function Big2Icon() {
   );
 }
 
+function UnoIcon() {
+  return (
+    <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
+      <ellipse cx="14" cy="14" rx="10" ry="7.5" fill="#DC2626" opacity="0.85" />
+      <text x="10.2" y="17" fontSize="8" fill="white" fontFamily="sans-serif" fontWeight="bold">U</text>
+    </svg>
+  );
+}
+
 
 function PlayerSelector({ onSelect }: { onSelect: (name: PlayerName) => void }) {
   return (
@@ -1063,6 +1072,7 @@ function GameSelection({ playerName, onChangePlayer }: { playerName: PlayerName;
     'sudoku': { icon: <SudokuIcon />, onClick: () => router.push('/sudoku') },
     'solitaire': { icon: <SolitaireIcon />, onClick: () => router.push('/solitaire') },
     'big-2': { icon: <Big2Icon />, onClick: () => router.push('/big-2') },
+    'uno': { icon: <UnoIcon />, onClick: () => router.push('/uno') },
   };
 
   return (

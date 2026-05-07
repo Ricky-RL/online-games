@@ -22,6 +22,7 @@ const GAME_LABELS: Record<string, string> = {
   "cup-pong": "Cup Pong",
   solitaire: "Solitaire",
   "big-2": "Big 2",
+  uno: "UNO",
 };
 
 interface TurnPayload {

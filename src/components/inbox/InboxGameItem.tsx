@@ -247,6 +247,17 @@ function Big2Mini() {
   );
 }
 
+function UnoMini() {
+  return (
+    <div className="w-8 h-8 rounded-lg bg-[#DC2626]/10 flex items-center justify-center">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+        <ellipse cx="8" cy="8" rx="6" ry="4.5" fill="#DC2626" opacity="0.85" />
+        <text x="5.2" y="10" fontSize="5" fill="white" fontFamily="sans-serif" fontWeight="bold">U</text>
+      </svg>
+    </div>
+  );
+}
+
 function GameIcon({ gameType }: { gameType: InboxGameType }) {
   switch (gameType) {
     case 'connect-four': return <ConnectFourMini />;
@@ -265,6 +276,7 @@ function GameIcon({ gameType }: { gameType: InboxGameType }) {
     case 'reaction': return <ReactionMini />;
     case 'solitaire': return <SolitaireMini />;
     case 'big-2': return <Big2Mini />;
+    case 'uno': return <UnoMini />;
     case 'daily-wordle': return <DailyWordleMini />;
     case 'cup-pong': return <CupPongMini />;
     case 'sudoku': return <SudokuMini />;
@@ -289,6 +301,7 @@ function gameLabel(gameType: InboxGameType): string {
     case 'reaction': return 'Reaction';
     case 'solitaire': return 'Solitaire';
     case 'big-2': return 'Big 2';
+    case 'uno': return 'UNO';
     case 'daily-wordle': return 'Daily Wordle';
     case 'cup-pong': return 'Cup Pong';
     case 'sudoku': return 'Sudoku';
