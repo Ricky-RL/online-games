@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
+import { getStoredUserSlotInfo } from '@/lib/players';
 import {
   makeAttack as computeAttack,
   shouldKeepTurn,
@@ -38,6 +39,7 @@ export function useBattleshipGame(gameId: string): UseBattleshipGameReturn {
   const optimisticBoard = useRef<BattleshipBoardState | null>(null);
   const gameRef = useRef<BattleshipGame | null>(null);
   const matchRecordedRef = useRef(false);
+  const autoJoinAttempted = useRef(false);
 
   const updateGame = useCallback(
     (updater: BattleshipGame | null | ((prev: BattleshipGame | null) => BattleshipGame | null)) => {
@@ -92,6 +94,61 @@ export function useBattleshipGame(gameId: string): UseBattleshipGameReturn {
     return gameData;
   }, [gameId, updateGame]);
 
+  const tryAutoJoin = useCallback(
+    async (gameData: BattleshipGame) => {
+      if (autoJoinAttempted.current) return;
+
+      const { user, isCurrentUserSlot, isBoundUserSlot } = getStoredUserSlotInfo();
+      if (!user?.boundUserId) return;
+
+      const alreadyInGame =
+        isCurrentUserSlot(gameData.player1_id, gameData.player1_name) ||
+        isCurrentUserSlot(gameData.player2_id, gameData.player2_name);
+      if (alreadyInGame) return;
+
+      const creatorIsBoundOpponent =
+        isBoundUserSlot(gameData.player1_id, gameData.player1_name) ||
+        isBoundUserSlot(gameData.player2_id, gameData.player2_name);
+      if (!creatorIsBoundOpponent) return;
+
+      const joiningPlayer1 = gameData.player1_id === null && gameData.player1_name === null;
+      const joiningPlayer2 = gameData.player2_id === null && gameData.player2_name === null;
+      if (!joiningPlayer1 && !joiningPlayer2) return;
+
+      autoJoinAttempted.current = true;
+
+      const updateField = joiningPlayer1
+        ? { player1_id: user.id, player1_name: user.name }
+        : { player2_id: user.id, player2_name: user.name };
+
+      let query = supabase
+        .from('games')
+        .update({
+          ...updateField,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', gameId)
+        .eq('game_type', 'battleship')
+        .is('winner', null);
+
+      query = joiningPlayer1
+        ? query.eq('player2_id', user.boundUserId).is('player1_id', null).is('player1_name', null)
+        : query.eq('player1_id', user.boundUserId).is('player2_id', null).is('player2_name', null);
+
+      const { data: joined, error: joinError } = await query.select('*').maybeSingle();
+      if (joinError) {
+        const fresh = await fetchGame();
+        if (fresh) updateGame(fresh);
+        return;
+      }
+
+      if (joined) {
+        updateGame(joined as BattleshipGame);
+      }
+    },
+    [fetchGame, gameId, updateGame]
+  );
+
   // Initial fetch
   useEffect(() => {
     let cancelled = false;
@@ -101,6 +158,7 @@ export function useBattleshipGame(gameId: string): UseBattleshipGameReturn {
       if (cancelled) return;
       if (gameData) {
         updateGame(gameData);
+        await tryAutoJoin(gameData);
       }
       setLoading(false);
     }
@@ -108,7 +166,7 @@ export function useBattleshipGame(gameId: string): UseBattleshipGameReturn {
     return () => {
       cancelled = true;
     };
-  }, [fetchGame, updateGame]);
+  }, [fetchGame, updateGame, tryAutoJoin]);
 
   // Poll for changes
   useEffect(() => {
@@ -156,10 +214,12 @@ export function useBattleshipGame(gameId: string): UseBattleshipGameReturn {
 
         return fresh;
       });
+
+      await tryAutoJoin(fresh);
     }, POLL_INTERVAL_MS);
 
     return () => clearInterval(interval);
-  }, [gameId, fetchGame, updateGame, deleted]);
+  }, [gameId, fetchGame, updateGame, deleted, tryAutoJoin]);
 
   const makeAttack = useCallback(
     async (row: number, col: number) => {
