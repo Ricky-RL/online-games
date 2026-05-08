@@ -40,7 +40,7 @@ export function InboxWhiteboardSection({ activity, onItemClick, onDismiss }: Inb
         <p className="text-sm text-text-secondary/60 py-2">No recent activity</p>
       ) : (
         <motion.div
-          className="flex flex-col gap-2"
+          className="flex max-h-[13.5rem] flex-col gap-2 overflow-y-auto pr-1"
           variants={listContainer}
           initial="hidden"
           animate="show"
