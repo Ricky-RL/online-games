@@ -1,10 +1,11 @@
 'use client';
 
 import { motion } from 'framer-motion';
-import { getCardLabel, type BigTwoCard } from '@/lib/big-2-logic';
+import { getCardLabel, type BigTwoCard, type BigTwoRuleset } from '@/lib/big-2-rules';
 
 interface Big2CardProps {
   card: BigTwoCard;
+  ruleset?: BigTwoRuleset;
   selected?: boolean;
   disabled?: boolean;
   compact?: boolean;
@@ -15,7 +16,10 @@ function isRed(card: BigTwoCard): boolean {
   return card.suit === 'H' || card.suit === 'D';
 }
 
-export function Big2Card({ card, selected = false, disabled = false, compact = false, onClick }: Big2CardProps) {
+export function Big2Card({ card, ruleset = 'classic', selected = false, disabled = false, compact = false, onClick }: Big2CardProps) {
+  const label = getCardLabel(card, ruleset);
+  const symbol = label.replace(card.rank, '');
+
   const content = (
     <motion.div
       animate={{ y: selected ? -10 : 0, scale: selected ? 1.03 : 1 }}
@@ -32,7 +36,7 @@ export function Big2Card({ card, selected = false, disabled = false, compact = f
         {card.rank}
       </span>
       <span className={`self-center text-2xl leading-none ${compact ? 'text-lg' : ''} ${isRed(card) ? 'text-red-600' : 'text-neutral-950'}`}>
-        {getCardLabel(card).slice(card.rank.length)}
+        {symbol}
       </span>
       <span className={`self-end rotate-180 text-sm font-bold leading-none ${isRed(card) ? 'text-red-600' : 'text-neutral-950'}`}>
         {card.rank}
@@ -49,7 +53,7 @@ export function Big2Card({ card, selected = false, disabled = false, compact = f
       disabled={disabled}
       className="shrink-0 cursor-pointer disabled:cursor-not-allowed"
       aria-pressed={selected}
-      aria-label={`${selected ? 'Deselect' : 'Select'} ${getCardLabel(card)}`}
+      aria-label={`${selected ? 'Deselect' : 'Select'} ${label}`}
     >
       {content}
     </button>

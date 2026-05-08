@@ -4,12 +4,14 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
 import {
   createBigTwoBoard,
+  resolveRuleset,
   getNextTurnAfterPass,
   getNextTurnAfterPlay,
   passTurn as computePass,
   playCards as computePlay,
+  type BigTwoRuleset,
   type BigTwoBoardState,
-} from '@/lib/big-2-logic';
+} from '@/lib/big-2-rules';
 import { recordMatchResult } from '@/lib/match-results';
 import type { Player } from '@/lib/types';
 
@@ -251,7 +253,7 @@ export function useBig2Game(gameId: string): UseBig2GameReturn {
 
       try {
         const { board: nextBoard, winner } = computePlay(currentGame.board, myPlayerNumber, cardIds);
-        const nextTurn = getNextTurnAfterPlay(myPlayerNumber, winner);
+        const nextTurn = getNextTurnAfterPlay(currentGame.board, myPlayerNumber, winner);
         await persistTurn(nextBoard, nextTurn, winner, currentGame);
       } catch (moveError) {
         setError(moveError instanceof Error ? moveError.message : 'Invalid play');
@@ -285,7 +287,8 @@ export function useBig2Game(gameId: string): UseBig2GameReturn {
   }, [getMyPlayerNumber, persistTurn]);
 
   const resetGame = useCallback(async () => {
-    const newBoard = createBigTwoBoard(1);
+    const ruleset: BigTwoRuleset = resolveRuleset(gameRef.current?.board);
+    const newBoard = createBigTwoBoard(1, Math.random, ruleset);
     const { error: resetError } = await supabase
       .from('games')
       .update({
@@ -315,11 +318,12 @@ export function useBig2Game(gameId: string): UseBig2GameReturn {
   }, [gameId, updateGame]);
 
   const endGame = useCallback(async () => {
+    const ruleset: BigTwoRuleset = resolveRuleset(gameRef.current?.board);
     const { error: endError } = await supabase
       .from('games')
       .update({
         game_type: 'ended',
-        board: createBigTwoBoard(1),
+        board: createBigTwoBoard(1, Math.random, ruleset),
         current_turn: 1,
         winner: null,
         player1_name: null,

@@ -17,11 +17,13 @@ import { useNotifications } from '@/hooks/useNotifications';
 import {
   describeCombination,
   evaluateCombination,
+  getRulesetHandOrder,
+  resolveRuleset,
   getCardLabel,
   getPlayableCombinations,
-  type BigTwoCombinationType,
+  type BigTwoRuleset,
   type BigTwoCard,
-} from '@/lib/big-2-logic';
+} from '@/lib/big-2-rules';
 import type { Player } from '@/lib/types';
 
 function getMyName(): string | null {
@@ -29,18 +31,7 @@ function getMyName(): string | null {
   return sessionStorage.getItem('player-name') || localStorage.getItem('player-name');
 }
 
-const COMBINATION_DISPLAY_ORDER: BigTwoCombinationType[] = [
-  'single',
-  'pair',
-  'triple',
-  'straight',
-  'flush',
-  'full-house',
-  'four-kind',
-  'straight-flush',
-];
-
-const rulebookHands = [
+const CLASSIC_RULEBOOK_HANDS = [
   { label: 'Single', detail: 'Any one card. Higher rank wins; suit breaks ties.' },
   { label: 'Pair', detail: 'Two cards of the same rank. Higher rank wins; highest suit breaks ties.' },
   { label: 'Triple', detail: 'Three cards of the same rank. Higher rank wins.' },
@@ -49,6 +40,16 @@ const rulebookHands = [
   { label: 'Full house', detail: 'Triple plus pair. Triple rank decides.' },
   { label: 'Four of a kind', detail: 'Four matching ranks plus any fifth card.' },
   { label: 'Straight flush', detail: 'Five-card suited run. Highest five-card hand.' },
+];
+
+const CHAOTIC_RULEBOOK_HANDS = [
+  { label: 'Singles / Pairs / Triples', detail: 'Rank in level order with level cards above A and hearts of level rank as wild.' },
+  { label: 'Full house', detail: 'Triple plus pair. Ranked by triple in level order.' },
+  { label: 'Straight', detail: 'Five-card run in natural rank order (A can be low or high). Level cards use natural position in runs.' },
+  { label: 'Tube', detail: 'Three consecutive pairs (6 cards) in natural order.' },
+  { label: 'Plate', detail: 'Two consecutive triples (6 cards) in natural order.' },
+  { label: 'Bombs', detail: 'Four-to-ten of a kind or straight flush bombs. Any bomb beats ordinary plays; higher bomb beats lower bomb.' },
+  { label: 'Wild cards', detail: 'Hearts of the current level are wild and can represent any non-joker card in combinations.' },
 ];
 
 export default function Big2GamePage({ params }: { params: Promise<{ gameId: string }> }) {
@@ -95,10 +96,12 @@ export default function Big2GamePage({ params }: { params: Promise<{ gameId: str
     [myHand, selectedIds]
   );
 
+  const ruleset: BigTwoRuleset = useMemo(() => resolveRuleset(game?.board), [game?.board]);
+
   const selectedCombination = useMemo(() => {
     if (!myPlayerNumber || selectedCards.length === 0) return null;
-    return evaluateCombination(selectedCards, myPlayerNumber);
-  }, [myPlayerNumber, selectedCards]);
+    return evaluateCombination(selectedCards, myPlayerNumber, ruleset, game?.board.level ?? '2');
+  }, [game?.board.level, myPlayerNumber, ruleset, selectedCards]);
 
   const opponentCardsLeft = useMemo(() => {
     if (!game || !myPlayerNumber) return 0;
@@ -106,20 +109,24 @@ export default function Big2GamePage({ params }: { params: Promise<{ gameId: str
   }, [game, myPlayerNumber]);
 
   const playableCombinationsByType = useMemo(() => {
-    if (!myPlayerNumber || !game) return new Map<BigTwoCombinationType, BigTwoCard[][]>();
+    if (!myPlayerNumber || !game) return new Map<string, BigTwoCard[][]>();
 
-    const grouped = new Map<BigTwoCombinationType, BigTwoCard[][]>();
+    const grouped = new Map<string, BigTwoCard[][]>();
     const playable = getPlayableCombinations(
       myHand,
       myPlayerNumber,
       game.board.currentTrick.activeCombination,
-      game.board.moveCount
+      game.board.moveCount,
+      ruleset,
+      game.board.level ?? '2'
     );
     for (const combination of playable) {
       grouped.set(combination.type, [...(grouped.get(combination.type) ?? []), combination.cards]);
     }
     return grouped;
-  }, [game, myHand, myPlayerNumber]);
+  }, [game, myHand, myPlayerNumber, ruleset]);
+
+  const combinationDisplayOrder = useMemo(() => getRulesetHandOrder(ruleset), [ruleset]);
 
   const turnLabel = useMemo(() => {
     if (!game) return '';
@@ -132,14 +139,15 @@ export default function Big2GamePage({ params }: { params: Promise<{ gameId: str
   }, [game, isMyTurn, opponentName]);
 
   const toggleCard = useCallback((cardId: string) => {
+    const maxSelection = ruleset === 'chaotic' ? 10 : 5;
     setSelectedIds((prev) =>
       prev.includes(cardId)
         ? prev.filter((id) => id !== cardId)
-        : prev.length >= 5
+        : prev.length >= maxSelection
           ? prev
           : [...prev, cardId]
     );
-  }, []);
+  }, [ruleset]);
 
   const handlePlay = useCallback(async () => {
     if (selectedIds.length === 0) return;
@@ -211,11 +219,13 @@ export default function Big2GamePage({ params }: { params: Promise<{ gameId: str
   const canPlay = isMyTurn && selectedIds.length > 0 && !!selectedCombination;
   const selectedLabel = selectedCards.length
     ? selectedCombination
-      ? `${describeCombination(selectedCombination.type)}: ${selectedCards.map(getCardLabel).join(' ')}`
+      ? `${describeCombination(selectedCombination.type, ruleset)}: ${selectedCards.map((card) => getCardLabel(card, ruleset)).join(' ')}`
       : 'Invalid combination'
     : game.board.currentTrick.activeCombination
       ? 'Match the table or pass'
-      : 'Select 1, 2, 3, or 5 cards';
+      : ruleset === 'chaotic'
+        ? 'Select 1-10 cards'
+        : 'Select 1, 2, 3, or 5 cards';
 
   return (
     <>
@@ -245,7 +255,9 @@ export default function Big2GamePage({ params }: { params: Promise<{ gameId: str
             <div className="mb-3 flex items-start justify-between gap-3">
               <div>
                 <h2 className="text-sm font-semibold text-text-primary">Big 2 Reference</h2>
-                <p className="text-xs text-text-secondary">Rulebook and your possible combinations</p>
+                <p className="text-xs text-text-secondary">
+                  {ruleset === 'chaotic' ? 'Chaotic rules and playable combinations' : 'Rulebook and your possible combinations'}
+                </p>
               </div>
               <button
                 onClick={() => setShowStrengthInfo(false)}
@@ -271,15 +283,15 @@ export default function Big2GamePage({ params }: { params: Promise<{ gameId: str
 
                 <div className="rounded-xl border border-border bg-background/50 p-3">
                   <div className="mb-2 text-xs text-text-secondary">
-                    Rank: 3 &lt; 4 &lt; 5 &lt; 6 &lt; 7 &lt; 8 &lt; 9 &lt; 10 &lt; J &lt; Q &lt; K &lt; A &lt; 2
+                    {ruleset === 'chaotic'
+                      ? 'Natural rank: 2 < 3 < 4 < 5 < 6 < 7 < 8 < 9 < 10 < J < Q < K < A'
+                      : 'Rank: 3 < 4 < 5 < 6 < 7 < 8 < 9 < 10 < J < Q < K < A < 2'}
                   </div>
-                  <div className="text-xs text-text-secondary">
-                    Suit: ♦ &lt; ♣ &lt; ♥ &lt; ♠
-                  </div>
+                  <div className="text-xs text-text-secondary">{'Suit: D < C < H < S'}</div>
                 </div>
 
                 <div className="space-y-2">
-                  {rulebookHands.map((hand, index) => (
+                  {(ruleset === 'chaotic' ? CHAOTIC_RULEBOOK_HANDS : CLASSIC_RULEBOOK_HANDS).map((hand, index) => (
                     <div
                       key={hand.label}
                       className="flex gap-3 rounded-xl border border-border bg-background/50 px-3 py-2"
@@ -296,7 +308,7 @@ export default function Big2GamePage({ params }: { params: Promise<{ gameId: str
                 </div>
 
                 <p className="rounded-xl border border-player1/15 bg-player1/5 px-3 py-2 text-xs leading-relaxed text-text-secondary">
-                  A pair only fights another pair, a triple only fights another triple, and a five-card hand only fights another five-card hand.
+                  {ruleset === 'chaotic' ? 'Like-for-like is required unless a bomb is played. Hearts of the level rank are wild.' : 'A pair only fights another pair, a triple only fights another triple, and a five-card hand only fights another five-card hand.'}
                 </p>
               </section>
 
@@ -306,27 +318,27 @@ export default function Big2GamePage({ params }: { params: Promise<{ gameId: str
                     Your Hand Strength
                   </h3>
                   <span className="text-xs text-text-secondary">
-                    {COMBINATION_DISPLAY_ORDER.reduce(
+                    {combinationDisplayOrder.reduce(
                       (total, type) => total + (playableCombinationsByType.get(type)?.length ?? 0),
                       0
                     )} combos
                   </span>
                 </div>
 
-                {COMBINATION_DISPLAY_ORDER.every((type) => (playableCombinationsByType.get(type)?.length ?? 0) === 0) ? (
+                {combinationDisplayOrder.every((type) => (playableCombinationsByType.get(type)?.length ?? 0) === 0) ? (
                   <p className="rounded-xl border border-dashed border-border bg-background/60 px-3 py-4 text-center text-sm text-text-secondary">
                     No playable combinations right now.
                   </p>
                 ) : (
                   <div className="space-y-3">
-                    {COMBINATION_DISPLAY_ORDER.map((type) => {
+                    {combinationDisplayOrder.map((type) => {
                       const combos = playableCombinationsByType.get(type) ?? [];
                       if (combos.length === 0) return null;
 
                       return (
                         <div key={type} className="space-y-2">
                           <div className="flex items-center justify-between gap-3 rounded-xl border border-border bg-background/50 px-3 py-2">
-                            <p className="text-xs font-semibold text-text-primary">{describeCombination(type)}</p>
+                            <p className="text-xs font-semibold text-text-primary">{describeCombination(type, ruleset)}</p>
                             <span className="text-xs text-text-secondary">{combos.length}</span>
                           </div>
                           <div className="space-y-2">
@@ -341,11 +353,11 @@ export default function Big2GamePage({ params }: { params: Promise<{ gameId: str
                               >
                                 <div className="flex items-center gap-1.5">
                                   {comboCards.map((card) => (
-                                    <Big2Card key={card.id} card={card} compact />
+                                    <Big2Card key={card.id} card={card} ruleset={ruleset} compact />
                                   ))}
                                 </div>
                                 <span className="text-xs font-medium text-text-secondary">
-                                  {comboCards.map(getCardLabel).join(' ')}
+                                  {comboCards.map((card) => getCardLabel(card, ruleset)).join(' ')}
                                 </span>
                               </button>
                             ))}
@@ -394,6 +406,7 @@ export default function Big2GamePage({ params }: { params: Promise<{ gameId: str
         </div>
 
         <Big2Table
+          ruleset={ruleset}
           activeCombination={game.board.currentTrick.activeCombination}
           lastPlayedBy={game.board.currentTrick.lastPlayedBy}
           player1Name={game.player1_name}
@@ -419,6 +432,7 @@ export default function Big2GamePage({ params }: { params: Promise<{ gameId: str
         <div className="w-full max-w-5xl">
           <Big2Hand
             cards={myHand}
+            ruleset={ruleset}
             selectedIds={selectedIds}
             disabled={!isMyTurn}
             onToggleCard={toggleCard}

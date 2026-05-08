@@ -2,16 +2,17 @@
 
 import { useEffect, useRef } from 'react';
 import { Big2Card } from './Big2Card';
-import type { BigTwoCard } from '@/lib/big-2-logic';
+import type { BigTwoCard, BigTwoRuleset } from '@/lib/big-2-rules';
 
 interface Big2HandProps {
   cards: BigTwoCard[];
+  ruleset?: BigTwoRuleset;
   selectedIds: string[];
   disabled?: boolean;
   onToggleCard: (cardId: string) => void;
 }
 
-export function Big2Hand({ cards, selectedIds, disabled = false, onToggleCard }: Big2HandProps) {
+export function Big2Hand({ cards, ruleset = 'classic', selectedIds, disabled = false, onToggleCard }: Big2HandProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const touchStartXRef = useRef<number | null>(null);
 
@@ -70,6 +71,7 @@ export function Big2Hand({ cards, selectedIds, disabled = false, onToggleCard }:
           <Big2Card
             key={card.id}
             card={card}
+            ruleset={ruleset}
             selected={selectedIds.includes(card.id)}
             disabled={disabled}
             onClick={() => onToggleCard(card.id)}

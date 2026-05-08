@@ -1,10 +1,11 @@
 'use client';
 
 import { Big2Card } from './Big2Card';
-import { describeCombination, type BigTwoCombination } from '@/lib/big-2-logic';
+import { describeCombination, type BigTwoCombination, type BigTwoRuleset } from '@/lib/big-2-rules';
 import type { Player } from '@/lib/types';
 
 interface Big2TableProps {
+  ruleset?: BigTwoRuleset;
   activeCombination: BigTwoCombination | null;
   lastPlayedBy: Player | null;
   player1Name: string | null;
@@ -12,7 +13,7 @@ interface Big2TableProps {
   discardsCount: number;
 }
 
-export function Big2Table({ activeCombination, lastPlayedBy, player1Name, player2Name, discardsCount }: Big2TableProps) {
+export function Big2Table({ ruleset = 'classic', activeCombination, lastPlayedBy, player1Name, player2Name, discardsCount }: Big2TableProps) {
   const lastPlayerName = lastPlayedBy === 1 ? player1Name : lastPlayedBy === 2 ? player2Name : null;
 
   return (
@@ -22,7 +23,7 @@ export function Big2Table({ activeCombination, lastPlayedBy, player1Name, player
           <p className="text-xs font-semibold uppercase tracking-wider text-text-secondary/70">Current Trick</p>
           <p className="text-sm text-text-secondary">
             {activeCombination && lastPlayerName
-              ? `${lastPlayerName} played ${describeCombination(activeCombination.type)}`
+              ? `${lastPlayerName} played ${describeCombination(activeCombination.type, ruleset)}`
               : 'Lead any valid combination'}
           </p>
         </div>
@@ -34,7 +35,7 @@ export function Big2Table({ activeCombination, lastPlayedBy, player1Name, player
       <div className="flex min-h-28 items-center justify-center gap-2 rounded-xl border border-dashed border-border bg-background/60 p-4">
         {activeCombination ? (
           activeCombination.cards.map((card) => (
-            <Big2Card key={card.id} card={card} compact />
+            <Big2Card key={card.id} card={card} ruleset={ruleset} compact />
           ))
         ) : (
           <p className="text-sm text-text-secondary/70">No active cards on the table</p>
