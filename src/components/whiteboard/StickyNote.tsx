@@ -3,7 +3,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import type { WhiteboardNote, NotePosition, NoteSize, Stroke } from '@/lib/whiteboard-types';
-import { DrawingNote } from './DrawingNote';
 import { ColorPicker } from './ColorPicker';
 
 interface StickyNoteProps {
@@ -42,6 +41,7 @@ export function StickyNote({ note, onMove, onSave, onDelete, onResize, onColorCh
   const currentStrokeRef = useRef<Stroke | null>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const noteRef = useRef<HTMLDivElement>(null);
 
   // Sync from props when not interacting
   if (!isDragging && (localPosition.x !== note.position_x || localPosition.y !== note.position_y)) {
@@ -146,24 +146,48 @@ export function StickyNote({ note, onMove, onSave, onDelete, onResize, onColorCh
   }, [isEditing]);
 
   // Save on blur or when leaving edit/draw modes
-  function handleSave() {
+  const handleSave = useCallback(() => {
     onSave({
       textContent: text,
       drawingData: strokes.length > 0 ? strokes : null,
     });
-  }
+  }, [onSave, strokes, text]);
 
-  function handleTextBlur() {
+  const finalizeTextEdit = useCallback(() => {
     setIsEditing(false);
     handleSave();
+  }, [handleSave]);
+
+  function handleTextBlur() {
+    finalizeTextEdit();
   }
 
   function handleTextKeyDown(e: React.KeyboardEvent) {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      finalizeTextEdit();
+      return;
+    }
     if (e.key === 'Escape') {
-      setIsEditing(false);
-      handleSave();
+      finalizeTextEdit();
     }
   }
+
+  useEffect(() => {
+    if (!isEditing) return;
+
+    function handlePointerDownOutside(event: PointerEvent) {
+      if (!noteRef.current) return;
+      const target = event.target as Node | null;
+      if (target && noteRef.current.contains(target)) return;
+      finalizeTextEdit();
+    }
+
+    document.addEventListener('pointerdown', handlePointerDownOutside);
+    return () => {
+      document.removeEventListener('pointerdown', handlePointerDownOutside);
+    };
+  }, [isEditing, finalizeTextEdit]);
 
   // Drawing handlers
   function handleCanvasPointerDown(e: React.PointerEvent) {
@@ -344,6 +368,7 @@ export function StickyNote({ note, onMove, onSave, onDelete, onResize, onColorCh
       }}
     >
       <div
+        ref={noteRef}
         className="rounded-xl shadow-lg hover:shadow-xl transition-shadow cursor-grab active:cursor-grabbing overflow-hidden h-full flex flex-col"
         style={{ backgroundColor: note.color }}
         onPointerDown={handlePointerDown}
@@ -498,16 +523,6 @@ export function StickyNote({ note, onMove, onSave, onDelete, onResize, onColorCh
             onPointerLeave={handleCanvasPointerUp}
           />
 
-          {/* Static drawing display when not in draw mode and canvas empty */}
-          {!isDrawing && strokes.length > 0 && !canvasRef.current && (
-            <div className="absolute inset-0 z-15">
-              <DrawingNote
-                strokes={strokes}
-                width={localSize.width - 24}
-                height={localSize.height - 36}
-              />
-            </div>
-          )}
         </div>
       </div>
 
