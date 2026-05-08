@@ -858,7 +858,9 @@ function GameSelection({ currentUser, onChangePlayer }: { currentUser: StoredUse
   const [editMode, setEditMode] = useState(false);
   const [editOrder, setEditOrder] = useState<string[]>(order);
   const [searchQuery, setSearchQuery] = useState('');
+  const [searchDraft, setSearchDraft] = useState('');
   const [activeCategories, setActiveCategories] = useState<GameCategory[]>([]);
+  const searchInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (!editMode) {
@@ -912,6 +914,10 @@ function GameSelection({ currentUser, onChangePlayer }: { currentUser: StoredUse
     setActiveCategories((prev) =>
       prev.includes(cat) ? prev.filter((c) => c !== cat) : [...prev, cat],
     );
+  }
+
+  function applySearchFilter() {
+    setSearchQuery(searchDraft);
   }
 
   function handleDragEnd(event: DragEndEvent) {
@@ -1077,9 +1083,16 @@ function GameSelection({ currentUser, onChangePlayer }: { currentUser: StoredUse
               <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
             </svg>
             <input
+              ref={searchInputRef}
               type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              value={searchDraft}
+              onChange={(e) => setSearchDraft(e.target.value)}
+              onBlur={applySearchFilter}
+              onKeyDown={(event) => {
+                if (event.key !== 'Enter') return;
+                event.preventDefault();
+                searchInputRef.current?.blur();
+              }}
               placeholder="Search games..."
               className="w-full pl-12 pr-4 py-3 rounded-2xl border border-border bg-surface text-text-primary placeholder:text-text-secondary/50 focus:outline-none focus:ring-2 focus:ring-[#E63946]/30 focus:border-[#E63946]/50 transition-all"
             />
