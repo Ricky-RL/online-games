@@ -9,10 +9,14 @@ export interface PairChatMessage {
   created_at: string;
 }
 
+type BoundStoredUser = StoredUser & {
+  boundUserId: string;
+};
+
 export function buildPairKey(userId: string, boundUserId: string): string {
   return [userId, boundUserId].sort().join(':');
 }
 
-export function canUsePairChat(user: StoredUser | null): user is StoredUser {
+export function canUsePairChat(user: StoredUser | null): user is BoundStoredUser {
   return !!(user?.id && user?.boundUserId);
 }
