@@ -74,26 +74,19 @@ export function useBattleshipGame(gameId: string): UseBattleshipGameReturn {
     }
 
     const gameData = data as BattleshipGame;
-    const hasBothPlayers = Boolean(
-      (gameData.player1_id || gameData.player1_name) &&
-      (gameData.player2_id || gameData.player2_name)
-    );
-
-    if (hasBothPlayers) {
-      const board = startBoardIfReady(gameData.board);
-      if (board !== gameData.board) {
-        const updatedGame = { ...gameData, board };
-        await supabase
-          .from('games')
-          .update({
-            board,
-            updated_at: new Date().toISOString(),
-          })
-          .eq('id', gameId)
-          .eq('game_type', 'battleship')
-          .is('winner', null);
-        return updatedGame;
-      }
+    const board = startBoardIfReady(gameData.board);
+    if (board !== gameData.board) {
+      const updatedGame = { ...gameData, board };
+      await supabase
+        .from('games')
+        .update({
+          board,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', gameId)
+        .eq('game_type', 'battleship')
+        .is('winner', null);
+      return updatedGame;
     }
 
     return gameData;

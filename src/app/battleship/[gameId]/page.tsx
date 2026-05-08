@@ -8,7 +8,6 @@ import { buildShipGrid, getSunkShips } from '@/lib/battleship-logic';
 import { PlayerBoard } from '@/components/battleship/PlayerBoard';
 import { TrackingBoard } from '@/components/battleship/TrackingBoard';
 import { ShipOverlay as ShipStatus } from '@/components/battleship/ShipOverlay';
-import { GameSetupWaiting } from '@/components/battleship/GameSetupWaiting';
 import { TurnIndicator } from '@/components/TurnIndicator';
 import { WinCelebration } from '@/components/WinCelebration';
 import { EndGameDialog } from '@/components/EndGameDialog';
@@ -119,43 +118,6 @@ export default function BattleshipGamePage({ params }: { params: Promise<{ gameI
       <div className="flex-1 flex items-center justify-center min-h-screen">
         <div className="text-text-secondary text-sm">Game not found</div>
       </div>
-    );
-  }
-
-  if (!game.player1_name || !game.player2_name || game.board.phase === 'setup') {
-    return (
-      <motion.div
-        className="flex-1 flex flex-col items-center justify-center min-h-screen p-4 gap-4"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ duration: 0.4 }}
-      >
-        <GameSetupWaiting playerName={myName ?? 'Captain'} />
-        {error && (
-          <motion.p className="text-red-400 text-sm" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-            {error}
-          </motion.p>
-        )}
-        <nav className="flex items-center gap-3 mt-4">
-          <button
-            onClick={() => router.push('/')}
-            className="px-4 py-2 text-sm font-medium rounded-xl border border-border bg-surface text-text-secondary hover:text-text-primary hover:border-text-secondary/30 shadow-sm hover:shadow transition-all cursor-pointer"
-          >
-            Home
-          </button>
-          <button
-            onClick={handleEndGameClick}
-            className="px-4 py-2 text-sm font-medium rounded-xl border border-player1/20 bg-player1/5 text-player1/80 hover:bg-player1/10 hover:border-player1/40 hover:text-player1 shadow-sm hover:shadow transition-all cursor-pointer"
-          >
-            End Game
-          </button>
-        </nav>
-        <EndGameDialog
-          open={showEndDialog}
-          onConfirm={handleReset}
-          onCancel={handleEndGameCancel}
-        />
-      </motion.div>
     );
   }
 
