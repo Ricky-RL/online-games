@@ -110,6 +110,13 @@ export const DEFAULT_GAME_ORDER: GameDefinition[] = [
     categories: ['strategy', 'chance'],
   },
   {
+    slug: 'crazy-eights',
+    title: 'Crazy Eights',
+    description: 'Match suit or rank, play eights wild, and be first to empty your hand.',
+    color: '#0EA5E9',
+    categories: ['strategy', 'chance'],
+  },
+  {
     slug: 'math-trivia',
     title: 'Math Trivia',
     description: '15 math questions — fastest correct answers wins.',

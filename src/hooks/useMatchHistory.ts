@@ -5,7 +5,7 @@ import { DEFAULT_GAME_ORDER } from '@/lib/game-registry';
 
 const POLL_INTERVAL_MS = 5000;
 
-export type MatchGameType = 'connect-four' | 'tic-tac-toe' | 'wordle' | 'mini-golf' | 'jenga' | 'snakes-and-ladders' | 'word-search' | 'monopoly' | 'battleship' | 'memory' | 'big-2' | 'uno' | 'math-trivia' | 'jeopardy' | 'pool' | 'cup-pong' | 'reaction' | 'sudoku' | 'solitaire';
+export type MatchGameType = 'connect-four' | 'tic-tac-toe' | 'wordle' | 'mini-golf' | 'jenga' | 'snakes-and-ladders' | 'word-search' | 'monopoly' | 'battleship' | 'memory' | 'big-2' | 'uno' | 'crazy-eights' | 'math-trivia' | 'jeopardy' | 'pool' | 'cup-pong' | 'reaction' | 'sudoku' | 'solitaire';
 
 type CompetitiveGameType = Exclude<MatchGameType, 'wordle' | 'sudoku'>;
 type GameBreakdown = Record<CompetitiveGameType, { ricky: number; lilian: number; draws: number }>;

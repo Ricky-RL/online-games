@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 interface MatchResult {
   id: string;
-  game_type: 'connect-four' | 'tic-tac-toe' | 'wordle' | 'mini-golf' | 'jenga' | 'snakes-and-ladders' | 'word-search' | 'monopoly' | 'battleship' | 'memory' | 'big-2' | 'uno' | 'math-trivia' | 'jeopardy' | 'pool' | 'cup-pong' | 'reaction' | 'sudoku' | 'solitaire';
+  game_type: 'connect-four' | 'tic-tac-toe' | 'wordle' | 'mini-golf' | 'jenga' | 'snakes-and-ladders' | 'word-search' | 'monopoly' | 'battleship' | 'memory' | 'big-2' | 'uno' | 'crazy-eights' | 'math-trivia' | 'jeopardy' | 'pool' | 'cup-pong' | 'reaction' | 'sudoku' | 'solitaire';
   winner_id: string | null;
   winner_name: string | null;
   loser_id: string | null;
@@ -48,6 +48,7 @@ function gameIcon(gameType: MatchResult['game_type']): string {
     case 'memory': return '🧠';
     case 'big-2': return '2';
     case 'uno': return 'U';
+    case 'crazy-eights': return '8';
     case 'math-trivia': return '🧮';
     case 'jeopardy': return '❓';
     case 'pool': return '🎱';
@@ -71,6 +72,7 @@ function gameLabel(gameType: MatchResult['game_type']): string {
     case 'memory': return 'Memory';
     case 'big-2': return 'Big 2';
     case 'uno': return 'UNO';
+    case 'crazy-eights': return 'Crazy Eights';
     case 'math-trivia': return 'Math Trivia';
     case 'jeopardy': return 'Jeopardy';
     case 'pool': return 'Pool';
@@ -338,3 +340,4 @@ export function MatchHistory({ results, loading }: MatchHistoryProps) {
     </>
   );
 }
+

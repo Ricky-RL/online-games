@@ -383,6 +383,16 @@ function UnoIcon() {
   );
 }
 
+function CrazyEightsIcon() {
+  return (
+    <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
+      <rect x="5" y="7" width="10" height="15" rx="2" fill="#FFFFFF" stroke="#0EA5E9" strokeWidth="1.5" transform="rotate(-10 5 7)" />
+      <rect x="12" y="6" width="10" height="15" rx="2" fill="#FFFFFF" stroke="#0EA5E9" strokeWidth="1.5" transform="rotate(8 12 6)" />
+      <text x="14" y="16" fontSize="8" fill="#0EA5E9" fontFamily="serif" fontWeight="bold">8</text>
+    </svg>
+  );
+}
+
 
 function PlayerSelector({ onSelect }: { onSelect: (user: StoredUser) => void }) {
   type TelegramConfig = { chat_id: number; enabled: boolean };
@@ -989,6 +999,7 @@ function GameSelection({ currentUser, onChangePlayer }: { currentUser: StoredUse
     'solitaire': { icon: <SolitaireIcon />, onClick: () => router.push('/solitaire') },
     'big-2': { icon: <Big2Icon />, onClick: () => router.push('/big-2') },
     'uno': { icon: <UnoIcon />, onClick: () => router.push('/uno') },
+    'crazy-eights': { icon: <CrazyEightsIcon />, onClick: () => router.push('/crazy-eights') },
   };
 
   return (

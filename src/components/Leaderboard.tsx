@@ -21,6 +21,7 @@ interface LeaderboardStats {
     'memory': { ricky: number; lilian: number; draws: number };
     'big-2': { ricky: number; lilian: number; draws: number };
     'uno': { ricky: number; lilian: number; draws: number };
+    'crazy-eights': { ricky: number; lilian: number; draws: number };
     'math-trivia': { ricky: number; lilian: number; draws: number };
     'jeopardy': { ricky: number; lilian: number; draws: number };
     'pool': { ricky: number; lilian: number; draws: number };
@@ -196,6 +197,12 @@ export function Leaderboard({ stats, onReset, loading }: LeaderboardProps) {
                         ricky={stats.by_game['uno'].ricky}
                         lilian={stats.by_game['uno'].lilian}
                         draws={stats.by_game['uno'].draws}
+                      />
+                      <GameStat
+                        label="Crazy Eights"
+                        ricky={stats.by_game['crazy-eights'].ricky}
+                        lilian={stats.by_game['crazy-eights'].lilian}
+                        draws={stats.by_game['crazy-eights'].draws}
                       />
                       <GameStat
                         label="Math Trivia"
