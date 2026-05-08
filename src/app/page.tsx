@@ -385,6 +385,8 @@ function UnoIcon() {
 
 
 function PlayerSelector({ onSelect }: { onSelect: (user: StoredUser) => void }) {
+  type TelegramConfig = { chat_id: number; enabled: boolean };
+
   const [users, setUsers] = useState<BoundAppUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [name, setName] = useState('');
@@ -394,6 +396,10 @@ function PlayerSelector({ onSelect }: { onSelect: (user: StoredUser) => void }) 
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [deletingUserId, setDeletingUserId] = useState<string | null>(null);
+  const [adminUser, setAdminUser] = useState<BoundAppUser | null>(null);
+  const [telegramByName, setTelegramByName] = useState<Record<string, TelegramConfig>>({});
+  const [telegramChatIdInput, setTelegramChatIdInput] = useState('');
+  const [adminBusy, setAdminBusy] = useState(false);
 
   const loadUsers = useCallback(async () => {
     const { supabase } = await import('@/lib/supabase');
@@ -403,7 +409,29 @@ function PlayerSelector({ onSelect }: { onSelect: (user: StoredUser) => void }) 
       .order('created_at', { ascending: true });
 
     if (!fetchError && data) {
-      setUsers(data as unknown as BoundAppUser[]);
+      const loadedUsers = data as unknown as BoundAppUser[];
+      setUsers(loadedUsers);
+
+      const names = loadedUsers.map((user) => user.name);
+      if (names.length > 0) {
+        const { data: telegramRows } = await supabase
+          .from('telegram_chat_ids')
+          .select('player_name,chat_id,enabled')
+          .in('player_name', names);
+
+        const nextMap: Record<string, TelegramConfig> = {};
+        for (const row of telegramRows ?? []) {
+          nextMap[row.player_name] = {
+            chat_id: Number(row.chat_id),
+            enabled: !!row.enabled,
+          };
+        }
+        setTelegramByName(nextMap);
+      } else {
+        setTelegramByName({});
+      }
+    } else if (fetchError) {
+      setError(fetchError.message ?? 'Could not load users.');
     }
     setLoading(false);
   }, []);
@@ -527,8 +555,56 @@ function PlayerSelector({ onSelect }: { onSelect: (user: StoredUser) => void }) 
       setBindCode('');
     }
 
+    if (adminUser?.id === user.id) {
+      setAdminUser(null);
+      setTelegramChatIdInput('');
+    }
+
     await loadUsers();
-  }, [createdUser?.id, loadUsers]);
+  }, [adminUser?.id, createdUser?.id, loadUsers]);
+
+  const openAdminPanel = useCallback((user: BoundAppUser) => {
+    setAdminUser(user);
+    setError(null);
+    const existing = telegramByName[user.name];
+    setTelegramChatIdInput(existing ? String(existing.chat_id) : '');
+  }, [telegramByName]);
+
+  const saveTelegram = useCallback(async () => {
+    if (!adminUser) return;
+
+    const trimmed = telegramChatIdInput.trim();
+    if (!trimmed) {
+      setError('Enter a Telegram chat ID.');
+      return;
+    }
+    if (!/^-?\d+$/.test(trimmed)) {
+      setError('Telegram chat ID must be numeric.');
+      return;
+    }
+
+    setAdminBusy(true);
+    setError(null);
+    const { supabase } = await import('@/lib/supabase');
+    const { error: upsertError } = await supabase
+      .from('telegram_chat_ids')
+      .upsert(
+        {
+          player_name: adminUser.name,
+          chat_id: Number(trimmed),
+          enabled: true,
+        },
+        { onConflict: 'player_name' }
+      );
+    setAdminBusy(false);
+
+    if (upsertError) {
+      setError(upsertError.message ?? 'Could not save Telegram settings.');
+      return;
+    }
+
+    await loadUsers();
+  }, [adminUser, loadUsers, telegramChatIdInput]);
 
   return (
     <motion.div
@@ -575,20 +651,25 @@ function PlayerSelector({ onSelect }: { onSelect: (user: StoredUser) => void }) 
                 onClick={(event) => {
                   event.preventDefault();
                   event.stopPropagation();
-                  deleteUser(user);
+                  openAdminPanel(user);
                 }}
-                disabled={deletingUserId === user.id}
-                className="absolute top-3 right-3 w-8 h-8 rounded-full border border-border bg-background text-text-secondary hover:text-red-500 hover:border-red-300 hover:bg-red-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
-                aria-label={`Delete ${user.name}`}
-                title={`Delete ${user.name}`}
+                className="absolute top-3 right-3 w-8 h-8 rounded-full border border-border bg-background text-text-secondary hover:text-text-primary hover:border-player1/40 hover:bg-player1/10 transition-colors cursor-pointer"
+                aria-label={`Manage ${user.name}`}
+                title={`Manage ${user.name}`}
               >
-                {deletingUserId === user.id ? '…' : '×'}
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="mx-auto">
+                  <circle cx="12" cy="12" r="3" />
+                  <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 8.92 4.6H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9c.2.49.68.82 1.21.84H21a2 2 0 1 1 0 4h-.39c-.53.02-1.01.35-1.21.84z" />
+                </svg>
               </button>
               <div className="flex items-start justify-between gap-3">
                 <div>
                   <h2 className="text-xl font-bold text-text-primary">{user.name}</h2>
                   <p className="text-sm text-text-secondary mt-1">
                     {user.bound_user ? 'Bound with ' + user.bound_user.name : 'Not bound yet'}
+                  </p>
+                  <p className="text-xs mt-1 text-text-secondary/70">
+                    {telegramByName[user.name] ? 'Telegram configured' : 'Telegram not configured'}
                   </p>
                 </div>
                 <span className={
@@ -602,6 +683,84 @@ function PlayerSelector({ onSelect }: { onSelect: (user: StoredUser) => void }) 
           ))
         )}
       </div>
+
+      <AnimatePresence>
+        {adminUser && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center p-4"
+            onClick={() => {
+              if (adminBusy || deletingUserId === adminUser.id) return;
+              setAdminUser(null);
+            }}
+          >
+            <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
+            <motion.div
+              initial={{ opacity: 0, y: 12, scale: 0.97 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 12, scale: 0.97 }}
+              transition={{ duration: 0.2 }}
+              onClick={(event) => event.stopPropagation()}
+              className="relative z-10 w-full max-w-md rounded-3xl border border-border bg-surface p-6 space-y-5"
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <h3 className="text-xl font-bold text-text-primary">Manage {adminUser.name}</h3>
+                  <p className="text-sm text-text-secondary mt-1">Admin options for this user.</p>
+                </div>
+                <button
+                  onClick={() => setAdminUser(null)}
+                  disabled={adminBusy || deletingUserId === adminUser.id}
+                  className="w-8 h-8 rounded-full border border-border bg-background text-text-secondary hover:text-text-primary transition-colors disabled:opacity-50 cursor-pointer"
+                  aria-label="Close admin panel"
+                >
+                  x
+                </button>
+              </div>
+
+              {!telegramByName[adminUser.name] ? (
+                <div className="space-y-3 rounded-2xl border border-border p-4">
+                  <h4 className="font-semibold text-text-primary">Add Telegram</h4>
+                  <p className="text-sm text-text-secondary">Paste this user's Telegram chat ID to enable notifications.</p>
+                  <input
+                    value={telegramChatIdInput}
+                    onChange={(event) => setTelegramChatIdInput(event.target.value.trim())}
+                    placeholder="e.g. 123456789"
+                    className="w-full rounded-xl border border-border bg-background px-4 py-3 text-text-primary placeholder:text-text-secondary/50 focus:outline-none focus:ring-2 focus:ring-player1/30"
+                  />
+                  <button
+                    onClick={saveTelegram}
+                    disabled={adminBusy}
+                    className="w-full px-4 py-3 rounded-xl bg-player1 text-white font-semibold hover:opacity-90 disabled:opacity-50 cursor-pointer"
+                  >
+                    {adminBusy ? 'Saving...' : 'Save Telegram'}
+                  </button>
+                </div>
+              ) : (
+                <div className="space-y-2 rounded-2xl border border-border p-4">
+                  <h4 className="font-semibold text-text-primary">Telegram</h4>
+                  <p className="text-sm text-text-secondary">Already configured for this user.</p>
+                  <p className="text-xs text-text-secondary/70">Chat ID: {telegramByName[adminUser.name].chat_id}</p>
+                </div>
+              )}
+
+              <div className="space-y-3 rounded-2xl border border-red-200 bg-red-50/60 p-4">
+                <h4 className="font-semibold text-red-700">Danger zone</h4>
+                <p className="text-sm text-red-700/80">Delete this user from the system.</p>
+                <button
+                  onClick={() => deleteUser(adminUser)}
+                  disabled={deletingUserId === adminUser.id || adminBusy}
+                  className="w-full px-4 py-3 rounded-xl bg-red-600 text-white font-semibold hover:bg-red-700 disabled:opacity-50 cursor-pointer"
+                >
+                  {deletingUserId === adminUser.id ? 'Deleting...' : 'Delete user'}
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <div className="rounded-3xl border border-border bg-surface p-6 sm:p-8 space-y-5">
         <div>
@@ -1195,4 +1354,5 @@ export default function Home() {
     </div>
   );
 }
+
 
