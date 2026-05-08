@@ -21,6 +21,7 @@ type GameRow = {
   player1_name: string | null;
   player2_name: string | null;
   created_at?: string;
+  updated_at?: string;
   board?: unknown;
 };
 
@@ -71,7 +72,7 @@ async function fetchOpenGames(
     .select('*')
     .eq('game_type', gameType)
     .or(byIdFilter)
-    .order('created_at', { ascending: false });
+    .order('updated_at', { ascending: false });
 
   query = statusFilter === 'wordle'
     ? query.in('status', ['waiting', 'playing'])
@@ -79,7 +80,11 @@ async function fetchOpenGames(
 
   const { data } = await query;
   const rows = (data ?? []) as MatchmakingRow[];
-  return rows.sort((a, b) => new Date(b.created_at ?? 0).getTime() - new Date(a.created_at ?? 0).getTime());
+  return rows.sort(
+    (a, b) =>
+      new Date(b.updated_at ?? b.created_at ?? 0).getTime() -
+      new Date(a.updated_at ?? a.created_at ?? 0).getTime()
+  );
 }
 
 export async function findOrCreateBoundGame<TCreate extends Record<string, unknown>>({
@@ -131,11 +136,11 @@ export async function findOrCreateBoundGame<TCreate extends Record<string, unkno
 
   for (let attempt = 0; attempt < 2; attempt++) {
     const games = await findGames();
-    const activeGame = games.find((game) => isMyGame(game, currentUser));
-    if (activeGame) return activeGame.id;
-
     const joinableGame = games.find((game) => isJoinableFromBoundOpponent(game, currentUser));
     if (joinableGame) return joinGame(joinableGame);
+
+    const activeGame = games.find((game) => isMyGame(game, currentUser));
+    if (activeGame) return activeGame.id;
 
     if (attempt === 0) {
       await new Promise((resolve) => setTimeout(resolve, 1000));
