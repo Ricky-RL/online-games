@@ -76,7 +76,11 @@ export default function UnoGamePage({ params }: { params: Promise<{ gameId: stri
     if (!game) return '';
     if (game.winner) return 'Game over';
     if (isMyTurn) {
-      return game.board.hasDrawnThisTurn ? 'Play drawn card or pass' : 'Your turn';
+      return game.board.hasDrawnThisTurn
+        ? game.board.drawnCardId
+          ? 'Play the drawn card'
+          : 'No playable card found, pass turn'
+        : 'Your turn';
     }
     return `Waiting for ${opponentName ?? 'opponent'}...`;
   }, [game, isMyTurn, opponentName]);
@@ -85,7 +89,7 @@ export default function UnoGamePage({ params }: { params: Promise<{ gameId: stri
   const needsWildColor = selectedCard?.color === 'wild';
   const canPlay = isMyTurn && canPlaySelected && (!needsWildColor || !!selectedWildColor);
   const canDraw = isMyTurn && !!game && !game.board.hasDrawnThisTurn;
-  const canPass = isMyTurn && !!game && game.board.hasDrawnThisTurn;
+  const canPass = isMyTurn && !!game && game.board.hasDrawnThisTurn && !game.board.drawnCardId;
 
   const handlePlay = useCallback(async () => {
     if (!selectedCard) return;
@@ -162,8 +166,10 @@ export default function UnoGamePage({ params }: { params: Promise<{ gameId: stri
   const selectedLabel = selectedCard
     ? `${getCardLabel(selectedCard)} selected`
     : game.board.hasDrawnThisTurn
-      ? 'You drew a card. Play it or pass.'
-      : 'Select a playable card, or draw.';
+      ? game.board.drawnCardId
+        ? 'You found a playable card. Play it now.'
+        : 'No playable card found. Pass your turn.'
+      : 'Select a playable card, or draw until you find one.';
 
   return (
     <>
@@ -266,7 +272,7 @@ export default function UnoGamePage({ params }: { params: Promise<{ gameId: stri
             disabled={!canDraw}
             className="px-5 py-2.5 text-sm font-medium rounded-xl border border-border bg-surface text-text-secondary hover:text-text-primary hover:border-text-secondary/30 disabled:opacity-40 disabled:cursor-not-allowed transition-all cursor-pointer"
           >
-            Draw Card
+            Draw Until Playable
           </button>
           <button
             onClick={handlePass}

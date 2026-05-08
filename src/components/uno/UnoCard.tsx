@@ -36,7 +36,7 @@ function cardText(rank: UnoCardType['rank']): string {
     case 'skip':
       return 'SKIP';
     case 'wild':
-      return 'WILD';
+      return 'COLOR';
     default:
       return rank;
   }

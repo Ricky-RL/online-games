@@ -56,12 +56,12 @@ describe('uno logic', () => {
     expect(canPlayCard(board, 1, offCard)).toBe(false);
   });
 
-  it('blocks wild-draw4 when player has current color', () => {
+  it('allows wild-draw4 on any color', () => {
     const board = baseBoard();
     const wildDraw4 = card('wd4', 'wild', 'wild-draw4');
     const redMatch = card('r7', 'red', '7');
     board.hands['1'] = [wildDraw4, redMatch];
-    expect(canPlayCard(board, 1, wildDraw4)).toBe(false);
+    expect(canPlayCard(board, 1, wildDraw4)).toBe(true);
   });
 
   it('only allows playing the drawn card after drawing', () => {
@@ -76,6 +76,22 @@ describe('uno logic', () => {
     expect(getPlayableCards(next, 1).map((c) => c.id)).toEqual(['drawn']);
   });
 
+  it('draws until a playable card is found', () => {
+    const board = baseBoard();
+    board.hands['1'] = [card('old', 'green', '9')];
+    board.drawPile = [
+      card('n1', 'green', '5'),
+      card('n2', 'blue', '1'),
+      card('ok', 'red', '9'),
+    ];
+
+    const draw = drawCardForTurn(board, 1, () => 0.2);
+    expect(draw.drawnCard?.id).toBe('ok');
+    expect(draw.playable).toBe(true);
+    expect(draw.board.lastAction?.drawCount).toBe(3);
+    expect(draw.board.drawnCardId).toBe('ok');
+  });
+
   it('supports draw then pass flow', () => {
     const board = baseBoard();
     board.drawPile = [card('drawn', 'blue', '9')];
@@ -85,6 +101,14 @@ describe('uno logic', () => {
     expect(passed.activePlayer).toBe(2);
     expect(passed.hasDrawnThisTurn).toBe(false);
     expect(passed.drawnCardId).toBeNull();
+  });
+
+  it('disallows pass when draw found a playable card', () => {
+    const board = baseBoard();
+    board.drawPile = [card('drawn', 'red', '9')];
+
+    const draw = drawCardForTurn(board, 1, () => 0.3);
+    expect(() => passAfterDraw(draw.board, 1)).toThrow('must play');
   });
 
   it('makes reverse behave like skip in two-player play', () => {
