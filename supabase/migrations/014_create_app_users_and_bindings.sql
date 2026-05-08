@@ -57,16 +57,20 @@ alter table binding_codes enable row level security;
 drop policy if exists "Allow anonymous select" on app_users;
 drop policy if exists "Allow anonymous insert" on app_users;
 drop policy if exists "Allow anonymous update" on app_users;
+drop policy if exists "Allow anonymous delete" on app_users;
 create policy "Allow anonymous select" on app_users for select using (true);
 create policy "Allow anonymous insert" on app_users for insert with check (true);
 create policy "Allow anonymous update" on app_users for update using (true);
+create policy "Allow anonymous delete" on app_users for delete using (true);
 
 drop policy if exists "Allow anonymous select" on binding_codes;
 drop policy if exists "Allow anonymous insert" on binding_codes;
 drop policy if exists "Allow anonymous update" on binding_codes;
+drop policy if exists "Allow anonymous delete" on binding_codes;
 create policy "Allow anonymous select" on binding_codes for select using (true);
 create policy "Allow anonymous insert" on binding_codes for insert with check (true);
 create policy "Allow anonymous update" on binding_codes for update using (true);
+create policy "Allow anonymous delete" on binding_codes for delete using (true);
 
 alter table inbox_read_state add column if not exists user_id uuid references app_users(id) on delete cascade;
 alter table inbox_dismissed_items add column if not exists user_id uuid references app_users(id) on delete cascade;
@@ -657,9 +661,11 @@ begin
   drop policy if exists "Allow anonymous select" on binding_codes;
   drop policy if exists "Allow anonymous insert" on binding_codes;
   drop policy if exists "Allow anonymous update" on binding_codes;
+  drop policy if exists "Allow anonymous delete" on binding_codes;
   drop policy if exists "Allow anonymous select" on app_users;
   drop policy if exists "Allow anonymous insert" on app_users;
   drop policy if exists "Allow anonymous update" on app_users;
+  drop policy if exists "Allow anonymous delete" on app_users;
 
   drop table if exists binding_codes;
 

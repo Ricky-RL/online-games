@@ -393,6 +393,7 @@ function PlayerSelector({ onSelect }: { onSelect: (user: StoredUser) => void }) 
   const [generatedCode, setGeneratedCode] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [deletingUserId, setDeletingUserId] = useState<string | null>(null);
 
   const loadUsers = useCallback(async () => {
     const { supabase } = await import('@/lib/supabase');
@@ -496,6 +497,39 @@ function PlayerSelector({ onSelect }: { onSelect: (user: StoredUser) => void }) 
     onSelect(stored);
   }, [bindCode, createdUser, loadUsers, onSelect]);
 
+  const deleteUser = useCallback(async (user: BoundAppUser) => {
+    if (typeof window !== 'undefined') {
+      const confirmed = window.confirm(
+        user.bound_user
+          ? `Delete ${user.name}? This will unbind ${user.bound_user.name} as well.`
+          : `Delete ${user.name}?`
+      );
+      if (!confirmed) return;
+    }
+
+    setDeletingUserId(user.id);
+    setError(null);
+    const { supabase } = await import('@/lib/supabase');
+    const { error: deleteError } = await supabase
+      .from('app_users')
+      .delete()
+      .eq('id', user.id);
+    setDeletingUserId(null);
+
+    if (deleteError) {
+      setError(deleteError.message ?? 'Could not delete user.');
+      return;
+    }
+
+    if (createdUser?.id === user.id) {
+      setCreatedUser(null);
+      setGeneratedCode(null);
+      setBindCode('');
+    }
+
+    await loadUsers();
+  }, [createdUser?.id, loadUsers]);
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -516,12 +550,40 @@ function PlayerSelector({ onSelect }: { onSelect: (user: StoredUser) => void }) 
           <div className="rounded-3xl border border-border bg-surface p-6 text-text-secondary">No users yet.</div>
         ) : (
           users.map((user) => (
-            <button
+            <div
               key={user.id}
-              onClick={() => selectUser(user)}
-              disabled={!user.bound_user_id || !user.bound_user}
-              className="rounded-3xl border border-border bg-surface p-6 text-left transition-all hover:-translate-y-0.5 hover:shadow-lg disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer"
+              role="button"
+              tabIndex={!user.bound_user_id || !user.bound_user || deletingUserId === user.id ? -1 : 0}
+              onClick={() => {
+                if (!user.bound_user_id || !user.bound_user || deletingUserId === user.id) return;
+                selectUser(user);
+              }}
+              onKeyDown={(event) => {
+                if (event.key !== 'Enter' && event.key !== ' ') return;
+                if (!user.bound_user_id || !user.bound_user || deletingUserId === user.id) return;
+                event.preventDefault();
+                selectUser(user);
+              }}
+              className={
+                'relative rounded-3xl border border-border bg-surface p-6 text-left transition-all ' +
+                (!user.bound_user_id || !user.bound_user || deletingUserId === user.id
+                  ? 'opacity-60 cursor-not-allowed'
+                  : 'hover:-translate-y-0.5 hover:shadow-lg cursor-pointer')
+              }
             >
+              <button
+                onClick={(event) => {
+                  event.preventDefault();
+                  event.stopPropagation();
+                  deleteUser(user);
+                }}
+                disabled={deletingUserId === user.id}
+                className="absolute top-3 right-3 w-8 h-8 rounded-full border border-border bg-background text-text-secondary hover:text-red-500 hover:border-red-300 hover:bg-red-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                aria-label={`Delete ${user.name}`}
+                title={`Delete ${user.name}`}
+              >
+                {deletingUserId === user.id ? '…' : '×'}
+              </button>
               <div className="flex items-start justify-between gap-3">
                 <div>
                   <h2 className="text-xl font-bold text-text-primary">{user.name}</h2>
@@ -530,13 +592,13 @@ function PlayerSelector({ onSelect }: { onSelect: (user: StoredUser) => void }) 
                   </p>
                 </div>
                 <span className={
-                  'text-xs rounded-full px-3 py-1 ' +
+                  'text-xs rounded-full px-3 py-1 mr-10 ' +
                   (user.bound_user ? 'bg-green-500/10 text-green-600' : 'bg-amber-500/10 text-amber-600')
                 }>
                   {user.bound_user ? 'ready' : 'needs code'}
                 </span>
               </div>
-            </button>
+            </div>
           ))
         )}
       </div>
