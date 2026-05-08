@@ -847,6 +847,6 @@ export function describeChaoticCombination(type: string): string {
 }
 
 export function getChaoticCardLabel(card: ChaoticBigTwoCard): string {
-  const suit = card.suit === 'S' ? 'S' : card.suit === 'H' ? 'H' : card.suit === 'C' ? 'C' : 'D';
+  const suit = card.suit === 'S' ? '♠' : card.suit === 'H' ? '♥' : card.suit === 'C' ? '♣' : '♦';
   return `${card.rank}${suit}`;
 }

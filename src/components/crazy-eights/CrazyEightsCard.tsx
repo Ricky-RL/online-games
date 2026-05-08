@@ -1,6 +1,6 @@
 'use client';
 
-import type { CrazyEightsCard as CrazyEightsCardType } from '@/lib/crazy-eights-logic';
+import { getSuitSymbol, type CrazyEightsCard as CrazyEightsCardType } from '@/lib/crazy-eights-logic';
 
 interface CrazyEightsCardProps {
   card: CrazyEightsCardType;
@@ -8,19 +8,6 @@ interface CrazyEightsCardProps {
   disabled?: boolean;
   compact?: boolean;
   onClick?: () => void;
-}
-
-function suitText(suit: CrazyEightsCardType['suit']): string {
-  switch (suit) {
-    case 'clubs':
-      return 'C';
-    case 'diamonds':
-      return 'D';
-    case 'hearts':
-      return 'H';
-    case 'spades':
-      return 'S';
-  }
 }
 
 function suitColor(suit: CrazyEightsCardType['suit']): string {
@@ -51,11 +38,11 @@ export function CrazyEightsCard({
       <div className={`w-full h-full flex flex-col items-center justify-between py-1.5 font-bold ${suitColor(card.suit)}`}>
         <div className="w-full px-1.5 flex items-center justify-between text-[10px] leading-none">
           <span>{card.rank}</span>
-          <span>{suitText(card.suit)}</span>
+          <span>{getSuitSymbol(card.suit)}</span>
         </div>
         <span className={`${rankSize} leading-none`}>{card.rank}</span>
         <div className="w-full px-1.5 flex items-center justify-between text-[10px] leading-none">
-          <span>{suitText(card.suit)}</span>
+          <span>{getSuitSymbol(card.suit)}</span>
           <span>{card.rank}</span>
         </div>
       </div>

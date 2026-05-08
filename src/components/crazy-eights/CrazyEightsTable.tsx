@@ -1,7 +1,7 @@
 'use client';
 
 import type { Player } from '@/lib/types';
-import type { CrazyEightsCard, CrazyEightsSuit } from '@/lib/crazy-eights-logic';
+import { getSuitSymbol, type CrazyEightsCard, type CrazyEightsSuit } from '@/lib/crazy-eights-logic';
 import { CrazyEightsCard as CrazyEightsCardView } from './CrazyEightsCard';
 
 interface CrazyEightsTableProps {
@@ -12,10 +12,6 @@ interface CrazyEightsTableProps {
   player1Name: string | null;
   player2Name: string | null;
   drawPileCount: number;
-}
-
-function suitLabel(suit: CrazyEightsSuit): string {
-  return suit[0].toUpperCase() + suit.slice(1);
 }
 
 const SUITS: CrazyEightsSuit[] = ['clubs', 'diamonds', 'hearts', 'spades'];
@@ -50,7 +46,7 @@ export function CrazyEightsTable({
         <div className="space-y-2">
           <p className="text-sm text-text-secondary">
             Active suit:{' '}
-            <span className="font-semibold text-text-primary">{suitLabel(activeSuit)}</span>
+            <span className="font-semibold text-text-primary">{getSuitSymbol(activeSuit)}</span>
           </p>
           <div className="flex items-center gap-1.5">
             {SUITS.map((suit) => (
@@ -62,7 +58,7 @@ export function CrazyEightsTable({
                     : 'border-border bg-surface text-text-secondary'
                 }`}
               >
-                {suit[0]}
+                {getSuitSymbol(suit)}
               </span>
             ))}
           </div>

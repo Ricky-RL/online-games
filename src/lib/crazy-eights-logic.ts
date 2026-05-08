@@ -32,6 +32,13 @@ export interface CrazyEightsBoardState {
   scores: Record<'1' | '2', number>;
 }
 
+const SUIT_SYMBOLS: Record<CrazyEightsSuit, string> = {
+  clubs: '♣',
+  diamonds: '♦',
+  hearts: '♥',
+  spades: '♠',
+};
+
 const SUITS: CrazyEightsSuit[] = ['clubs', 'diamonds', 'hearts', 'spades'];
 const RANKS: CrazyEightsRank[] = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'];
 const HAND_SIZE = 7;
@@ -144,9 +151,11 @@ function drawOneCard(
 }
 
 export function getCardLabel(card: CrazyEightsCard): string {
-  const suitLabel =
-    card.suit === 'spades' ? 'S' : card.suit === 'hearts' ? 'H' : card.suit === 'diamonds' ? 'D' : 'C';
-  return `${card.rank}${suitLabel}`;
+  return `${card.rank}${SUIT_SYMBOLS[card.suit]}`;
+}
+
+export function getSuitSymbol(suit: CrazyEightsSuit): string {
+  return SUIT_SYMBOLS[suit];
 }
 
 function matchesCurrentPlay(board: CrazyEightsBoardState, card: CrazyEightsCard): boolean {

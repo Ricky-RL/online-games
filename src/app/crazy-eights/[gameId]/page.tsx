@@ -13,7 +13,7 @@ import { CrazyEightsTable } from '@/components/crazy-eights/CrazyEightsTable';
 import { useCrazyEightsGame } from '@/hooks/useCrazyEightsGame';
 import { useGameSounds } from '@/hooks/useSound';
 import { useNotifications } from '@/hooks/useNotifications';
-import { getPlayableCards, getCardLabel, type CrazyEightsSuit } from '@/lib/crazy-eights-logic';
+import { getPlayableCards, getCardLabel, getSuitSymbol, type CrazyEightsSuit } from '@/lib/crazy-eights-logic';
 import type { Player } from '@/lib/types';
 
 function getMyName(): string | null {
@@ -256,7 +256,7 @@ export default function CrazyEightsGamePage({ params }: { params: Promise<{ game
                     : 'border-border bg-surface text-text-secondary hover:text-text-primary hover:border-text-secondary/30'
                 }`}
               >
-                {suit[0].toUpperCase() + suit.slice(1)}
+                {getSuitSymbol(suit)}
               </button>
             ))}
           </div>
