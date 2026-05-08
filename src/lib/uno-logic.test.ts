@@ -76,7 +76,7 @@ describe('uno logic', () => {
     expect(getPlayableCards(next, 1).map((c) => c.id)).toEqual(['drawn']);
   });
 
-  it('draws until a playable card is found', () => {
+  it('draws one card at a time until a playable card is found', () => {
     const board = baseBoard();
     board.hands['1'] = [card('old', 'green', '9')];
     board.drawPile = [
@@ -85,16 +85,26 @@ describe('uno logic', () => {
       card('ok', 'red', '9'),
     ];
 
-    const draw = drawCardForTurn(board, 1, () => 0.2);
-    expect(draw.drawnCard?.id).toBe('ok');
-    expect(draw.playable).toBe(true);
-    expect(draw.board.lastAction?.drawCount).toBe(3);
-    expect(draw.board.drawnCardId).toBe('ok');
+    const draw1 = drawCardForTurn(board, 1, () => 0.2);
+    expect(draw1.drawnCard).toBeNull();
+    expect(draw1.playable).toBe(false);
+    expect(draw1.board.drawnCardId).toBeNull();
+
+    const draw2 = drawCardForTurn(draw1.board, 1, () => 0.2);
+    expect(draw2.drawnCard).toBeNull();
+    expect(draw2.playable).toBe(false);
+    expect(draw2.board.drawnCardId).toBeNull();
+
+    const draw3 = drawCardForTurn(draw2.board, 1, () => 0.2);
+    expect(draw3.drawnCard?.id).toBe('ok');
+    expect(draw3.playable).toBe(true);
+    expect(draw3.board.drawnCardId).toBe('ok');
   });
 
-  it('supports draw then pass flow', () => {
+  it('supports draw then pass only when no cards remain', () => {
     const board = baseBoard();
-    board.drawPile = [card('drawn', 'blue', '9')];
+    board.drawPile = [];
+    board.discardPile = [card('top', 'red', '2')];
 
     const draw = drawCardForTurn(board, 1, () => 0.3);
     const passed = passAfterDraw(draw.board, 1);
@@ -109,6 +119,14 @@ describe('uno logic', () => {
 
     const draw = drawCardForTurn(board, 1, () => 0.3);
     expect(() => passAfterDraw(draw.board, 1)).toThrow('must play');
+  });
+
+  it('disallows pass when more cards can still be drawn', () => {
+    const board = baseBoard();
+    board.drawPile = [card('drawn1', 'blue', '9'), card('drawn2', 'green', '6')];
+
+    const draw = drawCardForTurn(board, 1, () => 0.3);
+    expect(() => passAfterDraw(draw.board, 1)).toThrow('Keep drawing');
   });
 
   it('makes reverse behave like skip in two-player play', () => {

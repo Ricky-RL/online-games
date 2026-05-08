@@ -79,7 +79,9 @@ export default function UnoGamePage({ params }: { params: Promise<{ gameId: stri
       return game.board.hasDrawnThisTurn
         ? game.board.drawnCardId
           ? 'Play the drawn card'
-          : 'No playable card found, pass turn'
+          : game.board.drawPile.length > 0 || game.board.discardPile.length > 1
+            ? 'Draw again until playable'
+            : 'No cards left, pass turn'
         : 'Your turn';
     }
     return `Waiting for ${opponentName ?? 'opponent'}...`;
@@ -88,8 +90,14 @@ export default function UnoGamePage({ params }: { params: Promise<{ gameId: stri
   const canPlaySelected = !!selectedCard && playableCardIds.has(selectedCard.id);
   const needsWildColor = selectedCard?.color === 'wild';
   const canPlay = isMyTurn && canPlaySelected && (!needsWildColor || !!selectedWildColor);
-  const canDraw = isMyTurn && !!game && !game.board.hasDrawnThisTurn;
-  const canPass = isMyTurn && !!game && game.board.hasDrawnThisTurn && !game.board.drawnCardId;
+  const canDraw = isMyTurn && !!game && (!game.board.hasDrawnThisTurn || !game.board.drawnCardId);
+  const canPass =
+    isMyTurn &&
+    !!game &&
+    game.board.hasDrawnThisTurn &&
+    !game.board.drawnCardId &&
+    game.board.drawPile.length === 0 &&
+    game.board.discardPile.length <= 1;
 
   const handlePlay = useCallback(async () => {
     if (!selectedCard) return;
@@ -168,8 +176,10 @@ export default function UnoGamePage({ params }: { params: Promise<{ gameId: stri
     : game.board.hasDrawnThisTurn
       ? game.board.drawnCardId
         ? 'You found a playable card. Play it now.'
-        : 'No playable card found. Pass your turn.'
-      : 'Select a playable card, or draw until you find one.';
+        : game.board.drawPile.length > 0 || game.board.discardPile.length > 1
+          ? 'No playable yet. Draw again.'
+          : 'No cards left. Pass your turn.'
+      : 'Select a playable card, or draw one card.';
 
   return (
     <>
@@ -272,7 +282,7 @@ export default function UnoGamePage({ params }: { params: Promise<{ gameId: stri
             disabled={!canDraw}
             className="px-5 py-2.5 text-sm font-medium rounded-xl border border-border bg-surface text-text-secondary hover:text-text-primary hover:border-text-secondary/30 disabled:opacity-40 disabled:cursor-not-allowed transition-all cursor-pointer"
           >
-            Draw Until Playable
+            Draw Card
           </button>
           <button
             onClick={handlePass}

@@ -176,6 +176,10 @@ function topCard(board: UnoBoardState): UnoCard {
   return board.discardPile[board.discardPile.length - 1];
 }
 
+function canStillDraw(board: UnoBoardState): boolean {
+  return board.drawPile.length > 0 || board.discardPile.length > 1;
+}
+
 export function getCardLabel(card: UnoCard): string {
   if (card.color === 'wild') {
     return card.rank === 'wild' ? 'Color Change' : 'Wild Draw 4';
@@ -189,7 +193,7 @@ export function canPlayCard(board: UnoBoardState, player: Player, card: UnoCard)
   const key = playerKey(player);
   if (!board.hands[key].some((candidate) => candidate.id === card.id)) return false;
 
-  if (board.hasDrawnThisTurn && board.drawnCardId !== card.id) {
+  if (board.hasDrawnThisTurn && board.drawnCardId !== null && board.drawnCardId !== card.id) {
     return false;
   }
 
@@ -320,29 +324,16 @@ export function drawCardForTurn(
   random: () => number = Math.random
 ): { board: UnoBoardState; drawnCard: UnoCard | null; playable: boolean } {
   assertTurn(board, player);
-  if (board.hasDrawnThisTurn) {
-    throw new Error('You already drew this turn');
+  if (board.hasDrawnThisTurn && board.drawnCardId) {
+    throw new Error('Play the drawn card before drawing again');
   }
 
-  let workingBoard = board;
-  let drawnCount = 0;
-  let playableCard: UnoCard | null = null;
-
-  while (!playableCard) {
-    const drawResult = drawNCards(workingBoard, player, 1, random);
-    const drawnCard = drawResult.drawn[0] ?? null;
-    workingBoard = drawResult.board;
-    if (!drawnCard) break;
-
-    drawnCount += 1;
-    if (canPlayCard(workingBoard, player, drawnCard)) {
-      playableCard = drawnCard;
-      break;
-    }
-  }
+  const drawResult = drawNCards(board, player, 1, random);
+  const drawnCard = drawResult.drawn[0] ?? null;
+  const playableCard = drawnCard && canPlayCard(drawResult.board, player, drawnCard) ? drawnCard : null;
 
   const nextBoard: UnoBoardState = {
-    ...workingBoard,
+    ...drawResult.board,
     hasDrawnThisTurn: true,
     drawnCardId: playableCard?.id ?? null,
     moveCount: board.moveCount + 1,
@@ -351,8 +342,12 @@ export function drawCardForTurn(
       player,
       type: 'draw',
       cardId: playableCard?.id,
-      drawCount: drawnCount,
-      note: playableCard ? `Drew ${drawnCount} card${drawnCount === 1 ? '' : 's'} to find a playable card` : 'No playable card found in draw pile',
+      drawCount: drawnCard ? 1 : 0,
+      note: drawnCard
+        ? playableCard
+          ? 'Drew a playable card'
+          : 'Drew a card'
+        : 'No more cards to draw',
     },
   };
 
@@ -370,6 +365,9 @@ export function passAfterDraw(board: UnoBoardState, player: Player): UnoBoardSta
   }
   if (board.drawnCardId) {
     throw new Error('You must play the drawn playable card');
+  }
+  if (canStillDraw(board)) {
+    throw new Error('Keep drawing until you find a playable card');
   }
 
   const nextPlayer = otherPlayer(player);
