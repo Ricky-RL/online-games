@@ -188,10 +188,8 @@ function SpaceCell({
   const hasActivePlayer = playersHere.includes(activePlayer);
 
   const sizeClasses = isCorner
-    ? 'w-[28px] h-[28px] sm:w-11 sm:h-11 md:w-14 md:h-14 lg:w-16 lg:h-16'
-    : pos.side === 'top' || pos.side === 'bottom'
-      ? 'w-[22px] h-[28px] sm:w-8 sm:h-11 md:w-9 md:h-14 lg:w-10 lg:h-16'
-      : 'w-[28px] h-[22px] sm:w-11 sm:h-8 md:w-14 md:h-9 lg:w-16 lg:h-10';
+    ? 'w-[34px] h-[34px] sm:w-11 sm:h-11 md:w-14 md:h-14 lg:w-16 lg:h-16'
+    : 'w-[27px] h-[27px] sm:w-8 sm:h-11 md:w-9 md:h-14 lg:w-10 lg:h-16';
   const highlightClass = hasActivePlayer
     ? activePlayer === 1
       ? 'border-player1/70 bg-player1/10'
@@ -210,11 +208,11 @@ function SpaceCell({
           style={{ backgroundColor: COLOR_MAP[space.color] ?? '#ccc' }}
         />
       )}
-      <span className="text-[5px] sm:text-[7px] md:text-[8px] text-text-secondary text-center leading-[1.05] px-0.5 mt-0.5 sm:mt-1 max-w-full overflow-hidden">
+      <span className="text-[6px] sm:text-[7px] md:text-[8px] text-text-secondary text-center leading-[1.05] px-0.5 mt-0.5 sm:mt-1 max-w-full whitespace-normal break-words">
         {space.name}
       </span>
       {space.price && (
-        <span className="text-[4px] sm:text-[6px] md:text-[7px] text-text-secondary/80 mt-0.5">
+        <span className="text-[5px] sm:text-[6px] md:text-[7px] text-text-secondary/80 mt-0.5">
           ${space.price}
         </span>
       )}
@@ -244,9 +242,9 @@ export function MonopolyBoardView({ board, lastMove }: MonopolyBoardProps) {
   const rightCol = Array.from({ length: 9 }, (_, i) => 31 + i);
 
   return (
-    <div className="w-full flex justify-center overflow-visible py-10 sm:py-0">
+    <div className="w-full flex justify-center overflow-visible">
       <div
-        className="relative inline-block w-full max-w-fit origin-center rotate-90 sm:rotate-0 transition-transform duration-300"
+        className="relative inline-block w-full max-w-fit origin-center"
         ref={boardRef}
       >
         <div className="flex">
