@@ -67,7 +67,10 @@ export function createBigTwoBoard(
 
 export function sortCards(cards: BigTwoCard[], ruleset: BigTwoRuleset = 'classic', level = '2'): BigTwoCard[] {
   if (ruleset === 'chaotic') {
-    return chaotic.sortChaoticCards(cards as unknown as chaotic.ChaoticBigTwoCard[], level) as unknown as BigTwoCard[];
+    return chaotic.sortChaoticCards(
+      cards as unknown as chaotic.ChaoticBigTwoCard[],
+      level as chaotic.ChaoticBigTwoRank
+    ) as unknown as BigTwoCard[];
   }
   return classic.sortCards(cards as unknown as classic.BigTwoCard[]) as unknown as BigTwoCard[];
 }
@@ -79,7 +82,11 @@ export function evaluateCombination(
   level = '2'
 ): BigTwoCombination | null {
   if (ruleset === 'chaotic') {
-    return chaotic.evaluateChaoticCombination(cards as unknown as chaotic.ChaoticBigTwoCard[], player, level) as unknown as BigTwoCombination | null;
+    return chaotic.evaluateChaoticCombination(
+      cards as unknown as chaotic.ChaoticBigTwoCard[],
+      player,
+      level as chaotic.ChaoticBigTwoRank
+    ) as unknown as BigTwoCombination | null;
   }
   return classic.evaluateCombination(cards as unknown as classic.BigTwoCard[], player) as unknown as BigTwoCombination | null;
 }
@@ -98,7 +105,7 @@ export function getPlayableCombinations(
       player,
       activeCombination as unknown as chaotic.ChaoticBigTwoCombination | null,
       moveCount,
-      level
+      level as chaotic.ChaoticBigTwoRank
     ) as unknown as BigTwoCombination[];
   }
   return classic.getPlayableCombinations(
