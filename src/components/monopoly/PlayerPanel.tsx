@@ -11,6 +11,7 @@ interface PlayerPanelProps {
   isActive: boolean;
   lastCashDelta: number;
   turnCashDelta: number;
+  lifetimeEarnings: number;
 }
 
 function formatDelta(delta: number): string {
@@ -18,7 +19,7 @@ function formatDelta(delta: number): string {
   return `${delta > 0 ? '+' : '-'}$${Math.abs(delta)}`;
 }
 
-export function PlayerPanel({ board, player, name, isActive, lastCashDelta, turnCashDelta }: PlayerPanelProps) {
+export function PlayerPanel({ board, player, name, isActive, lastCashDelta, turnCashDelta, lifetimeEarnings }: PlayerPanelProps) {
   const state = board.players[player - 1];
   const ownedProperties = Object.entries(board.properties)
     .filter(([, prop]) => prop.owner === player)
@@ -56,6 +57,12 @@ export function PlayerPanel({ board, player, name, isActive, lastCashDelta, turn
           <span className="text-xs sm:text-sm text-text-secondary">This turn</span>
           <span className={`text-xs sm:text-sm font-semibold ${turnDeltaClass}`}>
             {formatDelta(turnCashDelta)}
+          </span>
+        </div>
+        <div className="flex items-center justify-between">
+          <span className="text-xs sm:text-sm text-text-secondary">Lifetime earned</span>
+          <span className="text-xs sm:text-sm font-semibold text-emerald-600">
+            {formatDelta(lifetimeEarnings)}
           </span>
         </div>
         <div className="flex items-center justify-between">

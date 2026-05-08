@@ -41,6 +41,25 @@ function getSteppingPositions(from: number, roll: number): number[] {
   return positions;
 }
 
+function getCompactTileLabel(name: string): string {
+  const special: Record<string, string> = {
+    'Community Chest': 'Chest',
+    Chance: 'Chance',
+    'Income Tax': 'Tax',
+    'Luxury Tax': 'Tax',
+    'Go to Jail': 'To Jail',
+    'Jail / Just Visiting': 'Jail',
+    'Free Parking': 'Free Park',
+  };
+
+  if (special[name]) return special[name];
+  if (name.length <= 11) return name;
+
+  const words = name.split(' ');
+  if (words.length >= 2) return `${words[0]} ${words[1]}`;
+  return `${name.slice(0, 10)}…`;
+}
+
 function AnimatedPiece({
   player,
   position,
@@ -145,18 +164,18 @@ function AnimatedPiece({
     };
   }, [animatedPosition, controls, getPixelPosition]);
 
-  const offsetX = player === 1 ? -7 : 7;
-  const offsetY = player === 1 ? -7 : 7;
+  const offsetX = player === 1 ? -4 : 4;
+  const offsetY = player === 1 ? -4 : 4;
   const activeClass = isActive ? 'ring-2 ring-white/90 shadow-[0_0_0_3px_rgba(255,255,255,0.25)]' : '';
 
   return (
     <motion.div
-      className={`absolute rounded-full border-2 border-white shadow-lg flex items-center justify-center text-[8px] font-bold text-white ${colorClass} ${activeClass}`}
+      className={`absolute rounded-full border-2 border-white shadow-lg flex items-center justify-center text-[7px] font-bold text-white ${colorClass} ${activeClass}`}
       style={{
-        width: 18,
-        height: 18,
-        marginLeft: -9 + offsetX,
-        marginTop: -9 + offsetY,
+        width: 14,
+        height: 14,
+        marginLeft: -7 + offsetX,
+        marginTop: -7 + offsetY,
         zIndex: isActive ? 30 : 20,
         pointerEvents: 'none',
       }}
@@ -188,8 +207,8 @@ function SpaceCell({
   const hasActivePlayer = playersHere.includes(activePlayer);
 
   const sizeClasses = isCorner
-    ? 'w-[34px] h-[34px] sm:w-11 sm:h-11 md:w-14 md:h-14 lg:w-16 lg:h-16'
-    : 'w-[27px] h-[27px] sm:w-8 sm:h-11 md:w-9 md:h-14 lg:w-10 lg:h-16';
+    ? 'w-[32px] h-[32px] sm:w-11 sm:h-11 md:w-14 md:h-14 lg:w-16 lg:h-16'
+    : 'w-[25px] h-[25px] sm:w-8 sm:h-11 md:w-9 md:h-14 lg:w-10 lg:h-16';
   const highlightClass = hasActivePlayer
     ? activePlayer === 1
       ? 'border-player1/70 bg-player1/10'
@@ -208,11 +227,11 @@ function SpaceCell({
           style={{ backgroundColor: COLOR_MAP[space.color] ?? '#ccc' }}
         />
       )}
-      <span className="text-[6px] sm:text-[7px] md:text-[8px] text-text-secondary text-center leading-[1.05] px-0.5 mt-0.5 sm:mt-1 max-w-full whitespace-normal break-words">
-        {space.name}
+      <span className="text-[5px] sm:text-[7px] md:text-[8px] text-text-secondary text-center leading-[1.05] px-0.5 mt-0.5 sm:mt-1 max-w-full whitespace-normal break-words">
+        {getCompactTileLabel(space.name)}
       </span>
       {space.price && (
-        <span className="text-[5px] sm:text-[6px] md:text-[7px] text-text-secondary/80 mt-0.5">
+        <span className="hidden sm:inline text-[6px] md:text-[7px] text-text-secondary/80 mt-0.5">
           ${space.price}
         </span>
       )}
@@ -242,7 +261,7 @@ export function MonopolyBoardView({ board, lastMove }: MonopolyBoardProps) {
   const rightCol = Array.from({ length: 9 }, (_, i) => 31 + i);
 
   return (
-    <div className="w-full flex justify-center overflow-visible">
+    <div className="w-full flex justify-center overflow-hidden">
       <div
         className="relative inline-block w-full max-w-fit origin-center"
         ref={boardRef}
