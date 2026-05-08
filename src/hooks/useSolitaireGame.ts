@@ -33,7 +33,6 @@ interface UseSolitaireGameReturn {
   error: string | null;
   deleted: boolean;
   myPlayerNumber: 1 | 2 | null;
-  isMyRound: boolean;
   opponentResult: SolitaireResult | null;
   submitResult: (result: SolitaireResult) => Promise<void>;
   giveUp: (moves: number, timeSeconds: number, startedAt: string) => Promise<void>;
@@ -54,8 +53,6 @@ export function useSolitaireGame(gameId: string): UseSolitaireGameReturn {
     : game.player2_name === myName ? 2
     : null
     : null;
-
-  const isMyRound = game !== null && myPlayerNumber !== null && game.current_turn === myPlayerNumber;
 
   // P2 should not see P1's result until P2 has submitted
   const opponentResult: SolitaireResult | null = (() => {
@@ -110,75 +107,97 @@ export function useSolitaireGame(gameId: string): UseSolitaireGameReturn {
   }, [fetchGame, deleted]);
 
   const submitResult = useCallback(async (result: SolitaireResult) => {
-    if (!game || !myPlayerNumber) return;
+    if (!myPlayerNumber) return;
 
     const resultKey = myPlayerNumber === 1 ? 'player1_result' : 'player2_result';
-    const newBoard = { ...game.board, [resultKey]: result };
+    const myBoardKey = resultKey as 'player1_result' | 'player2_result';
 
-    const isLastPlayer = myPlayerNumber === 2;
-    let winnerValue: number | null = null;
+    for (let attempt = 0; attempt < 3; attempt++) {
+      const { data: latestData, error: latestError } = await supabase
+        .from('games')
+        .select('*')
+        .eq('id', gameId)
+        .single();
 
-    if (isLastPlayer && newBoard.player1_result && newBoard.player2_result) {
-      winnerValue = determineSolitaireWinner(newBoard.player1_result, newBoard.player2_result);
-    }
+      if (latestError) {
+        setError(latestError.message);
+        return;
+      }
 
-    const updateData: Record<string, unknown> = {
-      board: newBoard,
-      updated_at: new Date().toISOString(),
-    };
+      const latestGame = latestData as SolitaireGameRow;
 
-    if (myPlayerNumber === 1) {
-      updateData.current_turn = 2;
-    }
+      // Prevent accidental double submission from this player.
+      if (latestGame.board[myBoardKey]) {
+        await fetchGame();
+        return;
+      }
 
-    if (winnerValue !== null) {
-      updateData.winner = winnerValue === 0 ? 0 : winnerValue;
-    }
+      const newBoard = { ...latestGame.board, [myBoardKey]: result };
+      const hasBothResults = Boolean(newBoard.player1_result && newBoard.player2_result);
+      const updateData: Record<string, unknown> = {
+        board: newBoard,
+        updated_at: new Date().toISOString(),
+      };
 
-    const { error: updateError } = await supabase
-      .from('games')
-      .update(updateData)
-      .eq('id', gameId);
+      if (hasBothResults) {
+        updateData.winner = determineSolitaireWinner(newBoard.player1_result!, newBoard.player2_result!);
+      }
 
-    if (updateError) {
-      setError(updateError.message);
+      const { data: updatedRows, error: updateError } = await supabase
+        .from('games')
+        .update(updateData)
+        .eq('id', gameId)
+        .eq('updated_at', latestGame.updated_at)
+        .select('id');
+
+      if (updateError) {
+        setError(updateError.message);
+        return;
+      }
+
+      // Another client updated between our fetch and write. Retry with fresh data.
+      if (!updatedRows || updatedRows.length === 0) {
+        continue;
+      }
+
+      // Record match result when this submission completes both results.
+      if (hasBothResults && !matchRecorded.current) {
+        matchRecorded.current = true;
+        const winner = determineSolitaireWinner(newBoard.player1_result!, newBoard.player2_result!);
+        const winnerName = winner === 1 ? latestGame.player1_name : winner === 2 ? latestGame.player2_name : null;
+        const loserName = winner === 1 ? latestGame.player2_name : winner === 2 ? latestGame.player1_name : null;
+        const winnerId = winner === 1 ? latestGame.player1_id : winner === 2 ? latestGame.player2_id : null;
+        const loserId = winner === 1 ? latestGame.player2_id : winner === 2 ? latestGame.player1_id : null;
+
+        recordMatchResult({
+          game_type: 'solitaire',
+          game_id: gameId,
+          winner_id: winnerId,
+          winner_name: winnerName,
+          loser_id: loserId,
+          loser_name: loserName,
+          is_draw: winner === 0,
+          metadata: {
+            p1Moves: newBoard.player1_result!.moves,
+            p1Time: newBoard.player1_result!.time_seconds,
+            p1Completed: newBoard.player1_result!.completed,
+            p2Moves: newBoard.player2_result!.moves,
+            p2Time: newBoard.player2_result!.time_seconds,
+            p2Completed: newBoard.player2_result!.completed,
+          },
+          player1_id: latestGame.player1_id!,
+          player1_name: latestGame.player1_name!,
+          player2_id: latestGame.player2_id!,
+          player2_name: latestGame.player2_name!,
+        });
+      }
+
+      await fetchGame();
       return;
     }
 
-    // Record match result when both players have finished
-    if (isLastPlayer && newBoard.player1_result && newBoard.player2_result && !matchRecorded.current) {
-      matchRecorded.current = true;
-      const winner = determineSolitaireWinner(newBoard.player1_result, newBoard.player2_result);
-      const winnerName = winner === 1 ? game.player1_name : winner === 2 ? game.player2_name : null;
-      const loserName = winner === 1 ? game.player2_name : winner === 2 ? game.player1_name : null;
-      const winnerId = winner === 1 ? game.player1_id : winner === 2 ? game.player2_id : null;
-      const loserId = winner === 1 ? game.player2_id : winner === 2 ? game.player1_id : null;
-
-      recordMatchResult({
-        game_type: 'solitaire',
-        game_id: gameId,
-        winner_id: winnerId,
-        winner_name: winnerName,
-        loser_id: loserId,
-        loser_name: loserName,
-        is_draw: winner === 0,
-        metadata: {
-          p1Moves: newBoard.player1_result.moves,
-          p1Time: newBoard.player1_result.time_seconds,
-          p1Completed: newBoard.player1_result.completed,
-          p2Moves: newBoard.player2_result.moves,
-          p2Time: newBoard.player2_result.time_seconds,
-          p2Completed: newBoard.player2_result.completed,
-        },
-        player1_id: game.player1_id!,
-        player1_name: game.player1_name!,
-        player2_id: game.player2_id!,
-        player2_name: game.player2_name!,
-      });
-    }
-
-    await fetchGame();
-  }, [game, gameId, myPlayerNumber, fetchGame]);
+    setError('Could not submit result because the game updated too quickly. Please try again.');
+  }, [gameId, myPlayerNumber, fetchGame]);
 
   const giveUp = useCallback(async (moves: number, timeSeconds: number, startedAt: string) => {
     // If player1 gives up before player2 joins, end the game
@@ -217,7 +236,6 @@ export function useSolitaireGame(gameId: string): UseSolitaireGameReturn {
     error,
     deleted,
     myPlayerNumber,
-    isMyRound,
     opponentResult,
     submitResult,
     giveUp,

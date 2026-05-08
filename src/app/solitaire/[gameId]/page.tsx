@@ -18,7 +18,7 @@ function formatTime(seconds: number): string {
 
 export default function SolitaireGamePage({ params }: { params: Promise<{ gameId: string }> }) {
   const { gameId } = use(params);
-  const { game, loading, error, deleted, myPlayerNumber, isMyRound, submitResult, resetGame } = useSolitaireGame(gameId);
+  const { game, loading, error, deleted, myPlayerNumber, submitResult, resetGame } = useSolitaireGame(gameId);
   const router = useRouter();
   const [showEndDialog, setShowEndDialog] = useState(false);
   const [showHowToPlay, setShowHowToPlay] = useState(false);
@@ -147,39 +147,6 @@ export default function SolitaireGamePage({ params }: { params: Promise<{ gameId
               deck={game.board.deck}
               onWin={() => {}}
               savedState={readOnlyState}
-              onStateChange={() => {}}
-            />
-          </div>
-          <div className="flex items-center gap-3 mt-4">
-            <button onClick={() => router.push('/')} className="px-4 py-2 text-sm font-medium rounded-xl border border-border bg-surface text-text-secondary hover:text-text-primary hover:border-text-secondary/30 shadow-sm hover:shadow transition-all cursor-pointer">
-              Home
-            </button>
-            <button onClick={() => setShowEndDialog(true)} className="px-4 py-2 text-sm font-medium rounded-xl border border-player1/20 bg-player1/5 text-player1/80 hover:bg-player1/10 hover:border-player1/40 hover:text-player1 shadow-sm hover:shadow transition-all cursor-pointer">
-              End Game
-            </button>
-          </div>
-        </div>
-        <EndGameDialog open={showEndDialog} onConfirm={handleEndGame} onCancel={() => setShowEndDialog(false)} />
-      </>
-    );
-  }
-
-  // Not my round yet (Player 2 waiting for Player 1)
-  if (!isMyRound) {
-    return (
-      <>
-        <div className="flex-1 flex flex-col items-center p-2 sm:p-4">
-          <div className="text-center mb-4 pt-4">
-            <h2 className="text-lg font-bold text-text-primary">Waiting for opponent...</h2>
-            <p className="text-sm text-text-secondary mt-1">
-              {game.player1_name} is playing their round. You&apos;ll be notified when it&apos;s your turn.
-            </p>
-          </div>
-          <div className="opacity-60 pointer-events-none" aria-hidden="true">
-            <SolitaireBoard
-              deck={game.board.deck}
-              onWin={() => {}}
-              savedState={null}
               onStateChange={() => {}}
             />
           </div>
