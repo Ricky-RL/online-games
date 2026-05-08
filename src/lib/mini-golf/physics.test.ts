@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { createPhysicsState, stepPhysics, shootBall, getMovingWallPosition } from './physics';
-import { Level, BALL_RADIUS, SINK_SPEED_THRESHOLD, MIN_SPEED } from './types';
+import { createPhysicsState, stepPhysics, shootBall, getMovingWallPosition, checkPortal } from './physics';
+import { Level, BALL_RADIUS, SINK_SPEED_THRESHOLD } from './types';
 
 const simpleLevel: Level = {
   id: 1,
@@ -63,6 +63,17 @@ describe('stepPhysics', () => {
     const state = { x: 55, y: 300, vx: -5, vy: 0, moving: true, sunk: false };
     const result = stepPhysics(state, simpleLevel);
     expect(result.vx).toBeGreaterThan(0);
+    expect(result.x).toBeGreaterThan(50 + BALL_RADIUS);
+  });
+
+  it('separates ball from wall to avoid boundary sticking', () => {
+    const state = { x: 58, y: 300, vx: -4, vy: -2, moving: true, sunk: false };
+    const first = stepPhysics(state, simpleLevel);
+    const second = stepPhysics(first, simpleLevel);
+
+    expect(first.x).toBeGreaterThan(50 + BALL_RADIUS);
+    expect(first.vx).toBeGreaterThan(0);
+    expect(second.vx).toBeGreaterThan(0);
   });
 
   it('sinks ball when close to hole and slow enough', () => {
@@ -98,5 +109,22 @@ describe('stepPhysics', () => {
     const state = { x: 200, y: 305, vx: 0, vy: -5, moving: true, sunk: false };
     const result = stepPhysics(state, levelWithMovingWall, 0);
     expect(result.vy).toBeGreaterThan(0);
+  });
+});
+
+describe('checkPortal', () => {
+  const portalLevel: Level = {
+    ...simpleLevel,
+    portals: [{ in: { x: 100, y: 100 }, out: { x: 300, y: 300 } }],
+  };
+
+  it('teleports when the ball ends inside portal radius', () => {
+    const out = checkPortal({ x: 102, y: 100 }, portalLevel);
+    expect(out).toEqual({ x: 300, y: 300 });
+  });
+
+  it('teleports when the ball passes through portal between frames', () => {
+    const out = checkPortal({ x: 150, y: 100 }, portalLevel, { x: 50, y: 100 });
+    expect(out).toEqual({ x: 300, y: 300 });
   });
 });

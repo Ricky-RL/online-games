@@ -212,7 +212,11 @@ export function MiniGolfCanvas({
         onSplashRef.current?.();
       }
 
-      const portalExit = checkPortal({ x: state.x, y: state.y }, level);
+      const portalExit = checkPortal(
+        { x: state.x, y: state.y },
+        level,
+        { x: prev.x, y: prev.y }
+      );
       if (portalExit) {
         state = { ...state, x: portalExit.x, y: portalExit.y };
       }

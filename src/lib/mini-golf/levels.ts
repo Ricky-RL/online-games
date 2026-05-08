@@ -336,8 +336,10 @@ export const LEVELS: Level[] = [
     water: [
       // Water moat around island (top)
       { points: [{ x: 100, y: 100 }, { x: 300, y: 100 }, { x: 300, y: 150 }, { x: 100, y: 150 }] },
-      // Water moat (bottom)
-      { points: [{ x: 100, y: 260 }, { x: 300, y: 260 }, { x: 300, y: 310 }, { x: 100, y: 310 }] },
+      // Water moat (bottom-left)
+      { points: [{ x: 100, y: 260 }, { x: 180, y: 260 }, { x: 180, y: 310 }, { x: 100, y: 310 }] },
+      // Water moat (bottom-right)
+      { points: [{ x: 220, y: 260 }, { x: 300, y: 260 }, { x: 300, y: 310 }, { x: 220, y: 310 }] },
       // Water moat (left)
       { points: [{ x: 100, y: 150 }, { x: 150, y: 150 }, { x: 150, y: 260 }, { x: 100, y: 260 }] },
       // Water moat (right)
