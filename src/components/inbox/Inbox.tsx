@@ -3,7 +3,7 @@
 import { motion } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import { useInbox } from '@/hooks/useInbox';
-import { supabase } from '@/lib/supabase';
+import { getStoredUser } from '@/lib/players';
 import type { InboxGame } from '@/lib/inbox-types';
 import { InboxGamesSection } from './InboxGamesSection';
 import { InboxWhiteboardSection } from './InboxWhiteboardSection';
@@ -29,51 +29,53 @@ export function Inbox({ playerName }: InboxProps) {
 
   const handleGameClick = async (game: InboxGame) => {
     markGamesRead();
-    const iAmInGame = game.player1_name === playerName || game.player2_name === playerName;
+    const currentUser = getStoredUser();
+    if (!currentUser) return;
+    const user = currentUser;
+    const iAmInGame =
+      game.player1_id === user.id ||
+      game.player2_id === user.id ||
+      game.player1_name === playerName ||
+      game.player2_name === playerName;
+    const joiningPlayer1 = game.player1_id === null && game.player1_name === null;
 
-    // Daily wordle games are in the wordle_games table
+    async function joinIfStillPairScoped(table: 'games' | 'wordle_games') {
+      if (!user.boundUserId) return false;
+      const { supabase } = await import('@/lib/supabase');
+      const updateField = joiningPlayer1
+        ? { player1_id: user.id, player1_name: user.name }
+        : { player2_id: user.id, player2_name: user.name };
+
+      let query = supabase
+        .from(table)
+        .update({ ...updateField, updated_at: new Date().toISOString() })
+        .eq('id', game.id);
+
+      query = table === 'wordle_games'
+        ? query.in('status', ['waiting', 'playing'])
+        : query.eq('game_type', game.game_type).is('winner', null);
+
+      query = joiningPlayer1
+        ? query.eq('player2_id', user.boundUserId).is('player1_id', null).is('player1_name', null)
+        : query.eq('player1_id', user.boundUserId).is('player2_id', null).is('player2_name', null);
+
+      const { data, error } = await query.select('id').maybeSingle();
+      return !error && !!data;
+    }
+
     if (game.game_type === 'daily-wordle') {
       if (!iAmInGame) {
-        // Player hasn't joined yet — join via wordle_games table, then navigate
-        const isPlayer1Slot = game.player1_name === null;
-        const myId = playerName === 'Ricky'
-          ? '00000000-0000-0000-0000-000000000001'
-          : '00000000-0000-0000-0000-000000000002';
-
-        const updateField = isPlayer1Slot
-          ? { player1_id: myId, player1_name: playerName }
-          : { player2_id: myId, player2_name: playerName };
-
-        await supabase
-          .from('wordle_games')
-          .update({ ...updateField, updated_at: new Date().toISOString() })
-          .eq('id', game.id);
+        await joinIfStillPairScoped('wordle_games');
       }
       router.push(`/wordle/${game.id}`);
       return;
     }
 
     if (!iAmInGame) {
-      // Player hasn't joined yet — join the game directly, then navigate to it
       if (game.game_type === 'connect-four' || game.game_type === 'battleship' || game.game_type === 'monopoly') {
-        // These games don't have a separate lobby page; join via supabase directly
-        const isPlayer1Slot = game.player1_name === null;
-        const myId = playerName === 'Ricky'
-          ? '00000000-0000-0000-0000-000000000001'
-          : '00000000-0000-0000-0000-000000000002';
-
-        const updateField = isPlayer1Slot
-          ? { player1_id: myId, player1_name: playerName }
-          : { player2_id: myId, player2_name: playerName };
-
-        await supabase
-          .from('games')
-          .update({ ...updateField, updated_at: new Date().toISOString() })
-          .eq('id', game.id);
-
+        await joinIfStillPairScoped('games');
         router.push(`/${game.game_type}/${game.id}`);
       } else {
-        // Tic-tac-toe and checkers have lobby pages that handle joining
         router.push(`/${game.game_type}`);
       }
       return;
@@ -84,7 +86,6 @@ export function Inbox({ playerName }: InboxProps) {
       : `/${game.game_type}/${game.id}`;
     router.push(path);
   };
-
   const handleWhiteboardClick = () => {
     markWhiteboardRead();
     router.push('/whiteboard');
@@ -138,3 +139,4 @@ export function Inbox({ playerName }: InboxProps) {
     </motion.section>
   );
 }
+

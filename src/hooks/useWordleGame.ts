@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
 import { isValidGuess, isGameWon, isGameLost, getAnswer } from '@/lib/wordle-logic';
 import { recordMatchResult } from '@/lib/match-results';
-import { PLAYER_IDS } from '@/lib/players';
+import { getStoredUserSlotInfo } from '@/lib/players';
 import type { WordleGame, WordleGuess } from '@/lib/wordle-types';
 
 const POLL_INTERVAL_MS = 1500;
@@ -126,14 +126,15 @@ export function useWordleGame(gameId: string): UseWordleGameReturn {
       return false;
     }
 
-    const myName = getMyName();
-    if (!myName) {
+    const { user, isCurrentUserSlot, isBoundUserSlot } = getStoredUserSlotInfo();
+    const myName = user?.name ?? getMyName();
+    if (!user || !myName) {
       setError('No player name set');
       return false;
     }
 
-    let isPlayer1 = currentGame.player1_name === myName;
-    let isPlayer2 = currentGame.player2_name === myName;
+    let isPlayer1 = isCurrentUserSlot(currentGame.player1_id, currentGame.player1_name);
+    let isPlayer2 = isCurrentUserSlot(currentGame.player2_id, currentGame.player2_name);
 
     // If player not found, re-fetch to handle race where join hasn't propagated yet
     if (!isPlayer1 && !isPlayer2) {
@@ -141,32 +142,46 @@ export function useWordleGame(gameId: string): UseWordleGameReturn {
       if (freshGame) {
         updateGame(freshGame);
         currentGame = freshGame;
-        isPlayer1 = currentGame.player1_name === myName;
-        isPlayer2 = currentGame.player2_name === myName;
+        isPlayer1 = isCurrentUserSlot(currentGame.player1_id, currentGame.player1_name);
+        isPlayer2 = isCurrentUserSlot(currentGame.player2_id, currentGame.player2_name);
       }
 
       // If still not found after re-fetch, try to auto-join an empty slot
       if (!isPlayer1 && !isPlayer2) {
-        const myId = (myName === 'Ricky' || myName === 'Lilian') ? PLAYER_IDS[myName] : null;
-        const emptySlot = currentGame.player1_name === null ? 'player1' : currentGame.player2_name === null ? 'player2' : null;
+        const emptySlot =
+          currentGame.player1_id === null && currentGame.player1_name === null
+            ? 'player1'
+            : currentGame.player2_id === null && currentGame.player2_name === null
+              ? 'player2'
+              : null;
+        const otherSlotIsBound = emptySlot === 'player1'
+          ? isBoundUserSlot(currentGame.player2_id, currentGame.player2_name)
+          : emptySlot === 'player2'
+            ? isBoundUserSlot(currentGame.player1_id, currentGame.player1_name)
+            : false;
 
-        if (emptySlot && myId) {
+        if (emptySlot && user.boundUserId && otherSlotIsBound) {
           const updateField = emptySlot === 'player1'
-            ? { player1_id: myId, player1_name: myName }
-            : { player2_id: myId, player2_name: myName };
+            ? { player1_id: user.id, player1_name: myName }
+            : { player2_id: user.id, player2_name: myName };
 
-          const { error: joinErr } = await supabase
+          let joinQuery = supabase
             .from('wordle_games')
             .update({ ...updateField, updated_at: new Date().toISOString() })
             .eq('id', gameId);
+          joinQuery = emptySlot === 'player1'
+            ? joinQuery.eq('player2_id', user.boundUserId).in('status', ['waiting', 'playing']).is('player1_id', null).is('player1_name', null)
+            : joinQuery.eq('player1_id', user.boundUserId).in('status', ['waiting', 'playing']).is('player2_id', null).is('player2_name', null);
+
+          const { error: joinErr } = await joinQuery;
 
           if (!joinErr) {
             const joined = await fetchGame();
             if (joined) {
               updateGame(joined);
               currentGame = joined;
-              isPlayer1 = currentGame.player1_name === myName;
-              isPlayer2 = currentGame.player2_name === myName;
+              isPlayer1 = isCurrentUserSlot(currentGame.player1_id, currentGame.player1_name);
+              isPlayer2 = isCurrentUserSlot(currentGame.player2_id, currentGame.player2_name);
             }
           }
         }

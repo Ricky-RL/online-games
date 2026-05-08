@@ -4,23 +4,18 @@ import { useEffect, useCallback, useState } from 'react';
 import { motion } from 'framer-motion';
 import { useColors } from '@/contexts/PlayerColorsContext';
 import { COLOR_PRESETS, type ColorPreset } from '@/lib/colors';
+import { getStoredUser } from '@/lib/players';
 
 interface SettingsModalProps {
   onClose: () => void;
 }
 
 export function SettingsModal({ onClose }: SettingsModalProps) {
-  const { player1Color, player2Color, updateMyColor, loading } = useColors();
+  const { myColor, opponentColor, updateMyColor, loading } = useColors();
   const [hoveredTaken, setHoveredTaken] = useState<string | null>(null);
 
-  const playerName = typeof window !== 'undefined'
-    ? localStorage.getItem('player-name')
-    : null;
-
-  const isPlayer1 = playerName === 'Ricky';
-  const myColor = isPlayer1 ? player1Color : player2Color;
-  const opponentColor = isPlayer1 ? player2Color : player1Color;
-  const opponentName = isPlayer1 ? 'Lilian' : 'Ricky';
+  const storedUser = typeof window !== 'undefined' ? getStoredUser() : null;
+  const opponentName = storedUser?.boundUserName ?? 'your partner';
 
   // Close on Escape key
   const handleKeyDown = useCallback(

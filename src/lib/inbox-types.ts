@@ -5,6 +5,8 @@ export interface InboxGame {
   id: string;
   game_type: InboxGameType;
   current_turn: 0 | 1 | 2;
+  player1_id: string | null;
+  player2_id: string | null;
   player1_name: string | null;
   player2_name: string | null;
   updated_at: string;

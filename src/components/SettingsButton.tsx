@@ -1,19 +1,11 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { SettingsModal } from '@/components/SettingsModal';
 
 export function SettingsButton() {
-  const [isVisible, setIsVisible] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
-
-  useEffect(() => {
-    const playerName = localStorage.getItem('player-name');
-    setIsVisible(playerName === 'Ricky' || playerName === 'Lilian');
-  }, []);
-
-  if (!isVisible) return null;
 
   return (
     <>

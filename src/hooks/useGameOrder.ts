@@ -1,11 +1,11 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { type PlayerName, PLAYER_IDS } from '@/lib/players';
+import { PLAYER_IDS } from '@/lib/players';
 import { DEFAULT_SLUG_ORDER } from '@/lib/game-registry';
 
-function getCacheKey(playerName: PlayerName) {
-  return `game-order-${playerName}`;
+function getCacheKey(playerId: string) {
+  return `game-order-${playerId}`;
 }
 
 function mergeWithDefaults(saved: string[]): string[] {
@@ -14,10 +14,11 @@ function mergeWithDefaults(saved: string[]): string[] {
   return [...ordered, ...missing];
 }
 
-export function useGameOrder(playerName: PlayerName) {
+export function useGameOrder(playerName: string, explicitPlayerId?: string) {
+  const playerId = explicitPlayerId ?? PLAYER_IDS[playerName];
   const [order, setOrder] = useState<string[]>(() => {
     if (typeof window === 'undefined') return DEFAULT_SLUG_ORDER;
-    const cached = localStorage.getItem(getCacheKey(playerName));
+    const cached = localStorage.getItem(getCacheKey(playerId));
     if (cached) {
       try {
         return mergeWithDefaults(JSON.parse(cached));
@@ -34,7 +35,6 @@ export function useGameOrder(playerName: PlayerName) {
 
     async function fetchOrder() {
       const { supabase } = await import('@/lib/supabase');
-      const playerId = PLAYER_IDS[playerName];
 
       const { data, error } = await supabase
         .from('player_preferences')
@@ -47,22 +47,21 @@ export function useGameOrder(playerName: PlayerName) {
       if (!error && data?.game_order) {
         const merged = mergeWithDefaults(data.game_order);
         setOrder(merged);
-        localStorage.setItem(getCacheKey(playerName), JSON.stringify(merged));
+        localStorage.setItem(getCacheKey(playerId), JSON.stringify(merged));
       }
       setLoading(false);
     }
 
     fetchOrder();
     return () => { cancelled = true; };
-  }, [playerName]);
+  }, [playerId]);
 
   const saveOrder = useCallback(async (newOrder: string[]) => {
     const merged = mergeWithDefaults(newOrder);
     setOrder(merged);
-    localStorage.setItem(getCacheKey(playerName), JSON.stringify(merged));
+    localStorage.setItem(getCacheKey(playerId), JSON.stringify(merged));
 
     const { supabase } = await import('@/lib/supabase');
-    const playerId = PLAYER_IDS[playerName];
 
     const { error } = await supabase
       .from('player_preferences')
@@ -75,14 +74,13 @@ export function useGameOrder(playerName: PlayerName) {
     if (error) {
       console.error('Failed to save game order:', error);
     }
-  }, [playerName]);
+  }, [playerId]);
 
   const resetOrder = useCallback(async () => {
     setOrder(DEFAULT_SLUG_ORDER);
-    localStorage.removeItem(getCacheKey(playerName));
+    localStorage.removeItem(getCacheKey(playerId));
 
     const { supabase } = await import('@/lib/supabase');
-    const playerId = PLAYER_IDS[playerName];
 
     const { error } = await supabase
       .from('player_preferences')
@@ -95,7 +93,7 @@ export function useGameOrder(playerName: PlayerName) {
     if (error) {
       console.error('Failed to reset game order:', error);
     }
-  }, [playerName]);
+  }, [playerId]);
 
   return { order, loading, saveOrder, resetOrder };
 }

@@ -6,7 +6,7 @@ import { PoolGame, PoolBoard, Shot, ShotResult, GamePhase, BallState } from '@/l
 import { simulateShot } from '@/lib/pool/physics';
 import { determineShotResult, assignGroups, isGameOver, getWinner, createInitialBoard } from '@/lib/pool/logic';
 import { recordMatchResult } from '@/lib/match-results';
-import { getStoredPlayerName, PLAYER_IDS } from '@/lib/players';
+import { getStoredUserSlotInfo } from '@/lib/players';
 import { Player } from '@/lib/types';
 
 const POLL_INTERVAL_MS = 1500;
@@ -62,7 +62,7 @@ export function usePoolGame(gameId: string): UsePoolGameReturn {
       return null;
     }
 
-    if (data.game_type === 'ended') {
+    if (data.game_type !== 'pool') {
       setDeleted(true);
       return null;
     }
@@ -97,24 +97,30 @@ export function usePoolGame(gameId: string): UsePoolGameReturn {
   const tryAutoJoin = useCallback(async (gameData: PoolGame) => {
     if (autoJoinAttempted.current) return;
 
-    const playerName = getStoredPlayerName();
-    if (!playerName) return;
+    const { user, isCurrentUserSlot, isBoundUserSlot } = getStoredUserSlotInfo();
+    if (!user?.boundUserId) return;
 
-    const myId = PLAYER_IDS[playerName];
-    const isPlayer1 = gameData.player1_id === myId || gameData.player1_name === playerName;
+    const alreadyInGame =
+      isCurrentUserSlot(gameData.player1_id, gameData.player1_name) ||
+      isCurrentUserSlot(gameData.player2_id, gameData.player2_name);
+    const creatorIsBoundOpponent = isBoundUserSlot(gameData.player1_id, gameData.player1_name);
 
-    if (!isPlayer1 && gameData.player2_id === null) {
+    if (!alreadyInGame && creatorIsBoundOpponent && gameData.player2_id === null && gameData.player2_name === null) {
       autoJoinAttempted.current = true;
 
       const { data: joined, error: joinError } = await supabase
         .from('games')
         .update({
-          player2_id: myId,
-          player2_name: playerName,
+          player2_id: user.id,
+          player2_name: user.name,
           updated_at: new Date().toISOString(),
         })
         .eq('id', gameId)
+        .eq('game_type', 'pool')
+        .eq('player1_id', user.boundUserId)
+        .is('winner', null)
         .is('player2_id', null)
+        .is('player2_name', null)
         .select()
         .single();
 

@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
 import { makeMove as computeMove, checkWin, isDraw } from '@/lib/game-logic';
 import { recordMatchResult } from '@/lib/match-results';
+import { getStoredUserSlotInfo } from '@/lib/players';
 import type { Game, Player, Board } from '@/lib/types';
 
 const POLL_INTERVAL_MS = 1500;
@@ -36,6 +37,7 @@ export function useGame(gameId: string): UseGameReturn {
   const optimisticBoard = useRef<Board | null>(null);
   const gameRef = useRef<Game | null>(null);
   const matchRecorded = useRef(false);
+  const autoJoinAttempted = useRef(false);
 
   const updateGame = useCallback((updater: Game | null | ((prev: Game | null) => Game | null)) => {
     setGame((prev) => {
@@ -61,13 +63,55 @@ export function useGame(gameId: string): UseGameReturn {
       return null;
     }
 
-    if (data.game_type === 'ended') {
+    if (data.game_type !== 'connect-four') {
       setDeleted(true);
       return null;
     }
 
     return data as Game;
   }, [gameId]);
+
+  const tryAutoJoin = useCallback(async (gameData: Game) => {
+    if (autoJoinAttempted.current) return;
+
+    const { user, isCurrentUserSlot, isBoundUserSlot } = getStoredUserSlotInfo();
+    if (!user?.boundUserId) return;
+
+    const alreadyInGame =
+      isCurrentUserSlot(gameData.player1_id, gameData.player1_name) ||
+      isCurrentUserSlot(gameData.player2_id, gameData.player2_name);
+    const creatorIsBoundOpponent = isBoundUserSlot(gameData.player1_id, gameData.player1_name);
+
+    if (!alreadyInGame && creatorIsBoundOpponent && gameData.player2_id === null && gameData.player2_name === null) {
+      autoJoinAttempted.current = true;
+
+      const { data: joined, error: joinError } = await supabase
+        .from('games')
+        .update({
+          player2_id: user.id,
+          player2_name: user.name,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', gameId)
+        .eq('game_type', 'connect-four')
+        .eq('player1_id', user.boundUserId)
+        .is('winner', null)
+        .is('player2_id', null)
+        .is('player2_name', null)
+        .select()
+        .maybeSingle();
+
+      if (joinError) {
+        const fresh = await fetchGame();
+        if (fresh) updateGame(fresh);
+        return;
+      }
+
+      if (joined) {
+        updateGame(joined as Game);
+      }
+    }
+  }, [fetchGame, gameId, updateGame]);
 
   // Initial fetch
   useEffect(() => {
@@ -78,12 +122,13 @@ export function useGame(gameId: string): UseGameReturn {
       if (cancelled) return;
       if (gameData) {
         updateGame(gameData);
+        await tryAutoJoin(gameData);
       }
       setLoading(false);
     }
     init();
     return () => { cancelled = true; };
-  }, [fetchGame, updateGame]);
+  }, [fetchGame, updateGame, tryAutoJoin]);
 
   // Poll for changes
   useEffect(() => {

@@ -4,6 +4,8 @@ import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 interface LeaderboardStats {
+  player1_name: string;
+  player2_name: string;
   ricky_wins: number;
   lilian_wins: number;
   draws: number;
@@ -82,9 +84,9 @@ export function Leaderboard({ stats, onReset, loading }: LeaderboardProps) {
           <div className="flex items-center gap-4">
             <span className="text-sm font-medium text-text-secondary">Scoreboard</span>
             <div className="flex items-center gap-2 text-base font-semibold">
-              <span className="text-player1">Ricky: {stats.ricky_wins}</span>
+              <span className="text-player1">{stats.player1_name}: {stats.ricky_wins}</span>
               <span className="text-text-secondary/40">|</span>
-              <span className="text-player2">Lilian: {stats.lilian_wins}</span>
+              <span className="text-player2">{stats.player2_name}: {stats.lilian_wins}</span>
               {stats.draws > 0 && (
                 <>
                   <span className="text-text-secondary/40">|</span>
@@ -246,7 +248,7 @@ export function Leaderboard({ stats, onReset, loading }: LeaderboardProps) {
                     </h3>
                     <div className="grid grid-cols-2 gap-3">
                       <div className="rounded-xl bg-background px-4 py-3">
-                        <p className="text-xs text-text-secondary mb-1">Ricky</p>
+                        <p className="text-xs text-text-secondary mb-1">{stats.player1_name}</p>
                         <p className="text-sm font-medium text-text-primary">
                           {stats.streaks.ricky_current > 0 && (
                             <span className="text-player1">{stats.streaks.ricky_current} current</span>
@@ -261,7 +263,7 @@ export function Leaderboard({ stats, onReset, loading }: LeaderboardProps) {
                         </p>
                       </div>
                       <div className="rounded-xl bg-background px-4 py-3">
-                        <p className="text-xs text-text-secondary mb-1">Lilian</p>
+                        <p className="text-xs text-text-secondary mb-1">{stats.player2_name}</p>
                         <p className="text-sm font-medium text-text-primary">
                           {stats.streaks.lilian_current > 0 && (
                             <span className="text-player2">{stats.streaks.lilian_current} current</span>

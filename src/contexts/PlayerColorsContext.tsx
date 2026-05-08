@@ -6,6 +6,8 @@ import { usePlayerColors } from '@/hooks/usePlayerColors';
 interface PlayerColorsContextValue {
   player1Color: string;
   player2Color: string;
+  myColor: string;
+  opponentColor: string;
   loading: boolean;
   updateMyColor: (color: string) => Promise<void>;
 }

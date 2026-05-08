@@ -6,91 +6,42 @@ import { motion } from 'framer-motion';
 import { THEME_PACKS } from '@/lib/word-search-themes';
 import { createWordSearchBoard } from '@/lib/word-search-logic';
 import { SettingsButton } from '@/components/SettingsButton';
-import { PLAYER_IDS, type PlayerName } from '@/lib/players';
+import { getStoredUser } from '@/lib/players';
+import { findOrCreateBoundGame } from '@/lib/matchmaking';
 
 export default function WordSearchLobby() {
   const router = useRouter();
   const [creating, setCreating] = useState<string | null>(null);
 
-  const playerName = typeof window !== 'undefined'
-    ? (sessionStorage.getItem('player-name') || localStorage.getItem('player-name'))
-    : null;
-
   const handleSelectTheme = useCallback(async (themeId: string) => {
-    if (!playerName || (playerName !== 'Ricky' && playerName !== 'Lilian')) return;
-    setCreating(themeId);
-
-    const { supabase } = await import('@/lib/supabase');
-    const myId = PLAYER_IDS[playerName as PlayerName];
-
-    // Check for existing active word-search game
-    const { data: existing } = await supabase
-      .from('games')
-      .select('*')
-      .eq('game_type', 'word-search')
-      .is('winner', null)
-      .order('created_at', { ascending: false })
-      .limit(10);
-
-    if (existing) {
-      // Resume my game
-      const myGame = existing.find((g) =>
-        g.player1_name === playerName || g.player2_name === playerName
-      );
-      if (myGame) {
-        router.push(`/word-search/${myGame.id}`);
-        return;
-      }
-
-      // Join opponent's game (player2 slot is open)
-      const joinable = existing.find((g) =>
-        g.player2_name === null && g.player1_name !== null && g.player1_name !== playerName
-      );
-      if (joinable) {
-        await supabase
-          .from('games')
-          .update({
-            player2_id: myId,
-            player2_name: playerName,
-            current_turn: 2,
-            updated_at: new Date().toISOString(),
-          })
-          .eq('id', joinable.id);
-
-        router.push(`/word-search/${joinable.id}`);
-        return;
-      }
+    const currentUser = getStoredUser();
+    if (!currentUser?.boundUserId) {
+      router.push('/');
+      return;
     }
 
-    // Create new game. Creator is always player1 and goes first.
-    const pack = THEME_PACKS.find((p) => p.id === themeId)!;
-    const board = createWordSearchBoard(themeId, pack.words);
-
-    const insertData = {
-      game_type: 'word-search',
-      board,
-      current_turn: 1 as const,
-      winner: null,
-      player1_id: myId,
-      player1_name: playerName,
-      player2_id: null,
-      player2_name: null,
-    };
-
-    const { data, error } = await supabase
-      .from('games')
-      .insert(insertData)
-      .select('id')
-      .single();
-
-    if (error || !data) {
-      console.error('Error creating word search game:', error);
+    setCreating(themeId);
+    const pack = THEME_PACKS.find((p) => p.id === themeId);
+    if (!pack) {
       setCreating(null);
       return;
     }
 
-    router.push(`/word-search/${data.id}`);
-  }, [playerName, router]);
+    const gameId = await findOrCreateBoundGame({
+      gameType: 'word-search',
+      currentUser,
+      joinData: () => ({ current_turn: 2 }),
+      createData: () => ({
+        game_type: 'word-search',
+        board: createWordSearchBoard(themeId, pack.words),
+        current_turn: 1,
+        winner: null,
+      }),
+    });
+
+    if (gameId) router.push(`/word-search/${gameId}`);
+    else setCreating(null);
+  }, [router]);
 
   return (
     <div className="flex-1 flex flex-col items-center justify-center min-h-screen px-4 py-8">

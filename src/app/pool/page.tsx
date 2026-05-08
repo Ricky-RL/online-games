@@ -1,131 +1,20 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import { motion } from 'framer-motion';
-import { supabase } from '@/lib/supabase';
+import { AutoMatchmakingPage } from '@/components/AutoMatchmakingPage';
 import { createInitialBalls } from '@/lib/pool/setup';
 import { createInitialBoard } from '@/lib/pool/logic';
-import { type PlayerName, PLAYER_IDS } from '@/lib/players';
 
 export default function PoolLobby() {
-  const router = useRouter();
-  const [playerName, setPlayerName] = useState<PlayerName | null>(null);
-
-  useEffect(() => {
-    const stored = sessionStorage.getItem('player-name') || localStorage.getItem('player-name');
-    if (stored === 'Ricky' || stored === 'Lilian') {
-      setPlayerName(stored);
-    } else {
-      router.push('/');
-    }
-  }, [router]);
-
-  useEffect(() => {
-    if (playerName) {
-      connect(playerName);
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [playerName]);
-
-  async function connect(name: PlayerName) {
-    const playerId = PLAYER_IDS[name];
-
-    const { data: games } = await supabase
-      .from('games')
-      .select('*')
-      .eq('game_type', 'pool')
-      .is('winner', null)
-      .order('created_at', { ascending: false })
-      .limit(10);
-
-    if (games && games.length > 0) {
-      const myGame = games.find(
-        (g) => g.player1_id === playerId || g.player2_id === playerId
-      );
-      if (myGame) {
-        router.push(`/pool/${myGame.id}`);
-        return;
-      }
-
-      const joinable = games.find(
-        (g) => g.player1_id !== playerId && !g.player2_id
-      );
-      if (joinable) {
-        await supabase
-          .from('games')
-          .update({
-            player2_id: playerId,
-            player2_name: name,
-            updated_at: new Date().toISOString(),
-          })
-          .eq('id', joinable.id)
-          .is('player2_id', null);
-
-        router.push(`/pool/${joinable.id}`);
-        return;
-      }
-    }
-
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-
-    const { data: retryGames } = await supabase
-      .from('games')
-      .select('*')
-      .eq('game_type', 'pool')
-      .is('winner', null)
-      .order('created_at', { ascending: false })
-      .limit(10);
-
-    if (retryGames && retryGames.length > 0) {
-      const joinable = retryGames.find(
-        (g) => g.player1_id !== playerId && !g.player2_id
-      );
-      if (joinable) {
-        await supabase
-          .from('games')
-          .update({
-            player2_id: playerId,
-            player2_name: name,
-            updated_at: new Date().toISOString(),
-          })
-          .eq('id', joinable.id)
-          .is('player2_id', null);
-
-        router.push(`/pool/${joinable.id}`);
-        return;
-      }
-    }
-
-    const board = createInitialBoard(createInitialBalls());
-
-    const { data: newGame } = await supabase
-      .from('games')
-      .insert({
-        game_type: 'pool',
-        board,
-        current_turn: 1,
-        player1_id: playerId,
-        player1_name: name,
-      })
-      .select()
-      .single();
-
-    if (newGame) {
-      router.push(`/pool/${newGame.id}`);
-    }
-  }
-
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center">
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        className="text-center"
-      >
-        <div className="w-8 h-8 border-2 border-board border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-        <p className="text-text-secondary">Finding a game...</p>
-      </motion.div>
-    </div>
+    <AutoMatchmakingPage
+      gameType="pool"
+      label="Pool"
+      createData={() => ({
+        game_type: 'pool',
+        board: createInitialBoard(createInitialBalls()),
+        current_turn: 1,
+        winner: null,
+      })}
+    />
   );
 }

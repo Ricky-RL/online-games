@@ -1,16 +1,17 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { type PlayerName, PLAYER_IDS } from '@/lib/players';
+import { PLAYER_IDS } from '@/lib/players';
 
-function getCacheKey(playerName: PlayerName) {
-  return `favorite-games-${playerName}`;
+function getCacheKey(playerId: string) {
+  return `favorite-games-${playerId}`;
 }
 
-export function useFavorites(playerName: PlayerName) {
+export function useFavorites(playerName: string, explicitPlayerId?: string) {
+  const playerId = explicitPlayerId ?? PLAYER_IDS[playerName];
   const [favorites, setFavorites] = useState<string[]>(() => {
     if (typeof window === 'undefined') return [];
-    const cached = localStorage.getItem(getCacheKey(playerName));
+    const cached = localStorage.getItem(getCacheKey(playerId));
     if (cached) {
       try {
         return JSON.parse(cached);
@@ -26,7 +27,6 @@ export function useFavorites(playerName: PlayerName) {
 
     async function fetchFavorites() {
       const { supabase } = await import('@/lib/supabase');
-      const playerId = PLAYER_IDS[playerName];
 
       const { data, error } = await supabase
         .from('player_preferences')
@@ -38,25 +38,24 @@ export function useFavorites(playerName: PlayerName) {
 
       if (!error && data?.favorite_games) {
         setFavorites(data.favorite_games);
-        localStorage.setItem(getCacheKey(playerName), JSON.stringify(data.favorite_games));
+        localStorage.setItem(getCacheKey(playerId), JSON.stringify(data.favorite_games));
       }
     }
 
     fetchFavorites();
     return () => { cancelled = true; };
-  }, [playerName]);
+  }, [playerId]);
 
   const toggleFavorite = useCallback(async (slug: string) => {
     setFavorites((prev) => {
       const next = prev.includes(slug)
         ? prev.filter((s) => s !== slug)
         : [...prev, slug];
-      localStorage.setItem(getCacheKey(playerName), JSON.stringify(next));
+      localStorage.setItem(getCacheKey(playerId), JSON.stringify(next));
 
       // Fire-and-forget Supabase sync
       (async () => {
         const { supabase } = await import('@/lib/supabase');
-        const playerId = PLAYER_IDS[playerName];
 
         const { error } = await supabase
           .from('player_preferences')
@@ -73,7 +72,7 @@ export function useFavorites(playerName: PlayerName) {
 
       return next;
     });
-  }, [playerName]);
+  }, [playerId]);
 
   const isFavorite = useCallback((slug: string) => {
     return favorites.includes(slug);

@@ -1,8 +1,8 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { supabase } from '@/lib/supabase';
 import type { WhiteboardNote, NoteContentType, Stroke, NotePosition, NoteSize } from '@/lib/whiteboard-types';
+import { getStoredUser } from '@/lib/players';
 
 const POLL_INTERVAL_MS = 1500;
 const ACTIVITY_THROTTLE_MS = 60_000; // 1 notification per note per minute
@@ -31,7 +31,7 @@ function shouldLogActivity(noteId: string, action: string): boolean {
 
 function getMyName(): string | null {
   if (typeof window === 'undefined') return null;
-  return sessionStorage.getItem('player-name') || localStorage.getItem('player-name');
+  return getStoredUser()?.name ?? sessionStorage.getItem('player-name') ?? localStorage.getItem('player-name');
 }
 
 interface UseWhiteboardReturn {
@@ -62,6 +62,7 @@ export function useWhiteboard(): UseWhiteboardReturn {
   const deletedIds = useRef<Set<string>>(new Set());
 
   const fetchNotes = useCallback(async () => {
+    const { supabase } = await import('@/lib/supabase');
     const { data, error: fetchError } = await supabase
       .from('whiteboard_notes')
       .select('*')
@@ -71,7 +72,17 @@ export function useWhiteboard(): UseWhiteboardReturn {
       setError(fetchError.message);
       return null;
     }
-    return data as WhiteboardNote[];
+    const currentUser = getStoredUser();
+    if (!currentUser?.boundUserId) return [];
+
+    return (data as WhiteboardNote[]).filter((note) => {
+      const scoped = note as WhiteboardNote & { owner_user_id?: string | null; partner_user_id?: string | null };
+      if (!scoped.owner_user_id && !scoped.partner_user_id) return true;
+      return (
+        (scoped.owner_user_id === currentUser.id && scoped.partner_user_id === currentUser.boundUserId) ||
+        (scoped.owner_user_id === currentUser.boundUserId && scoped.partner_user_id === currentUser.id)
+      );
+    });
   }, []);
 
   useEffect(() => {
@@ -117,6 +128,8 @@ export function useWhiteboard(): UseWhiteboardReturn {
       color: string;
     }): Promise<WhiteboardNote | null> => {
       const myName = getMyName();
+      const currentUser = getStoredUser();
+      const { supabase } = await import('@/lib/supabase');
 
       const { data, error: insertError } = await supabase
         .from('whiteboard_notes')
@@ -128,6 +141,8 @@ export function useWhiteboard(): UseWhiteboardReturn {
           position_y: params.position.y,
           color: params.color,
           created_by_name: myName,
+          owner_user_id: currentUser?.id ?? null,
+          partner_user_id: currentUser?.boundUserId ?? null,
         })
         .select()
         .single();
@@ -152,6 +167,7 @@ export function useWhiteboard(): UseWhiteboardReturn {
             note_id: created.id,
             action: 'created',
             actor_name: myName,
+            actor_user_id: currentUser?.id ?? null,
             note_preview: preview,
             note_color: params.color,
           })
@@ -173,6 +189,7 @@ export function useWhiteboard(): UseWhiteboardReturn {
         )
       );
 
+      const { supabase } = await import('@/lib/supabase');
       const { error: updateError } = await supabase
         .from('whiteboard_notes')
         .update({
@@ -214,6 +231,7 @@ export function useWhiteboard(): UseWhiteboardReturn {
         updateFields.drawing_data = params.drawingData;
       }
 
+      const { supabase } = await import('@/lib/supabase');
       const { error: updateError } = await supabase
         .from('whiteboard_notes')
         .update(updateFields)
@@ -226,6 +244,7 @@ export function useWhiteboard(): UseWhiteboardReturn {
 
         // Fire-and-forget: log content update activity (throttled to 1 per note per minute)
         const myName = getMyName();
+        const currentUser = getStoredUser();
         if (myName && shouldLogActivity(noteId, 'updated')) {
           const preview = params.drawingData !== undefined
             ? '[drawing]'
@@ -236,6 +255,7 @@ export function useWhiteboard(): UseWhiteboardReturn {
               note_id: noteId,
               action: 'updated',
               actor_name: myName,
+              actor_user_id: currentUser?.id ?? null,
               note_preview: preview,
               note_color: null,
             })
@@ -252,6 +272,7 @@ export function useWhiteboard(): UseWhiteboardReturn {
         prev.map((n) => (n.id === noteId ? { ...n, color } : n))
       );
 
+      const { supabase } = await import('@/lib/supabase');
       const { error: updateError } = await supabase
         .from('whiteboard_notes')
         .update({ color, updated_at: new Date().toISOString() })
@@ -272,6 +293,7 @@ export function useWhiteboard(): UseWhiteboardReturn {
         prev.map((n) => (n.id === noteId ? { ...n, width: size.width, height: size.height } : n))
       );
 
+      const { supabase } = await import('@/lib/supabase');
       const { error: updateError } = await supabase
         .from('whiteboard_notes')
         .update({ width: size.width, height: size.height, updated_at: new Date().toISOString() })
@@ -290,12 +312,14 @@ export function useWhiteboard(): UseWhiteboardReturn {
     async (noteId: string): Promise<void> => {
       // Capture note data before removing from state for activity logging
       const noteToDelete = notes.find((n) => n.id === noteId);
+      const { supabase } = await import('@/lib/supabase');
 
       deletedIds.current.add(noteId);
       setNotes((prev) => prev.filter((n) => n.id !== noteId));
 
       // Fire-and-forget: log delete activity (throttled to 1 per note per minute)
       const myName = getMyName();
+      const currentUser = getStoredUser();
       if (myName && noteToDelete && shouldLogActivity(noteId, 'deleted')) {
         const preview = noteToDelete.content_type === 'drawing'
           ? '[drawing]'
@@ -306,6 +330,7 @@ export function useWhiteboard(): UseWhiteboardReturn {
             note_id: noteId,
             action: 'deleted',
             actor_name: myName,
+            actor_user_id: currentUser?.id ?? null,
             note_preview: preview,
             note_color: noteToDelete.color,
           })

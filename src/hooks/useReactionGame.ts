@@ -12,7 +12,7 @@ import {
   type ReactionBoardState,
 } from '@/lib/reaction-logic';
 import { recordMatchResult } from '@/lib/match-results';
-import { PLAYER_IDS, getStoredPlayerName } from '@/lib/players';
+import { getStoredUserSlotInfo } from '@/lib/players';
 
 const POLL_INTERVAL_MS = 1500;
 
@@ -78,7 +78,7 @@ export function useReactionGame(gameId: string): UseReactionGameReturn {
       return null;
     }
 
-    if (data.game_type === 'ended') {
+    if (data.game_type !== 'reaction') {
       updateGame(null);
       setDeleted(true);
       return null;
@@ -90,13 +90,15 @@ export function useReactionGame(gameId: string): UseReactionGameReturn {
   const tryAutoJoin = useCallback(async (gameData: ReactionGame) => {
     if (autoJoinAttempted.current) return;
 
-    const playerName = getStoredPlayerName();
-    if (!playerName) return;
+    const { user, isCurrentUserSlot, isBoundUserSlot } = getStoredUserSlotInfo();
+    if (!user?.boundUserId) return;
 
-    const myId = PLAYER_IDS[playerName];
-    const isPlayer1 = gameData.player1_id === myId || gameData.player1_name === playerName;
+    const alreadyInGame =
+      isCurrentUserSlot(gameData.player1_id, gameData.player1_name) ||
+      isCurrentUserSlot(gameData.player2_id, gameData.player2_name);
+    const creatorIsBoundOpponent = isBoundUserSlot(gameData.player1_id, gameData.player1_name);
 
-    if (!isPlayer1 && gameData.player2_id === null) {
+    if (!alreadyInGame && creatorIsBoundOpponent && gameData.player2_id === null && gameData.player2_name === null) {
       autoJoinAttempted.current = true;
 
       const boardUpdate =
@@ -107,13 +109,17 @@ export function useReactionGame(gameId: string): UseReactionGameReturn {
       const { error: joinError } = await supabase
         .from('games')
         .update({
-          player2_id: myId,
-          player2_name: playerName,
+          player2_id: user.id,
+          player2_name: user.name,
           ...(boardUpdate ? { board: boardUpdate } : {}),
           updated_at: new Date().toISOString(),
         })
         .eq('id', gameId)
-        .is('player2_id', null);
+        .eq('game_type', 'reaction')
+        .eq('player1_id', user.boundUserId)
+        .is('winner', null)
+        .is('player2_id', null)
+        .is('player2_name', null);
 
       if (joinError) {
         console.error('Auto-join failed:', joinError);
@@ -124,8 +130,8 @@ export function useReactionGame(gameId: string): UseReactionGameReturn {
         prev
           ? {
               ...prev,
-              player2_id: myId,
-              player2_name: playerName,
+              player2_id: user.id,
+              player2_name: user.name,
               ...(boardUpdate ? { board: boardUpdate } : {}),
             }
           : null
@@ -190,15 +196,14 @@ export function useReactionGame(gameId: string): UseReactionGameReturn {
       const currentGame = gameRef.current;
       if (!currentGame) return;
 
-      const playerName = getStoredPlayerName();
-      if (!playerName) {
+      const { user, isCurrentUserSlot } = getStoredUserSlotInfo();
+      if (!user) {
         setError('No player name set');
         return;
       }
 
-      const myId = PLAYER_IDS[playerName];
-      const isPlayer1 = currentGame.player1_id === myId || currentGame.player1_name === playerName;
-      const isPlayer2 = currentGame.player2_id === myId || currentGame.player2_name === playerName;
+      const isPlayer1 = isCurrentUserSlot(currentGame.player1_id, currentGame.player1_name);
+      const isPlayer2 = isCurrentUserSlot(currentGame.player2_id, currentGame.player2_name);
 
       if (!isPlayer1 && !isPlayer2) {
         setError('You are not a player in this game');

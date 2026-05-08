@@ -10,7 +10,8 @@ import { ResetStatsDialog } from '@/components/ResetStatsDialog';
 import { useMatchHistory } from '@/hooks/useMatchHistory';
 import { useFavorites } from '@/hooks/useFavorites';
 import { Inbox } from '@/components/inbox';
-import { type PlayerName, PLAYER_IDS } from '@/lib/players';
+import { clearStoredUser, getStoredUser, setStoredUser, type BoundAppUser, type StoredUser } from '@/lib/players';
+import { findOrCreateBoundGame } from '@/lib/matchmaking';
 import {
   DndContext,
   closestCenter,
@@ -383,46 +384,246 @@ function UnoIcon() {
 }
 
 
-function PlayerSelector({ onSelect }: { onSelect: (name: PlayerName) => void }) {
+function PlayerSelector({ onSelect }: { onSelect: (user: StoredUser) => void }) {
+  const [users, setUsers] = useState<BoundAppUser[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [name, setName] = useState('');
+  const [createdUser, setCreatedUser] = useState<BoundAppUser | null>(null);
+  const [bindCode, setBindCode] = useState('');
+  const [generatedCode, setGeneratedCode] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  const loadUsers = useCallback(async () => {
+    const { supabase } = await import('@/lib/supabase');
+    const { data, error: fetchError } = await supabase
+      .from('app_users')
+      .select('id,name,bound_user_id,created_at,updated_at,bound_user:bound_user_id(id,name,bound_user_id)')
+      .order('created_at', { ascending: true });
+
+    if (!fetchError && data) {
+      setUsers(data as unknown as BoundAppUser[]);
+    }
+    setLoading(false);
+  }, []);
+
+  useEffect(() => {
+    loadUsers();
+  }, [loadUsers]);
+
+  const selectUser = useCallback((user: BoundAppUser) => {
+    if (!user.bound_user_id || !user.bound_user) return;
+    const stored: StoredUser = {
+      id: user.id,
+      name: user.name,
+      boundUserId: user.bound_user_id,
+      boundUserName: user.bound_user.name,
+    };
+    setStoredUser(stored);
+    onSelect(stored);
+  }, [onSelect]);
+
+  const createUser = useCallback(async () => {
+    const trimmed = name.trim();
+    if (!trimmed) {
+      setError('Enter a name first.');
+      return;
+    }
+
+    setBusy(true);
+    setError(null);
+    const { supabase } = await import('@/lib/supabase');
+    const { data, error: createError } = await supabase.rpc('create_app_user', { _name: trimmed });
+    setBusy(false);
+
+    if (createError || !data) {
+      setError(createError?.message ?? 'Could not create user.');
+      return;
+    }
+
+    const user = data as BoundAppUser;
+    setCreatedUser({ ...user, bound_user: null });
+    setName('');
+    await loadUsers();
+  }, [loadUsers, name]);
+
+  const generateCode = useCallback(async () => {
+    if (!createdUser) return;
+    setBusy(true);
+    setError(null);
+    const { supabase } = await import('@/lib/supabase');
+    const { data, error: codeError } = await supabase.rpc('generate_binding_code', { _creator_user_id: createdUser.id });
+    setBusy(false);
+
+    if (codeError || !data) {
+      setError(codeError?.message ?? 'Could not generate a binding code.');
+      return;
+    }
+    setGeneratedCode(String(data));
+  }, [createdUser]);
+
+  const redeemCode = useCallback(async () => {
+    if (!createdUser) return;
+    const code = bindCode.trim();
+    if (!code) {
+      setError('Enter a binding code first.');
+      return;
+    }
+
+    setBusy(true);
+    setError(null);
+    const { supabase } = await import('@/lib/supabase');
+    const { data, error: redeemError } = await supabase.rpc('redeem_binding_code', {
+      _code: code,
+      _user_id: createdUser.id,
+    });
+    setBusy(false);
+
+    if (redeemError || !data?.[0]) {
+      setError(redeemError?.message ?? 'Could not bind with that code.');
+      return;
+    }
+
+    const row = data[0] as { user_id: string; user_name: string; bound_user_id: string; bound_user_name: string };
+    const stored: StoredUser = {
+      id: row.user_id,
+      name: row.user_name,
+      boundUserId: row.bound_user_id,
+      boundUserName: row.bound_user_name,
+    };
+    setStoredUser(stored);
+    await loadUsers();
+    onSelect(stored);
+  }, [bindCode, createdUser, loadUsers, onSelect]);
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -20 }}
       transition={{ duration: 0.35, ease: [0.21, 0.47, 0.32, 0.98] }}
-      className="flex flex-col items-center gap-8 text-center"
+      className="max-w-4xl mx-auto w-full space-y-8"
     >
-      <p className="text-lg sm:text-xl text-text-secondary leading-relaxed">
-        Who are you?
-      </p>
+      <div className="text-center space-y-2">
+        <p className="text-lg sm:text-xl text-text-secondary leading-relaxed">Choose a user or create a new match.</p>
+        <p className="text-sm text-text-secondary/60">No passwords here, just names and pair codes.</p>
+      </div>
 
-      <div className="flex flex-col sm:flex-row items-center gap-4">
-        <button
-          onClick={() => onSelect('Ricky')}
-          className="px-8 py-4 text-lg font-semibold rounded-2xl bg-player1 text-white hover:opacity-90 transition-all shadow-lg hover:shadow-xl cursor-pointer min-w-[160px]"
-        >
-          I&apos;m Ricky
-        </button>
-        <span className="text-text-secondary font-medium">or</span>
-        <button
-          onClick={() => onSelect('Lilian')}
-          className="px-8 py-4 text-lg font-semibold rounded-2xl bg-player2 text-text-primary hover:opacity-90 transition-all shadow-lg hover:shadow-xl cursor-pointer min-w-[160px]"
-        >
-          I&apos;m Lilian
-        </button>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {loading ? (
+          <div className="rounded-3xl border border-border bg-surface p-6 text-text-secondary">Loading users...</div>
+        ) : users.length === 0 ? (
+          <div className="rounded-3xl border border-border bg-surface p-6 text-text-secondary">No users yet.</div>
+        ) : (
+          users.map((user) => (
+            <button
+              key={user.id}
+              onClick={() => selectUser(user)}
+              disabled={!user.bound_user_id || !user.bound_user}
+              className="rounded-3xl border border-border bg-surface p-6 text-left transition-all hover:-translate-y-0.5 hover:shadow-lg disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer"
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <h2 className="text-xl font-bold text-text-primary">{user.name}</h2>
+                  <p className="text-sm text-text-secondary mt-1">
+                    {user.bound_user ? 'Bound with ' + user.bound_user.name : 'Not bound yet'}
+                  </p>
+                </div>
+                <span className={
+                  'text-xs rounded-full px-3 py-1 ' +
+                  (user.bound_user ? 'bg-green-500/10 text-green-600' : 'bg-amber-500/10 text-amber-600')
+                }>
+                  {user.bound_user ? 'ready' : 'needs code'}
+                </span>
+              </div>
+            </button>
+          ))
+        )}
+      </div>
+
+      <div className="rounded-3xl border border-border bg-surface p-6 sm:p-8 space-y-5">
+        <div>
+          <h2 className="text-xl font-bold text-text-primary">Create a user</h2>
+          <p className="text-sm text-text-secondary mt-1">Names are unique. After creating one, bind with an existing code or generate a code for someone else.</p>
+        </div>
+
+        {!createdUser ? (
+          <div className="flex flex-col sm:flex-row gap-3">
+            <input
+              value={name}
+              onChange={(event) => setName(event.target.value)}
+              placeholder="User name"
+              className="flex-1 rounded-2xl border border-border bg-background px-4 py-3 text-text-primary placeholder:text-text-secondary/50 focus:outline-none focus:ring-2 focus:ring-player1/30"
+            />
+            <button
+              onClick={createUser}
+              disabled={busy}
+              className="px-5 py-3 rounded-2xl bg-player1 text-white font-semibold hover:opacity-90 disabled:opacity-50 cursor-pointer"
+            >
+              {busy ? 'Creating...' : 'Create'}
+            </button>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            <div className="rounded-2xl bg-background border border-border p-4">
+              <p className="text-sm text-text-secondary">Created user</p>
+              <p className="text-lg font-semibold text-text-primary">{createdUser.name}</p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-3 rounded-2xl border border-border p-4">
+                <h3 className="font-semibold text-text-primary">Bind with a code</h3>
+                <input
+                  value={bindCode}
+                  onChange={(event) => setBindCode(event.target.value.toUpperCase())}
+                  placeholder="ABC123"
+                  className="w-full rounded-xl border border-border bg-background px-4 py-3 text-text-primary placeholder:text-text-secondary/50 focus:outline-none focus:ring-2 focus:ring-player1/30"
+                />
+                <button
+                  onClick={redeemCode}
+                  disabled={busy}
+                  className="w-full px-4 py-3 rounded-xl bg-player1 text-white font-semibold hover:opacity-90 disabled:opacity-50 cursor-pointer"
+                >
+                  Bind user
+                </button>
+              </div>
+
+              <div className="space-y-3 rounded-2xl border border-border p-4">
+                <h3 className="font-semibold text-text-primary">Start a new match</h3>
+                <p className="text-sm text-text-secondary">Generate a one-time code for the other user to enter.</p>
+                <button
+                  onClick={generateCode}
+                  disabled={busy || !!generatedCode}
+                  className="w-full px-4 py-3 rounded-xl border border-border font-semibold text-text-primary hover:bg-background disabled:opacity-50 cursor-pointer"
+                >
+                  {generatedCode ? 'Code generated' : 'Generate code'}
+                </button>
+                {generatedCode && (
+                  <div className="rounded-xl bg-background border border-border p-4 text-center">
+                    <p className="text-xs uppercase tracking-widest text-text-secondary">Binding code</p>
+                    <p className="text-3xl font-black tracking-[0.25em] text-text-primary mt-1">{generatedCode}</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {error && <p className="text-sm text-red-500">{error}</p>}
       </div>
     </motion.div>
   );
 }
 
-function GameSelection({ playerName, onChangePlayer }: { playerName: PlayerName; onChangePlayer: () => void }) {
+function GameSelection({ currentUser, onChangePlayer }: { currentUser: StoredUser; onChangePlayer: () => void }) {
+  const playerName = currentUser.name;
   const router = useRouter();
   const [connecting, setConnecting] = useState<string | null>(null);
   const [showWordleMode, setShowWordleMode] = useState(false);
   const [showResetDialog, setShowResetDialog] = useState(false);
-  const { results, stats, loading, clearAll } = useMatchHistory();
-  const { order, loading: orderLoading, saveOrder, resetOrder } = useGameOrder(playerName);
-  const { favorites, toggleFavorite, isFavorite } = useFavorites(playerName);
+  const { results, stats, loading, clearAll } = useMatchHistory(currentUser.id, currentUser.boundUserId);
+  const { order, loading: orderLoading, saveOrder, resetOrder } = useGameOrder(playerName, currentUser.id);
+  const { favorites, toggleFavorite, isFavorite } = useFavorites(playerName, currentUser.id);
   const [editMode, setEditMode] = useState(false);
   const [editOrder, setEditOrder] = useState<string[]>(order);
   const [searchQuery, setSearchQuery] = useState('');
@@ -514,241 +715,6 @@ function GameSelection({ playerName, onChangePlayer }: { playerName: PlayerName;
     setShowResetDialog(false);
   };
 
-  const handlePlayConnectFour = useCallback(async () => {
-    setConnecting('connect-four');
-
-    const [{ supabase }, { createEmptyBoard }] = await Promise.all([
-      import('@/lib/supabase'),
-      import('@/lib/game-logic'),
-    ]);
-
-    const myId = PLAYER_IDS[playerName];
-
-    async function findGames() {
-      const { data } = await supabase
-        .from('games')
-        .select('*')
-        .eq('game_type', 'connect-four')
-        .is('winner', null)
-        .order('created_at', { ascending: false })
-        .limit(10);
-      return data;
-    }
-
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    function findMyGame(games: any[] | null) {
-      if (!games) return { activeGame: null, joinableGame: null };
-
-      const activeGame = games.find((g) => {
-        return g.player1_name === playerName || g.player2_name === playerName;
-      }) || null;
-
-      const joinableGame = games.find((g) => {
-        return g.player2_name === null && g.player1_name !== null && g.player1_name !== playerName;
-      }) || null;
-
-      return { activeGame, joinableGame };
-    }
-
-    async function joinGame(gameId: string) {
-      const { error: joinError } = await supabase
-        .from('games')
-        .update({
-          player2_id: myId,
-          player2_name: playerName,
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', gameId)
-        .select()
-        .single();
-
-      if (joinError) {
-        console.error('Error joining game:', joinError);
-        setConnecting(null);
-        return false;
-      }
-      return true;
-    }
-
-    // First attempt
-    const existingGames = await findGames();
-    let { activeGame, joinableGame } = findMyGame(existingGames);
-
-    if (activeGame) {
-      router.push(`/connect-four/${activeGame.id}`);
-      return;
-    }
-
-    if (joinableGame) {
-      if (await joinGame(joinableGame.id)) {
-        router.push(`/connect-four/${joinableGame.id}`);
-      }
-      return;
-    }
-
-    // Wait and retry to avoid race condition
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-
-    const retryGames = await findGames();
-    ({ activeGame, joinableGame } = findMyGame(retryGames));
-
-    if (activeGame) {
-      router.push(`/connect-four/${activeGame.id}`);
-      return;
-    }
-
-    if (joinableGame) {
-      if (await joinGame(joinableGame.id)) {
-        router.push(`/connect-four/${joinableGame.id}`);
-      }
-      return;
-    }
-
-    // No game found -- create one. Creator is always player1 and goes first.
-    const insertData = {
-      game_type: 'connect-four',
-      board: createEmptyBoard(),
-      current_turn: 1 as const,
-      winner: null,
-      player1_id: myId,
-      player1_name: playerName,
-      player2_id: null,
-      player2_name: null,
-    };
-
-    const { data, error } = await supabase
-      .from('games')
-      .insert(insertData)
-      .select('id')
-      .single();
-
-    if (error || !data) {
-      console.error('Error creating game:', error);
-      setConnecting(null);
-      return;
-    }
-
-    router.push(`/connect-four/${data.id}`);
-  }, [playerName, router]);
-
-  const handlePlayWordle = useCallback(async () => {
-    setConnecting('wordle');
-
-    const [{ supabase }, { generateAnswerIndex }] = await Promise.all([
-      import('@/lib/supabase'),
-      import('@/lib/wordle-logic'),
-    ]);
-
-    const myId = PLAYER_IDS[playerName];
-
-    async function findGames() {
-      const { data } = await supabase
-        .from('wordle_games')
-        .select('*')
-        .eq('game_type', 'wordle')
-        .neq('answer_index', -1)
-        .eq('status', 'playing')
-        .order('created_at', { ascending: false })
-        .limit(10);
-      return data;
-    }
-
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    function findMyGame(games: any[] | null) {
-      if (!games) return { activeGame: null, joinableGame: null };
-
-      const activeGame = games.find((g) => {
-        return g.player1_name === playerName || g.player2_name === playerName;
-      }) || null;
-
-      const joinableGame = games.find((g) => {
-        return g.player2_name === null && g.player1_name !== null && g.player1_name !== playerName;
-      }) || null;
-
-      return { activeGame, joinableGame };
-    }
-
-    async function joinGame(gameId: string) {
-      const { error: joinError } = await supabase
-        .from('wordle_games')
-        .update({
-          player2_id: myId,
-          player2_name: playerName,
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', gameId)
-        .select()
-        .single();
-
-      if (joinError) {
-        console.error('Error joining game:', joinError);
-        setConnecting(null);
-        return false;
-      }
-      return true;
-    }
-
-    const existingGames = await findGames();
-    let { activeGame, joinableGame } = findMyGame(existingGames);
-
-    if (activeGame) {
-      router.push(`/wordle/${activeGame.id}`);
-      return;
-    }
-
-    if (joinableGame) {
-      if (await joinGame(joinableGame.id)) {
-        router.push(`/wordle/${joinableGame.id}`);
-      }
-      return;
-    }
-
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-
-    const retryGames = await findGames();
-    ({ activeGame, joinableGame } = findMyGame(retryGames));
-
-    if (activeGame) {
-      router.push(`/wordle/${activeGame.id}`);
-      return;
-    }
-
-    if (joinableGame) {
-      if (await joinGame(joinableGame.id)) {
-        router.push(`/wordle/${joinableGame.id}`);
-      }
-      return;
-    }
-
-    // Creator is always player1 and goes first
-    const insertData = {
-      game_type: 'wordle',
-      answer_index: generateAnswerIndex(),
-      guesses: [],
-      guess_count: 0,
-      status: 'playing',
-      winner: null,
-      player1_id: myId,
-      player1_name: playerName,
-      player2_id: null,
-      player2_name: null,
-    };
-
-    const { data, error } = await supabase
-      .from('wordle_games')
-      .insert(insertData)
-      .select('id')
-      .single();
-
-    if (error || !data) {
-      console.error('Error creating game:', error);
-      setConnecting(null);
-      return;
-    }
-
-    router.push(`/wordle/${data.id}`);
-  }, [playerName, router]);
-
   const handlePlayDailyWordle = useCallback(async () => {
     setConnecting('wordle');
 
@@ -760,310 +726,39 @@ function GameSelection({ playerName, onChangePlayer }: { playerName: PlayerName;
     }
     const { word: dailyWord } = await res.json();
 
-    const { supabase } = await import('@/lib/supabase');
+    const gameId = await findOrCreateBoundGame({
+      table: 'wordle_games',
+      gameType: 'wordle',
+      currentUser,
+      statusFilter: 'wordle',
+      filterGame: (game) => game.answer_index === -1 && game.answer_word === dailyWord,
+      createData: () => ({
+        game_type: 'wordle',
+        answer_index: -1,
+        answer_word: dailyWord,
+        guesses: [],
+        guess_count: 0,
+        status: 'playing',
+        winner: null,
+      }),
+    });
 
-    const isRicky = playerName === 'Ricky';
-    const myId = PLAYER_IDS[playerName];
-
-    // Matchmaking: look for an existing daily wordle game to join or resume
-    async function findDailyGames() {
-      const { data } = await supabase
-        .from('wordle_games')
-        .select('*')
-        .eq('game_type', 'wordle')
-        .eq('answer_index', -1)
-        .eq('answer_word', dailyWord)
-        .eq('status', 'playing')
-        .order('created_at', { ascending: false })
-        .limit(10);
-      return data;
-    }
-
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    function findMyDailyGame(games: any[] | null) {
-      if (!games) return { activeGame: null, joinableGame: null };
-
-      // Check both player slots — the current player could be in either one
-      const activeGame = games.find((g) => {
-        return g.player1_name === playerName || g.player2_name === playerName;
-      }) || null;
-
-      // A joinable game has the OTHER player in one slot and an empty slot for us
-      const joinableGame = games.find((g) => {
-        const otherPlayer = isRicky ? 'Lilian' : 'Ricky';
-        const hasOtherPlayer = g.player1_name === otherPlayer || g.player2_name === otherPlayer;
-        const hasEmptySlot = g.player1_name === null || g.player2_name === null;
-        const notAlreadyIn = g.player1_name !== playerName && g.player2_name !== playerName;
-        return hasOtherPlayer && hasEmptySlot && notAlreadyIn;
-      }) || null;
-
-      return { activeGame, joinableGame };
-    }
-
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    async function joinDailyGame(game: any) {
-      // Fill whichever player slot is empty
-      const isPlayer1SlotEmpty = game.player1_name === null;
-      const updateField = isPlayer1SlotEmpty
-        ? { player1_id: myId, player1_name: playerName }
-        : { player2_id: myId, player2_name: playerName };
-
-      const { error: joinError } = await supabase
-        .from('wordle_games')
-        .update({
-          ...updateField,
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', game.id)
-        .select()
-        .single();
-
-      if (joinError) {
-        console.error('Error joining daily game:', joinError);
-        setConnecting(null);
-        return false;
-      }
-      return true;
-    }
-
-    const existingGames = await findDailyGames();
-    let { activeGame, joinableGame } = findMyDailyGame(existingGames);
-
-    if (activeGame) {
-      router.push(`/wordle/${activeGame.id}`);
-      return;
-    }
-
-    if (joinableGame) {
-      if (await joinDailyGame(joinableGame)) {
-        router.push(`/wordle/${joinableGame.id}`);
-      }
-      return;
-    }
-
-    // Brief wait and retry in case the other player just created a game
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-
-    const retryGames = await findDailyGames();
-    ({ activeGame, joinableGame } = findMyDailyGame(retryGames));
-
-    if (activeGame) {
-      router.push(`/wordle/${activeGame.id}`);
-      return;
-    }
-
-    if (joinableGame) {
-      if (await joinDailyGame(joinableGame)) {
-        router.push(`/wordle/${joinableGame.id}`);
-      }
-      return;
-    }
-
-    // No existing game found — create a new one (creator is always player1)
-    const insertData = {
-      game_type: 'wordle',
-      answer_index: -1,
-      answer_word: dailyWord,
-      guesses: [],
-      guess_count: 0,
-      status: 'playing',
-      winner: null,
-      player1_id: myId,
-      player1_name: playerName,
-      player2_id: null,
-      player2_name: null,
-    };
-
-    const { data, error } = await supabase
-      .from('wordle_games')
-      .insert(insertData)
-      .select('id')
-      .single();
-
-    if (error || !data) {
-      console.error('Error creating daily wordle game:', error);
-      setConnecting(null);
-      return;
-    }
-
-    router.push(`/wordle/${data.id}`);
-  }, [playerName, router]);
-
-  const handlePlayBattleship = useCallback(async () => {
-    setConnecting('battleship');
-
-    const [{ supabase }, { generateRandomPlacement }] = await Promise.all([
-      import('@/lib/supabase'),
-      import('@/lib/battleship-logic'),
-    ]);
-
-    const myId = PLAYER_IDS[playerName];
-
-    async function findGames() {
-      const { data } = await supabase
-        .from('games')
-        .select('*')
-        .eq('game_type', 'battleship')
-        .is('winner', null)
-        .order('created_at', { ascending: false })
-        .limit(10);
-      return data;
-    }
-
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    function findMyGame(games: any[] | null) {
-      if (!games) return { activeGame: null, joinableGame: null };
-
-      const activeGame = games.find((g) => {
-        return g.player1_name === playerName || g.player2_name === playerName;
-      }) || null;
-
-      const joinableGame = games.find((g) => {
-        // Join any game created by the other player where player2 slot is empty
-        return g.player2_name === null && g.player1_name !== null && g.player1_name !== playerName;
-      }) || null;
-
-      return { activeGame, joinableGame };
-    }
-
-    async function joinGame(gameId: string) {
-      const { error: joinError } = await supabase
-        .from('games')
-        .update({
-          player2_id: myId,
-          player2_name: playerName,
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', gameId)
-        .select()
-        .single();
-
-      if (joinError) {
-        console.error('Error joining game:', joinError);
-        setConnecting(null);
-        return false;
-      }
-      return true;
-    }
-
-    const existingGames = await findGames();
-    let { activeGame, joinableGame } = findMyGame(existingGames);
-
-    if (activeGame) {
-      router.push(`/battleship/${activeGame.id}`);
-      return;
-    }
-
-    if (joinableGame) {
-      if (await joinGame(joinableGame.id)) {
-        router.push(`/battleship/${joinableGame.id}`);
-      }
-      return;
-    }
-
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-
-    const retryGames = await findGames();
-    ({ activeGame, joinableGame } = findMyGame(retryGames));
-
-    if (activeGame) {
-      router.push(`/battleship/${activeGame.id}`);
-      return;
-    }
-
-    if (joinableGame) {
-      if (await joinGame(joinableGame.id)) {
-        router.push(`/battleship/${joinableGame.id}`);
-      }
-      return;
-    }
-
-    const board = {
-      player1Ships: generateRandomPlacement(),
-      player2Ships: generateRandomPlacement(),
-      player1Attacks: [],
-      player2Attacks: [],
-      phase: 'playing',
-    };
-
-    // Creator is always player1 and goes first
-    const insertData = {
-      game_type: 'battleship',
-      board,
-      current_turn: 1 as const,
-      winner: null,
-      player1_id: myId,
-      player1_name: playerName,
-      player2_id: null,
-      player2_name: null,
-    };
-
-    const { data, error } = await supabase
-      .from('games')
-      .insert(insertData)
-      .select('id')
-      .single();
-
-    if (error || !data) {
-      console.error('Error creating game:', error);
-      setConnecting(null);
-      return;
-    }
-
-    router.push(`/battleship/${data.id}`);
-  }, [playerName, router]);
-
-  const handlePlayMonopolyGame = useCallback(async () => {
-    setConnecting('monopoly');
-    const [{ supabase }, { createInitialBoard }] = await Promise.all([
-      import('@/lib/supabase'),
-      import('@/lib/monopoly/logic'),
-    ]);
-    const myId = PLAYER_IDS[playerName];
-    async function findGames() {
-      const { data } = await supabase.from('games').select('*').eq('game_type', 'monopoly').is('winner', null).order('created_at', { ascending: false }).limit(10);
-      return data;
-    }
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    function findMyGame(games: any[] | null) {
-      if (!games) return { activeGame: null, joinableGame: null };
-      const activeGame = games.find((g) => g.player1_name === playerName || g.player2_name === playerName) || null;
-      const joinableGame = games.find((g) => g.player2_name === null && g.player1_name !== null && g.player1_name !== playerName) || null;
-      return { activeGame, joinableGame };
-    }
-    async function joinGame(gameId: string) {
-      const { error: joinError } = await supabase.from('games').update({ player2_id: myId, player2_name: playerName, updated_at: new Date().toISOString() }).eq('id', gameId).select().single();
-      if (joinError) { setConnecting(null); return false; }
-      return true;
-    }
-    const existingGames = await findGames();
-    let { activeGame, joinableGame } = findMyGame(existingGames);
-    if (activeGame) { router.push(`/monopoly/${activeGame.id}`); return; }
-    if (joinableGame) { if (await joinGame(joinableGame.id)) router.push(`/monopoly/${joinableGame.id}`); return; }
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-    const retryGames = await findGames();
-    ({ activeGame, joinableGame } = findMyGame(retryGames));
-    if (activeGame) { router.push(`/monopoly/${activeGame.id}`); return; }
-    if (joinableGame) { if (await joinGame(joinableGame.id)) router.push(`/monopoly/${joinableGame.id}`); return; }
-    // Creator is always player1 and goes first
-    const insertData = { game_type: 'monopoly', board: createInitialBoard(1), current_turn: 1 as const, winner: null, player1_id: myId, player1_name: playerName, player2_id: null, player2_name: null };
-    const { data, error } = await supabase.from('games').insert(insertData).select('id').single();
-    if (error || !data) { setConnecting(null); return; }
-    router.push(`/monopoly/${data.id}`);
-  }, [playerName, router]);
+    if (gameId) router.push('/wordle/' + gameId);
+    else setConnecting(null);
+  }, [currentUser, router]);
 
   const gameProps: Record<string, { icon: React.ReactNode; onClick: () => void; loading?: boolean }> = {
-    'connect-four': { icon: <ConnectFourIcon />, onClick: handlePlayConnectFour, loading: connecting === 'connect-four' },
+    'connect-four': { icon: <ConnectFourIcon />, onClick: () => router.push('/connect-four') },
     'wordle': { icon: <WordleIcon />, onClick: () => setShowWordleMode(true), loading: connecting === 'wordle' },
     'tic-tac-toe': { icon: <TicTacToeIcon />, onClick: () => router.push('/tic-tac-toe') },
     'checkers': { icon: <CheckersIcon />, onClick: () => router.push('/checkers') },
     'whiteboard': { icon: <WhiteboardIcon />, onClick: () => router.push('/whiteboard') },
-    'battleship': { icon: <BattleshipIcon />, onClick: handlePlayBattleship, loading: connecting === 'battleship' },
+    'battleship': { icon: <BattleshipIcon />, onClick: () => router.push('/battleship') },
     'mini-golf': { icon: <MiniGolfIcon />, onClick: () => router.push('/mini-golf') },
     'jenga': { icon: <JengaIcon />, onClick: () => router.push('/jenga') },
     'snakes-and-ladders': { icon: <SnakesAndLaddersIcon />, onClick: () => router.push('/snakes-and-ladders') },
     'word-search': { icon: <WordSearchIcon />, onClick: () => router.push('/word-search') },
-    'monopoly': { icon: <MonopolyIcon />, onClick: handlePlayMonopolyGame, loading: connecting === 'monopoly' },
+    'monopoly': { icon: <MonopolyIcon />, onClick: () => router.push('/monopoly') },
     'memory': { icon: <MemoryIcon />, onClick: () => router.push('/memory') },
     'math-trivia': { icon: <MathTriviaIcon />, onClick: () => router.push('/math-trivia') },
     'pool': { icon: <PoolIcon />, onClick: () => router.push('/pool') },
@@ -1280,7 +975,7 @@ function GameSelection({ playerName, onChangePlayer }: { playerName: PlayerName;
                             <p className="text-sm font-medium text-text-secondary">Choose mode</p>
                             <div className="flex gap-3 w-full">
                               <button
-                                onClick={() => { setShowWordleMode(false); handlePlayWordle(); }}
+                                onClick={() => { setShowWordleMode(false); router.push('/wordle'); }}
                                 disabled={connecting === 'wordle'}
                                 className="flex-1 px-4 py-2.5 text-sm font-medium rounded-xl border border-border bg-surface text-text-primary hover:bg-surface-hover shadow-sm hover:shadow transition-all cursor-pointer disabled:opacity-50"
                               >
@@ -1357,26 +1052,19 @@ function GameSelection({ playerName, onChangePlayer }: { playerName: PlayerName;
 }
 
 export default function Home() {
-  const [selectedPlayer, setSelectedPlayer] = useState<PlayerName | null>(null);
+  const [selectedUser, setSelectedUser] = useState<StoredUser | null>(null);
 
-  // On mount, check if a player was previously selected
   useEffect(() => {
-    const stored = localStorage.getItem('player-name');
-    if (stored === 'Ricky' || stored === 'Lilian') {
-      setSelectedPlayer(stored);
-    }
+    setSelectedUser(getStoredUser());
   }, []);
 
-  const handleSelectPlayer = (name: PlayerName) => {
-    setSelectedPlayer(name);
-    sessionStorage.setItem('player-name', name);
-    localStorage.setItem('player-name', name);
+  const handleSelectUser = (user: StoredUser) => {
+    setSelectedUser(user);
   };
 
   const handleChangePlayer = () => {
-    setSelectedPlayer(null);
-    sessionStorage.removeItem('player-name');
-    localStorage.removeItem('player-name');
+    setSelectedUser(null);
+    clearStoredUser();
   };
 
   return (
@@ -1417,12 +1105,12 @@ export default function Home() {
       {/* Step 1: Player selection / Step 2: Game selection */}
       <main className="flex-1 px-6 pb-24 sm:pb-32">
         <AnimatePresence mode="wait">
-          {selectedPlayer === null ? (
-            <PlayerSelector key="player-selector" onSelect={handleSelectPlayer} />
+          {selectedUser === null ? (
+            <PlayerSelector key="player-selector" onSelect={handleSelectUser} />
           ) : (
             <GameSelection
               key="game-selection"
-              playerName={selectedPlayer}
+              currentUser={selectedUser}
               onChangePlayer={handleChangePlayer}
             />
           )}
@@ -1445,3 +1133,4 @@ export default function Home() {
     </div>
   );
 }
+
