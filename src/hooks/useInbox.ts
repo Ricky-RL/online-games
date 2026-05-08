@@ -112,6 +112,8 @@ export function useInbox(): UseInboxReturn {
   const fetchInbox = useCallback(async () => {
     const currentUser = getStoredUser();
     if (!currentUser?.boundUserId) return null;
+    const sevenDaysAgoMs = Date.now() - 7 * 24 * 60 * 60 * 1000;
+    const sevenDaysAgoIso = new Date(sevenDaysAgoMs).toISOString();
     const { supabase } = await import('@/lib/supabase');
     const pairIdFilter = [
       `player1_id.eq.${currentUser.id}`,
@@ -138,6 +140,7 @@ export function useInbox(): UseInboxReturn {
         .from('whiteboard_activity')
         .select('*')
         .eq('actor_user_id', currentUser.boundUserId)
+        .gte('created_at', sevenDaysAgoIso)
         .order('created_at', { ascending: false }),
       supabase
         .from('inbox_read_state')
@@ -166,6 +169,7 @@ export function useInbox(): UseInboxReturn {
       .filter((game) => !dismissedGameIds.has(game.id) && isPairGame(game, ...pairArgs))
       .map((game) => enrichWordle(game, ...pairArgs));
     const enrichedActivity: WhiteboardActivityItem[] = (activityResult.data ?? [])
+      .filter((item) => new Date(item.created_at).getTime() >= sevenDaysAgoMs)
       .filter((item) => !dismissedWhiteboardIds.has(item.id))
       .filter((item) => item.actor_user_id === currentUser.boundUserId || item.actor_name === currentUser.boundUserName)
       .map((item) => ({
