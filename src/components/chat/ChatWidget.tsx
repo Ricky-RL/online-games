@@ -59,6 +59,8 @@ export function ChatWidget() {
   const scrollRef = useRef<HTMLDivElement>(null);
   const holdTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const dragStartRef = useRef<{ pointerX: number; pointerY: number; startX: number; startY: number } | null>(null);
+  const activeDragRef = useRef(false);
+  const latestPointerRef = useRef<{ x: number; y: number } | null>(null);
 
   useEffect(() => {
     if (!isOpen || unreadCount === 0) return;
@@ -113,6 +115,7 @@ export function ChatWidget() {
 
   function handleLauncherPointerDown(event: React.PointerEvent<HTMLButtonElement>) {
     event.currentTarget.setPointerCapture(event.pointerId);
+    latestPointerRef.current = { x: event.clientX, y: event.clientY };
     dragStartRef.current = {
       pointerX: event.clientX,
       pointerY: event.clientY,
@@ -121,12 +124,28 @@ export function ChatWidget() {
     };
     clearHoldTimer();
     holdTimerRef.current = setTimeout(() => {
+      activeDragRef.current = true;
       setIsDragging(true);
+      if (!dragStartRef.current || !latestPointerRef.current) return;
+      const dx = latestPointerRef.current.x - dragStartRef.current.pointerX;
+      const dy = latestPointerRef.current.y - dragStartRef.current.pointerY;
+      setPosition(
+        clampPositionForViewport(
+          {
+            x: dragStartRef.current.startX + dx,
+            y: dragStartRef.current.startY + dy,
+          },
+          window.innerWidth,
+          window.innerHeight
+        )
+      );
     }, HOLD_TO_DRAG_MS);
   }
 
   function handleLauncherPointerMove(event: React.PointerEvent<HTMLButtonElement>) {
-    if (!isDragging || !dragStartRef.current) return;
+    latestPointerRef.current = { x: event.clientX, y: event.clientY };
+    if (!activeDragRef.current || !dragStartRef.current) return;
+    event.preventDefault();
     const dx = event.clientX - dragStartRef.current.pointerX;
     const dy = event.clientY - dragStartRef.current.pointerY;
     setPosition(
@@ -147,9 +166,11 @@ export function ChatWidget() {
       event.currentTarget.releasePointerCapture(event.pointerId);
     }
 
-    const wasDragging = isDragging;
+    const wasDragging = activeDragRef.current;
+    activeDragRef.current = false;
     setIsDragging(false);
     dragStartRef.current = null;
+    latestPointerRef.current = null;
     if (wasDragging) return;
 
     setIsOpen(true);
