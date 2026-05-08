@@ -88,7 +88,7 @@ export default function UnoGamePage({ params }: { params: Promise<{ gameId: stri
   }, [game, isMyTurn, opponentName]);
 
   const canPlaySelected = !!selectedCard && playableCardIds.has(selectedCard.id);
-  const needsWildColor = selectedCard?.color === 'wild';
+  const needsWildColor = selectedCard?.rank === 'wild';
   const canPlay = isMyTurn && canPlaySelected && (!needsWildColor || !!selectedWildColor);
   const canDraw = isMyTurn && !!game && (!game.board.hasDrawnThisTurn || !game.board.drawnCardId);
   const canPass =
@@ -102,7 +102,7 @@ export default function UnoGamePage({ params }: { params: Promise<{ gameId: stri
   const handlePlay = useCallback(async () => {
     if (!selectedCard) return;
     play('drop');
-    await playCard(selectedCard.id, selectedCard.color === 'wild' ? selectedWildColor : undefined);
+    await playCard(selectedCard.id, selectedCard.rank === 'wild' ? selectedWildColor : undefined);
     setSelectedCardId(null);
   }, [play, playCard, selectedCard, selectedWildColor]);
 
@@ -230,13 +230,19 @@ export default function UnoGamePage({ params }: { params: Promise<{ gameId: stri
           {selectedLabel}
         </div>
 
-        {selectedCard?.color === 'wild' && (
-          <div className="flex items-center gap-2">
+        {selectedCard?.rank === 'wild' && (
+          <div className="rounded-2xl border border-border bg-surface px-4 py-3">
+            <p className="text-xs font-semibold uppercase tracking-wider text-text-secondary/70 mb-3 text-center">
+              Choose Color
+            </p>
+            <div className="flex items-center gap-3">
             {(['red', 'yellow', 'green', 'blue'] as UnoColor[]).map((color) => (
               <button
                 key={color}
                 onClick={() => setSelectedWildColor(color)}
-                className={`w-8 h-8 rounded-full border-2 ${selectedWildColor === color ? 'border-white' : 'border-black/20'} cursor-pointer`}
+                className={`relative w-10 h-10 rounded-full border-2 cursor-pointer transition-all ${
+                  selectedWildColor === color ? 'border-white scale-110 shadow-lg' : 'border-black/20'
+                }`}
                 style={{
                   backgroundColor:
                     color === 'red'
@@ -248,8 +254,16 @@ export default function UnoGamePage({ params }: { params: Promise<{ gameId: stri
                           : '#2563EB',
                 }}
                 aria-label={`Choose ${color}`}
-              />
+                title={`Choose ${color}`}
+              >
+                {selectedWildColor === color && (
+                  <span className="absolute inset-0 flex items-center justify-center text-white text-sm font-bold">
+                    ✓
+                  </span>
+                )}
+              </button>
             ))}
+          </div>
           </div>
         )}
 

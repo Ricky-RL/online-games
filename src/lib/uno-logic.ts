@@ -252,8 +252,8 @@ export function playUnoCard(
   if (!card) throw new Error('Card is not in your hand');
   if (!canPlayCard(board, player, card)) throw new Error('Card cannot be played right now');
 
-  if ((card.rank === 'wild' || card.rank === 'wild-draw4') && !chosenColor) {
-    throw new Error('Choose a color for wild cards');
+  if (card.rank === 'wild' && !chosenColor) {
+    throw new Error('Choose a color for color-change cards');
   }
 
   const remainingHand = board.hands[key].filter((candidate) => candidate.id !== cardId);
@@ -264,7 +264,12 @@ export function playUnoCard(
       [key]: remainingHand,
     },
     discardPile: [...board.discardPile, card],
-    activeColor: card.color === 'wild' ? (chosenColor as UnoColor) : (card.color as UnoColor),
+    activeColor:
+      card.rank === 'wild'
+        ? (chosenColor as UnoColor)
+        : card.rank === 'wild-draw4'
+          ? board.activeColor
+          : (card.color as UnoColor),
     hasDrawnThisTurn: false,
     drawnCardId: null,
     moveCount: board.moveCount + 1,
@@ -284,7 +289,7 @@ export function playUnoCard(
   } else if (card.rank === 'wild-draw4') {
     const drawResult = drawNCards(nextBoard, otherPlayer(player), 4, random);
     nextBoard = drawResult.board;
-    nextPlayer = player;
+    nextPlayer = otherPlayer(player);
     actionNote = 'Wild Draw 4 played';
   }
 
@@ -295,7 +300,7 @@ export function playUnoCard(
       player,
       type: 'play',
       cardId: card.id,
-      chosenColor: card.color === 'wild' ? chosenColor : undefined,
+      chosenColor: card.rank === 'wild' ? chosenColor : undefined,
       note: actionNote,
     },
   };

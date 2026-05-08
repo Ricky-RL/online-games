@@ -64,6 +64,19 @@ describe('uno logic', () => {
     expect(canPlayCard(board, 1, wildDraw4)).toBe(true);
   });
 
+  it('allows colored draw2 cards by color or matching rank', () => {
+    const board = baseBoard();
+    const redDraw2 = card('rd2', 'red', 'draw2');
+    const blueDraw2 = card('bd2', 'blue', 'draw2');
+    board.hands['1'] = [redDraw2, blueDraw2];
+
+    expect(canPlayCard(board, 1, redDraw2)).toBe(true);
+
+    board.discardPile = [card('top2', 'yellow', 'draw2')];
+    board.activeColor = 'yellow';
+    expect(canPlayCard(board, 1, blueDraw2)).toBe(true);
+  });
+
   it('only allows playing the drawn card after drawing', () => {
     const board = baseBoard();
     board.drawPile = [card('drawn', 'red', '8')];
@@ -152,10 +165,34 @@ describe('uno logic', () => {
     expect(result.board.activePlayer).toBe(1);
   });
 
-  it('requires chosen color for wild cards', () => {
+  it('requires chosen color only for color-change black card', () => {
     const board = baseBoard();
     const wild = card('w1', 'wild', 'wild');
-    board.hands['1'] = [wild];
+    const draw4 = card('w4', 'wild', 'wild-draw4');
+    board.hands['1'] = [wild, draw4];
+
     expect(() => playUnoCard(board, 1, 'w1')).toThrow('Choose a color');
+    expect(() => playUnoCard(board, 1, 'w4')).not.toThrow();
+  });
+
+  it('ends turn after playing black cards', () => {
+    const board = baseBoard();
+    board.hands['1'] = [card('w1', 'wild', 'wild'), card('w4', 'wild', 'wild-draw4')];
+    board.hands['2'] = [card('x1', 'green', '3')];
+    board.drawPile = [card('d1', 'blue', '1'), card('d2', 'yellow', '2'), card('d3', 'red', '3'), card('d4', 'green', '4')];
+
+    const wildResult = playUnoCard(board, 1, 'w1', 'blue');
+    expect(wildResult.board.activePlayer).toBe(2);
+    expect(wildResult.board.activeColor).toBe('blue');
+
+    const draw4Board: UnoBoardState = {
+      ...board,
+      hands: { ...board.hands, '1': [card('w4', 'wild', 'wild-draw4')] },
+      activeColor: 'red',
+    };
+    const draw4Result = playUnoCard(draw4Board, 1, 'w4');
+    expect(draw4Result.board.activePlayer).toBe(2);
+    expect(draw4Result.board.activeColor).toBe('red');
+    expect(draw4Result.board.hands['2']).toHaveLength(5);
   });
 });
