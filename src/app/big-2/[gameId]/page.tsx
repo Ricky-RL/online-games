@@ -43,13 +43,13 @@ const CLASSIC_RULEBOOK_HANDS = [
 ];
 
 const CHAOTIC_RULEBOOK_HANDS = [
-  { label: 'Singles / Pairs / Triples', detail: 'Rank in level order with level cards above A and hearts of level rank as wild.' },
+  { label: 'Singles / Pairs / Triples', detail: 'Rank in level order with level cards above A and the level heart card as wild.' },
   { label: 'Full house', detail: 'Triple plus pair. Ranked by triple in level order.' },
   { label: 'Straight', detail: 'Five-card run in natural rank order (A can be low or high). Level cards use natural position in runs.' },
   { label: 'Tube', detail: 'Three consecutive pairs (6 cards) in natural order.' },
   { label: 'Plate', detail: 'Two consecutive triples (6 cards) in natural order.' },
   { label: 'Bombs', detail: 'Four-to-ten of a kind or straight flush bombs. Any bomb beats ordinary plays; higher bomb beats lower bomb.' },
-  { label: 'Wild cards', detail: 'Hearts of the current level are wild and can represent any non-joker card in combinations.' },
+  { label: 'Wild cards', detail: 'The heart of the current level is wild and can represent any non-joker card in combinations.' },
 ];
 
 export default function Big2GamePage({ params }: { params: Promise<{ gameId: string }> }) {
@@ -308,7 +308,7 @@ export default function Big2GamePage({ params }: { params: Promise<{ gameId: str
                 </div>
 
                 <p className="rounded-xl border border-player1/15 bg-player1/5 px-3 py-2 text-xs leading-relaxed text-text-secondary">
-                  {ruleset === 'chaotic' ? 'Like-for-like is required unless a bomb is played. Hearts of the level rank are wild.' : 'A pair only fights another pair, a triple only fights another triple, and a five-card hand only fights another five-card hand.'}
+                  {ruleset === 'chaotic' ? 'Like-for-like is required unless a bomb is played. The level heart card is wild.' : 'A pair only fights another pair, a triple only fights another triple, and a five-card hand only fights another five-card hand.'}
                 </p>
               </section>
 

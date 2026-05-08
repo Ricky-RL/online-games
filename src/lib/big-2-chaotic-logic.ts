@@ -17,7 +17,6 @@ export interface ChaoticBigTwoCard {
   id: string;
   rank: ChaoticBigTwoRank;
   suit: ChaoticBigTwoSuit;
-  deck: 1 | 2;
 }
 
 export interface ChaoticBigTwoCombination {
@@ -79,9 +78,9 @@ const STRAIGHT_SEQUENCES: ChaoticBigTwoRank[][] = [
   ['J', 'Q', 'K', 'A', '2'],
 ];
 const PLAYER_COUNT = 2;
-const TOTAL_CARDS = 104;
-const BURNED_CARD_COUNT = TOTAL_CARDS / 4; // 26
-const HAND_SIZE = (TOTAL_CARDS - BURNED_CARD_COUNT) / PLAYER_COUNT; // 39
+const TOTAL_CARDS = 52;
+const BURNED_CARD_COUNT = 4;
+const HAND_SIZE = (TOTAL_CARDS - BURNED_CARD_COUNT) / PLAYER_COUNT; // 24
 
 export const CHAOTIC_COMBINATION_DISPLAY_ORDER = [
   'single',
@@ -115,9 +114,7 @@ function compareStrength(a: number[], b: number[]): number {
 function compareCards(a: ChaoticBigTwoCard, b: ChaoticBigTwoCard): number {
   const rankDiff = rankValue(a.rank) - rankValue(b.rank);
   if (rankDiff !== 0) return rankDiff;
-  const suitDiff = suitValue(a.suit) - suitValue(b.suit);
-  if (suitDiff !== 0) return suitDiff;
-  return a.deck - b.deck;
+  return suitValue(a.suit) - suitValue(b.suit);
 }
 
 function sortCards(cards: ChaoticBigTwoCard[]): ChaoticBigTwoCard[] {
@@ -140,18 +137,15 @@ function isOpeningCard(card: ChaoticBigTwoCard): boolean {
   return card.rank === '3' && card.suit === 'D';
 }
 
-function makeDoubleDeck(): ChaoticBigTwoCard[] {
+function makeDeck(): ChaoticBigTwoCard[] {
   const deck: ChaoticBigTwoCard[] = [];
-  for (const copy of [1, 2] as const) {
-    for (const rank of RANK_ORDER) {
-      for (const suit of SUIT_ORDER) {
-        deck.push({
-          id: `${rank}${suit}-${copy}`,
-          rank,
-          suit,
-          deck: copy,
-        });
-      }
+  for (const rank of RANK_ORDER) {
+    for (const suit of SUIT_ORDER) {
+      deck.push({
+        id: `${rank}${suit}`,
+        rank,
+        suit,
+      });
     }
   }
   return deck;
@@ -166,11 +160,11 @@ function shuffle<T>(items: T[], random: () => number): T[] {
   return result;
 }
 
-function topSuitDeck(cards: ChaoticBigTwoCard[], allowWildcardBoost: boolean): [number, number] {
-  if (allowWildcardBoost) return [suitValue('S'), 2];
-  if (cards.length === 0) return [suitValue('D'), 1];
+function topSuitValue(cards: ChaoticBigTwoCard[], allowWildcardBoost: boolean): number {
+  if (allowWildcardBoost) return suitValue('S');
+  if (cards.length === 0) return suitValue('D');
   const best = [...cards].sort(compareCards).at(-1)!;
-  return [suitValue(best.suit), best.deck];
+  return suitValue(best.suit);
 }
 
 function groupByRank(cards: ChaoticBigTwoCard[]): Map<ChaoticBigTwoRank, ChaoticBigTwoCard[]> {
@@ -191,7 +185,7 @@ function evaluateSingle(cards: ChaoticBigTwoCard[], player: Player, level: Chaot
       type: 'single',
       cards: sortCards(cards),
       size: 1,
-      strength: [rankValue('2'), suitValue('S'), 2],
+      strength: [rankValue('2'), suitValue('S')],
       playedBy: player,
       isBomb: false,
     };
@@ -200,7 +194,7 @@ function evaluateSingle(cards: ChaoticBigTwoCard[], player: Player, level: Chaot
     type: 'single',
     cards: sortCards(cards),
     size: 1,
-    strength: [rankValue(card.rank), suitValue(card.suit), card.deck],
+    strength: [rankValue(card.rank), suitValue(card.suit)],
     playedBy: player,
     isBomb: false,
   };
@@ -223,12 +217,12 @@ function evaluateSameRankGroup(
   if (matchingCards.length > size) return null;
 
   const type: ChaoticBigTwoCombinationType = size === 2 ? 'pair' : 'triple';
-  const [topSuit, topDeck] = topSuitDeck(matchingCards, wildCount > 0);
+  const topSuit = topSuitValue(matchingCards, wildCount > 0);
   return {
     type,
     cards: sortCards(cards),
     size,
-    strength: [rankValue(rank), topSuit, topDeck],
+    strength: [rankValue(rank), topSuit],
     playedBy: player,
     isBomb: false,
   };
@@ -251,12 +245,12 @@ function evaluateNKindBomb(
   const matchingCards = rankGroups.get(rank) ?? [];
   if (matchingCards.length + wildCount !== n) return null;
 
-  const [topSuit, topDeck] = topSuitDeck(matchingCards, wildCount > 0);
+  const topSuit = topSuitValue(matchingCards, wildCount > 0);
   return {
     type: 'bomb-n-kind',
     cards: sortCards(cards),
     size: n,
-    strength: [0, n, rankValue(rank), topSuit, topDeck],
+    strength: [0, n, rankValue(rank), topSuit],
     playedBy: player,
     isBomb: true,
   };
@@ -335,8 +329,8 @@ function evaluateStraight(cards: ChaoticBigTwoCard[], player: Player, level: Cha
 
     const topRank = sequence[sequence.length - 1];
     const topCards = rankGroups.get(topRank) ?? [];
-    const [topSuit, topDeck] = topSuitDeck(topCards, topCards.length === 0);
-    const strength = [sequenceIndex, topSuit, topDeck];
+    const topSuit = topSuitValue(topCards, topCards.length === 0);
+    const strength = [sequenceIndex, topSuit];
     if (!bestStrength || compareStrength(strength, bestStrength) > 0) {
       bestStrength = strength;
     }
@@ -395,8 +389,8 @@ function evaluateConsecutiveGroupedHand(
     const topRank = ranks[ranks.length - 1];
     const topCount = rankGroups.get(topRank)?.length ?? 0;
     const topCards = rankGroups.get(topRank) ?? [];
-    const [topSuit, topDeck] = topSuitDeck(topCards, topCount < groupSize);
-    const strength = [rankValue(topRank), topSuit, topDeck];
+    const topSuit = topSuitValue(topCards, topCount < groupSize);
+    const strength = [rankValue(topRank), topSuit];
     if (!bestStrength || compareStrength(strength, bestStrength) > 0) {
       bestStrength = strength;
     }
@@ -560,7 +554,7 @@ export function createChaoticBigTwoBoard(
   random: () => number = Math.random,
   level: ChaoticBigTwoRank = '2'
 ): ChaoticBigTwoBoardState {
-  const deck = shuffle(makeDoubleDeck(), random);
+  const deck = shuffle(makeDeck(), random);
   const hands: Record<'1' | '2', ChaoticBigTwoCard[]> = {
     '1': deck.slice(0, HAND_SIZE),
     '2': deck.slice(HAND_SIZE, HAND_SIZE * 2),

@@ -51,11 +51,10 @@ export default function Big2Lobby() {
             className="w-full rounded-2xl border border-player1/25 bg-player1/5 px-4 py-4 text-left hover:bg-player1/10 hover:border-player1/40 transition-all cursor-pointer"
           >
             <p className="text-base font-semibold text-text-primary">Chaotic</p>
-            <p className="mt-1 text-sm text-text-secondary">Double deck, quarter burn, level cards, wild hearts, and bombs.</p>
+            <p className="mt-1 text-sm text-text-secondary">Single deck with 4-card burn, level wild heart, and bombs.</p>
           </button>
         </div>
       </motion.div>
     </div>
   );
 }
-
