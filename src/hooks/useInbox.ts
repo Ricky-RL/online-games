@@ -179,21 +179,15 @@ export function useInbox(): UseInboxReturn {
         isUnread: new Date(item.created_at) > new Date(whiteboardLastReadAt),
       }));
 
-    const allGames = [...enrichedGames, ...enrichedWordleGames];
-    const combined: Array<{ type: 'game'; item: InboxGame; date: string; priority: number } | { type: 'whiteboard'; item: WhiteboardActivityItem; date: string; priority: number }> = [
-      ...allGames.map((g) => ({ type: 'game' as const, item: g, date: g.updated_at, priority: g.isWaitingForOpponent ? 0 : g.isMyTurn ? 2 : 1 })),
-      ...enrichedActivity.map((a) => ({ type: 'whiteboard' as const, item: a, date: a.created_at, priority: 1 })),
-    ];
-    combined.sort((a, b) => b.priority - a.priority || new Date(b.date).getTime() - new Date(a.date).getTime());
-    const top3 = combined.slice(0, 3);
-    const limitedGames = top3.filter((x) => x.type === 'game').map((x) => x.item) as InboxGame[];
-    const limitedActivity = top3.filter((x) => x.type === 'whiteboard').map((x) => x.item) as WhiteboardActivityItem[];
+    const allGames = [...enrichedGames, ...enrichedWordleGames].sort(
+      (a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
+    );
 
     return {
-      games: limitedGames,
-      activity: limitedActivity,
-      unreadGames: limitedGames.filter((game) => new Date(game.updated_at) > new Date(gamesLastReadAt) && game.isMyTurn).length,
-      unreadWhiteboard: limitedActivity.filter((item) => item.isUnread).length,
+      games: allGames,
+      activity: enrichedActivity,
+      unreadGames: allGames.filter((game) => new Date(game.updated_at) > new Date(gamesLastReadAt) && game.isMyTurn).length,
+      unreadWhiteboard: enrichedActivity.filter((item) => item.isUnread).length,
     };
   }, []);
 
