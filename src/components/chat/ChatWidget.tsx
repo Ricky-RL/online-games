@@ -4,6 +4,42 @@ import { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { usePairChat } from '@/hooks/usePairChat';
 
+const LAUNCHER_SIZE_PX = 44;
+const EDGE_GAP_PX = 8;
+const BOTTOM_SAFE_GAP_PX = 84;
+const HOLD_TO_DRAG_MS = 220;
+
+interface WidgetPosition {
+  x: number;
+  y: number;
+}
+
+function getBoundsForViewport(width: number, height: number) {
+  const maxX = Math.max(EDGE_GAP_PX, width - LAUNCHER_SIZE_PX - EDGE_GAP_PX);
+  const maxY = Math.max(EDGE_GAP_PX, height - LAUNCHER_SIZE_PX - EDGE_GAP_PX);
+  return { minX: EDGE_GAP_PX, minY: EDGE_GAP_PX, maxX, maxY };
+}
+
+function clampPositionForViewport(next: WidgetPosition, width: number, height: number): WidgetPosition {
+  const bounds = getBoundsForViewport(width, height);
+  return {
+    x: Math.min(Math.max(next.x, bounds.minX), bounds.maxX),
+    y: Math.min(Math.max(next.y, bounds.minY), bounds.maxY),
+  };
+}
+
+function getDefaultBottomRightPosition(width: number, height: number): WidgetPosition {
+  const bounds = getBoundsForViewport(width, height);
+  return clampPositionForViewport(
+    {
+      x: bounds.maxX,
+      y: height - LAUNCHER_SIZE_PX - BOTTOM_SAFE_GAP_PX,
+    },
+    width,
+    height
+  );
+}
+
 function formatTime(value: string): string {
   return new Date(value).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
 }
@@ -11,9 +47,18 @@ function formatTime(value: string): string {
 export function ChatWidget() {
   const { loading, canChat, myUserId, partnerName, messages, unreadCount, sendMessage, markRead } = usePairChat();
   const [isOpen, setIsOpen] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
   const [draft, setDraft] = useState('');
   const [sending, setSending] = useState(false);
+  const [position, setPosition] = useState<WidgetPosition>(() => {
+    if (typeof window === 'undefined') {
+      return { x: EDGE_GAP_PX, y: EDGE_GAP_PX };
+    }
+    return getDefaultBottomRightPosition(window.innerWidth, window.innerHeight);
+  });
   const scrollRef = useRef<HTMLDivElement>(null);
+  const holdTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const dragStartRef = useRef<{ pointerX: number; pointerY: number; startX: number; startY: number } | null>(null);
 
   useEffect(() => {
     if (!isOpen || unreadCount === 0) return;
@@ -27,27 +72,111 @@ export function ChatWidget() {
     node.scrollTop = node.scrollHeight;
   }, [isOpen, messages.length]);
 
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    function handleResize() {
+      setPosition((prev) => clampPositionForViewport(prev, window.innerWidth, window.innerHeight));
+    }
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
   if (loading || !canChat || !myUserId) return null;
 
-  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (!draft.trim()) return;
-
+  async function submitDraft() {
+    if (!draft.trim()) return false;
     setSending(true);
     const sent = await sendMessage(draft);
     setSending(false);
-    if (!sent) return;
+    if (!sent) return false;
     setDraft('');
+    return true;
+  }
+
+  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    await submitDraft();
+  }
+
+  function handleComposerKeyDown(event: React.KeyboardEvent<HTMLTextAreaElement>) {
+    if (event.key !== 'Enter' || event.shiftKey) return;
+    event.preventDefault();
+    if (sending || !draft.trim()) return;
+    void submitDraft();
+  }
+
+  function clearHoldTimer() {
+    if (!holdTimerRef.current) return;
+    clearTimeout(holdTimerRef.current);
+    holdTimerRef.current = null;
+  }
+
+  function handleLauncherPointerDown(event: React.PointerEvent<HTMLButtonElement>) {
+    event.currentTarget.setPointerCapture(event.pointerId);
+    dragStartRef.current = {
+      pointerX: event.clientX,
+      pointerY: event.clientY,
+      startX: position.x,
+      startY: position.y,
+    };
+    clearHoldTimer();
+    holdTimerRef.current = setTimeout(() => {
+      setIsDragging(true);
+    }, HOLD_TO_DRAG_MS);
+  }
+
+  function handleLauncherPointerMove(event: React.PointerEvent<HTMLButtonElement>) {
+    if (!isDragging || !dragStartRef.current) return;
+    const dx = event.clientX - dragStartRef.current.pointerX;
+    const dy = event.clientY - dragStartRef.current.pointerY;
+    setPosition(
+      clampPositionForViewport(
+        {
+          x: dragStartRef.current.startX + dx,
+          y: dragStartRef.current.startY + dy,
+        },
+        window.innerWidth,
+        window.innerHeight
+      )
+    );
+  }
+
+  function handleLauncherPointerEnd(event: React.PointerEvent<HTMLButtonElement>) {
+    clearHoldTimer();
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
+
+    const wasDragging = isDragging;
+    setIsDragging(false);
+    dragStartRef.current = null;
+    if (wasDragging) return;
+
+    setIsOpen(true);
   }
 
   return (
     <>
       <motion.button
-        initial={{ opacity: 0, x: -12 }}
-        animate={{ opacity: 1, x: 0 }}
+        initial={{ opacity: 0, scale: 0.92 }}
+        animate={{ opacity: 1, scale: 1 }}
         transition={{ duration: 0.2 }}
-        onClick={() => setIsOpen(true)}
-        className="fixed left-2 top-1/2 -translate-y-1/2 z-40 w-11 h-11 rounded-full border border-border bg-surface shadow-lg hover:shadow-xl hover:bg-surface/95 transition-all cursor-pointer flex items-center justify-center"
+        onPointerDown={handleLauncherPointerDown}
+        onPointerMove={handleLauncherPointerMove}
+        onPointerUp={handleLauncherPointerEnd}
+        onPointerCancel={handleLauncherPointerEnd}
+        onKeyDown={(event) => {
+          if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault();
+            setIsOpen(true);
+          }
+        }}
+        style={{
+          left: `${position.x}px`,
+          top: `${position.y}px`,
+          touchAction: 'none',
+        }}
+        className={`fixed z-40 w-11 h-11 rounded-full border border-border bg-surface shadow-lg hover:shadow-xl hover:bg-surface/95 transition-all flex items-center justify-center ${isDragging ? 'cursor-grabbing scale-105' : 'cursor-pointer'}`}
         aria-label="Open chat"
       >
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="text-text-secondary">
@@ -73,11 +202,11 @@ export function ChatWidget() {
               aria-label="Close chat"
             />
             <motion.section
-              initial={{ opacity: 0, x: -18, y: '-50%' }}
-              animate={{ opacity: 1, x: 0, y: '-50%' }}
-              exit={{ opacity: 0, x: -18, y: '-50%' }}
+              initial={{ opacity: 0, y: 8, scale: 0.98 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 8, scale: 0.98 }}
               transition={{ duration: 0.18 }}
-              className="fixed z-50 left-4 right-4 sm:right-auto sm:w-[22rem] sm:left-16 top-1/2 max-h-[min(70vh,34rem)] rounded-2xl border border-border bg-surface shadow-2xl flex flex-col overflow-hidden"
+              className="fixed z-50 left-4 right-4 bottom-20 sm:left-auto sm:right-4 sm:w-[22rem] max-h-[min(70vh,34rem)] rounded-2xl border border-border bg-surface shadow-2xl flex flex-col overflow-hidden"
               aria-label="Pair chat panel"
             >
               <header className="flex items-center justify-between px-4 py-3 border-b border-border">
@@ -130,6 +259,7 @@ export function ChatWidget() {
                 <textarea
                   value={draft}
                   onChange={(event) => setDraft(event.target.value)}
+                  onKeyDown={handleComposerKeyDown}
                   placeholder="Type a message"
                   rows={1}
                   maxLength={500}
