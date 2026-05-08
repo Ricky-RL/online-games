@@ -7,6 +7,7 @@ import {
   shouldKeepTurn,
   checkWinner,
   totalAttacks,
+  startBoardIfReady,
 } from '@/lib/battleship-logic';
 import { recordMatchResult } from '@/lib/match-results';
 import type { Player, BattleshipGame, BattleshipBoardState, Attack } from '@/lib/types';
@@ -72,7 +73,30 @@ export function useBattleshipGame(gameId: string): UseBattleshipGameReturn {
       return null;
     }
 
-    return data as BattleshipGame;
+    const gameData = data as BattleshipGame;
+    const hasBothPlayers = Boolean(
+      (gameData.player1_id || gameData.player1_name) &&
+      (gameData.player2_id || gameData.player2_name)
+    );
+
+    if (hasBothPlayers) {
+      const board = startBoardIfReady(gameData.board);
+      if (board !== gameData.board) {
+        const updatedGame = { ...gameData, board };
+        await supabase
+          .from('games')
+          .update({
+            board,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', gameId)
+          .eq('game_type', 'battleship')
+          .is('winner', null);
+        return updatedGame;
+      }
+    }
+
+    return gameData;
   }, [gameId, updateGame]);
 
   // Initial fetch

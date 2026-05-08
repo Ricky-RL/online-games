@@ -7,6 +7,9 @@ import {
   generateRandomPlacement,
   countValidPlacementLayouts,
   isValidPlacement,
+  isCompleteFleet,
+  isBoardReadyToPlay,
+  startBoardIfReady,
   buildShipGrid,
   makeAttack,
   getAttackResult,
@@ -173,6 +176,67 @@ describe('isValidPlacement', () => {
       { shipId: 'l-ship', cells: [[4, 0], [5, 0], [6, 0], [6, 1]] },
     ];
     expect(isValidPlacement(placements)).toBe(false);
+  });
+});
+
+describe('board readiness', () => {
+  const completeFleet: ShipPlacement[] = [
+    { shipId: 'battleship', cells: [[0, 0], [0, 1], [0, 2]] },
+    { shipId: 'cruiser', cells: [[2, 0], [2, 1]] },
+    { shipId: 'l-ship', cells: [[4, 0], [5, 0], [6, 0], [6, 1]] },
+  ];
+
+  it('requires one valid placement for every ship', () => {
+    expect(isCompleteFleet(completeFleet)).toBe(true);
+    expect(isCompleteFleet(completeFleet.slice(0, 2))).toBe(false);
+    expect(isCompleteFleet([
+      completeFleet[0],
+      completeFleet[1],
+      { shipId: 'cruiser', cells: [[4, 0], [4, 1]] },
+    ])).toBe(false);
+  });
+
+  it('reports a board ready only when both fleets are complete', () => {
+    const board: BattleshipBoardState = {
+      player1Ships: completeFleet,
+      player2Ships: completeFleet,
+      player1Attacks: [],
+      player2Attacks: [],
+      phase: 'setup',
+    };
+
+    expect(isBoardReadyToPlay(board)).toBe(true);
+    expect(isBoardReadyToPlay({ ...board, player2Ships: [] })).toBe(false);
+  });
+
+  it('starts a setup board when both generated fleets are ready', () => {
+    const board: BattleshipBoardState = {
+      player1Ships: completeFleet,
+      player2Ships: completeFleet,
+      player1Attacks: [],
+      player2Attacks: [],
+      phase: 'setup',
+    };
+
+    expect(startBoardIfReady(board).phase).toBe('playing');
+  });
+
+  it('leaves incomplete and already-finished boards unchanged', () => {
+    const incompleteBoard: BattleshipBoardState = {
+      player1Ships: completeFleet,
+      player2Ships: [],
+      player1Attacks: [],
+      player2Attacks: [],
+      phase: 'setup',
+    };
+    const finishedBoard: BattleshipBoardState = {
+      ...incompleteBoard,
+      player2Ships: completeFleet,
+      phase: 'finished',
+    };
+
+    expect(startBoardIfReady(incompleteBoard)).toBe(incompleteBoard);
+    expect(startBoardIfReady(finishedBoard)).toBe(finishedBoard);
   });
 });
 

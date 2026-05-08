@@ -320,6 +320,30 @@ export function isValidPlacement(placements: ShipPlacement[]): boolean {
   return true;
 }
 
+export function isCompleteFleet(placements: ShipPlacement[]): boolean {
+  if (placements.length !== FLEET.length) {
+    return false;
+  }
+
+  const shipIds = new Set(placements.map((placement) => placement.shipId));
+  return FLEET.every((ship) => shipIds.has(ship.id)) && isValidPlacement(placements);
+}
+
+export function isBoardReadyToPlay(board: BattleshipBoardState): boolean {
+  return isCompleteFleet(board.player1Ships) && isCompleteFleet(board.player2Ships);
+}
+
+export function startBoardIfReady(board: BattleshipBoardState): BattleshipBoardState {
+  if (board.phase !== 'setup' || !isBoardReadyToPlay(board)) {
+    return board;
+  }
+
+  return {
+    ...board,
+    phase: 'playing',
+  };
+}
+
 export function buildShipGrid(placements: ShipPlacement[]): (ShipId | null)[][] {
   const grid: (ShipId | null)[][] = Array.from({ length: BOARD_SIZE }, () =>
     Array.from({ length: BOARD_SIZE }, () => null)

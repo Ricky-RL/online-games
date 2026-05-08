@@ -1,7 +1,7 @@
 'use client';
 
 import { AutoMatchmakingPage } from '@/components/AutoMatchmakingPage';
-import { generateRandomPlacement } from '@/lib/battleship-logic';
+import { generateRandomPlacement, startBoardIfReady } from '@/lib/battleship-logic';
 import type { BattleshipBoardState } from '@/lib/types';
 
 export default function BattleshipLobby() {
@@ -18,6 +18,10 @@ export default function BattleshipLobby() {
           phase: 'setup',
         };
         return { game_type: 'battleship', board, current_turn: 1, winner: null };
+      }}
+      joinData={(game) => {
+        const board = (game as { board?: BattleshipBoardState }).board;
+        return board ? { board: startBoardIfReady(board) } : {};
       }}
     />
   );
