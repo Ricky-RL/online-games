@@ -12,13 +12,13 @@ interface MonopolyBoardProps {
 }
 
 const COLOR_MAP: Record<string, string> = {
-  'brown': '#8B4513',
+  brown: '#8B4513',
   'light-blue': '#87CEEB',
-  'pink': '#FF69B4',
-  'orange': '#FFA500',
-  'red': '#FF0000',
-  'yellow': '#FFD700',
-  'green': '#008000',
+  pink: '#FF69B4',
+  orange: '#FFA500',
+  red: '#FF0000',
+  yellow: '#FFD700',
+  green: '#008000',
   'dark-blue': '#00008B',
 };
 
@@ -29,11 +29,11 @@ function getBoardPosition(index: number): { row: number; col: number; side: 'bot
   return { row: index - 30, col: 10, side: 'right' };
 }
 
-/**
- * Compute the list of board positions to step through when moving
- * from `from` to `to` (wrapping around 40 spaces).
- */
 function getSteppingPositions(from: number, roll: number): number[] {
+  // Special card movements and teleports can look odd when stepped.
+  // Use direct glide for these larger/non-standard moves.
+  if (roll <= 0 || roll > 12) return [];
+
   const positions: number[] = [];
   for (let i = 1; i <= roll; i++) {
     positions.push((from + i) % 40);
@@ -41,21 +41,19 @@ function getSteppingPositions(from: number, roll: number): number[] {
   return positions;
 }
 
-/**
- * AnimatedPiece renders a player's token on the board and animates it
- * step by step through intermediate squares when a move occurs.
- */
 function AnimatedPiece({
   player,
   position,
   colorClass,
   lastMove,
+  isActive,
   boardRef,
 }: {
   player: 1 | 2;
   position: number;
   colorClass: string;
   lastMove: MonopolyLastMove | null;
+  isActive: boolean;
   boardRef: React.RefObject<HTMLDivElement | null>;
 }) {
   const controls = useAnimationControls();
@@ -63,9 +61,7 @@ function AnimatedPiece({
   const lastAnimatedKey = useRef<string | null>(null);
   const [animatedPosition, setAnimatedPosition] = useState<number>(position);
   const currentPosRef = useRef(position);
-  const [pixelPos, setPixelPos] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
 
-  // Get pixel offset for a given board position index relative to the board container
   const getPixelPosition = useCallback((idx: number): { x: number; y: number } | null => {
     if (!boardRef.current) return null;
     const spaceEl = boardRef.current.querySelector(`[data-space-index="${idx}"]`) as HTMLElement | null;
@@ -79,17 +75,12 @@ function AnimatedPiece({
   }, [boardRef]);
 
   useEffect(() => {
-    if (
-      lastMove &&
-      lastMove.player === player &&
-      !isAnimating.current
-    ) {
+    if (lastMove && lastMove.player === player && !isAnimating.current) {
       const moveKey = `${lastMove.from}-${lastMove.to}-${lastMove.roll}`;
       if (moveKey === lastAnimatedKey.current) return;
       lastAnimatedKey.current = moveKey;
 
       const steppingPositions = getSteppingPositions(lastMove.from, lastMove.roll);
-
       isAnimating.current = true;
 
       (async () => {
@@ -99,27 +90,25 @@ function AnimatedPiece({
             await controls.start({
               x: pp.x,
               y: pp.y,
+              scale: [1, 1.2, 1],
               transition: { duration: 0.18, ease: 'easeInOut' },
             });
-            setPixelPos(pp);
           }
           setAnimatedPosition(pos);
         }
 
-        // If the final position differs (e.g., Go To Jail sends to position 10),
-        // do a longer slide to the final destination
         const finalPos = lastMove.to;
         const lastStepped = steppingPositions[steppingPositions.length - 1];
         if (finalPos !== lastStepped) {
-          await new Promise((r) => setTimeout(r, 150));
+          await new Promise((resolve) => setTimeout(resolve, 120));
           const pp = getPixelPosition(finalPos);
           if (pp) {
             await controls.start({
               x: pp.x,
               y: pp.y,
+              scale: [1, 1.25, 1],
               transition: { duration: 0.35, ease: [0.4, 0, 0.2, 1] },
             });
-            setPixelPos(pp);
           }
           setAnimatedPosition(finalPos);
         }
@@ -131,29 +120,23 @@ function AnimatedPiece({
       return;
     }
 
-    // If not animating and position changed (e.g. external update), snap immediately
     if (!isAnimating.current && position !== currentPosRef.current) {
       currentPosRef.current = position;
       setAnimatedPosition(position);
       const pp = getPixelPosition(position);
       if (pp) {
-        setPixelPos(pp);
         controls.start({ x: pp.x, y: pp.y, transition: { duration: 0 } });
       }
     }
   }, [lastMove, position, player, controls, getPixelPosition]);
 
-  // Compute position on mount and on resize — use controls.start with duration 0
-  // instead of controls.set to ensure reliable initial placement
   useEffect(() => {
     const computePos = () => {
       const pp = getPixelPosition(animatedPosition);
       if (pp) {
-        setPixelPos(pp);
         controls.start({ x: pp.x, y: pp.y, transition: { duration: 0 } });
       }
     };
-    // Wait a frame for the DOM to render space elements
     const raf = requestAnimationFrame(computePos);
     window.addEventListener('resize', computePos);
     return () => {
@@ -162,43 +145,63 @@ function AnimatedPiece({
     };
   }, [animatedPosition, controls, getPixelPosition]);
 
-  // Offset to avoid overlap when both players are on same space
-  const offsetY = player === 1 ? -4 : 4;
+  const offsetX = player === 1 ? -7 : 7;
+  const offsetY = player === 1 ? -7 : 7;
+  const activeClass = isActive ? 'ring-2 ring-white/90 shadow-[0_0_0_3px_rgba(255,255,255,0.25)]' : '';
 
   return (
     <motion.div
-      className={`absolute rounded-full border-2 border-white shadow-md ${colorClass}`}
+      className={`absolute rounded-full border-2 border-white shadow-lg flex items-center justify-center text-[8px] font-bold text-white ${colorClass} ${activeClass}`}
       style={{
-        width: 10,
-        height: 10,
-        marginLeft: -5,
-        marginTop: -5 + offsetY,
-        zIndex: 20,
+        width: 18,
+        height: 18,
+        marginLeft: -9 + offsetX,
+        marginTop: -9 + offsetY,
+        zIndex: isActive ? 30 : 20,
         pointerEvents: 'none',
       }}
       animate={controls}
-      initial={pixelPos}
-    />
+      initial={false}
+    >
+      {player}
+    </motion.div>
   );
 }
 
-function SpaceCell({ index, board }: { index: number; board: BoardState }) {
+function SpaceCell({
+  index,
+  board,
+  activePlayer,
+}: {
+  index: number;
+  board: BoardState;
+  activePlayer: 1 | 2;
+}) {
   const space = BOARD[index];
   const pos = getBoardPosition(index);
   const isCorner = (pos.col === 0 && pos.row === 0) || (pos.col === 10 && pos.row === 0) ||
                    (pos.col === 0 && pos.row === 10) || (pos.col === 10 && pos.row === 10);
+  const playersHere = board.players
+    .map((state, idx) => ({ player: (idx + 1) as 1 | 2, position: state.position }))
+    .filter((entry) => entry.position === index)
+    .map((entry) => entry.player);
+  const hasActivePlayer = playersHere.includes(activePlayer);
 
-  // Responsive sizing: corners are square, sides vary by orientation
   const sizeClasses = isCorner
-    ? 'w-[28px] h-[28px] sm:w-10 sm:h-10 md:w-14 md:h-14 lg:w-16 lg:h-16'
+    ? 'w-[28px] h-[28px] sm:w-11 sm:h-11 md:w-14 md:h-14 lg:w-16 lg:h-16'
     : pos.side === 'top' || pos.side === 'bottom'
-      ? 'w-[22px] h-[28px] sm:w-7 sm:h-10 md:w-9 md:h-14 lg:w-10 lg:h-16'
-      : 'w-[28px] h-[22px] sm:w-10 sm:h-7 md:w-14 md:h-9 lg:w-16 lg:h-10';
+      ? 'w-[22px] h-[28px] sm:w-8 sm:h-11 md:w-9 md:h-14 lg:w-10 lg:h-16'
+      : 'w-[28px] h-[22px] sm:w-11 sm:h-8 md:w-14 md:h-9 lg:w-16 lg:h-10';
+  const highlightClass = hasActivePlayer
+    ? activePlayer === 1
+      ? 'border-player1/70 bg-player1/10'
+      : 'border-player2/70 bg-player2/15'
+    : 'border-border/60';
 
   return (
     <div
       data-space-index={index}
-      className={`relative border border-border/50 flex flex-col items-center justify-center overflow-hidden ${sizeClasses}`}
+      className={`relative border flex flex-col items-center justify-center overflow-hidden ${sizeClasses} ${highlightClass}`}
       title={space.name}
     >
       {space.color && (
@@ -207,11 +210,26 @@ function SpaceCell({ index, board }: { index: number; board: BoardState }) {
           style={{ backgroundColor: COLOR_MAP[space.color] ?? '#ccc' }}
         />
       )}
-      <span className="text-[4px] sm:text-[5px] md:text-[6px] text-text-secondary text-center leading-tight px-0.5 mt-0.5 sm:mt-1 hidden sm:block">
-        {space.name.length > 12 ? space.name.slice(0, 10) + '...' : space.name}
+      <span className="text-[5px] sm:text-[7px] md:text-[8px] text-text-secondary text-center leading-[1.05] px-0.5 mt-0.5 sm:mt-1 max-w-full overflow-hidden">
+        {space.name}
       </span>
+      {space.price && (
+        <span className="text-[4px] sm:text-[6px] md:text-[7px] text-text-secondary/80 mt-0.5">
+          ${space.price}
+        </span>
+      )}
       {board.properties[index] && (
         <div className={`w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full absolute bottom-0.5 left-0.5 sm:bottom-1 sm:left-1 ${board.properties[index].owner === 1 ? 'bg-player1' : 'bg-player2'}`} />
+      )}
+      {playersHere.length > 0 && (
+        <div className="absolute bottom-0.5 right-0.5 sm:bottom-1 sm:right-1 flex items-center gap-0.5">
+          {playersHere.map((playerToken) => (
+            <div
+              key={`${index}-p-${playerToken}`}
+              className={`w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full border border-white ${playerToken === 1 ? 'bg-player1' : 'bg-player2'}`}
+            />
+          ))}
+        </div>
       )}
     </div>
   );
@@ -220,54 +238,58 @@ function SpaceCell({ index, board }: { index: number; board: BoardState }) {
 export function MonopolyBoardView({ board, lastMove }: MonopolyBoardProps) {
   const boardRef = useRef<HTMLDivElement>(null);
 
-  // Build 11x11 grid
-  const topRow = Array.from({ length: 11 }, (_, i) => 20 + i); // 20-30
-  const bottomRow = Array.from({ length: 11 }, (_, i) => 10 - i); // 10-0
-  const leftCol = Array.from({ length: 9 }, (_, i) => 19 - i); // 19-11
-  const rightCol = Array.from({ length: 9 }, (_, i) => 31 + i); // 31-39
+  const topRow = Array.from({ length: 11 }, (_, i) => 20 + i);
+  const bottomRow = Array.from({ length: 11 }, (_, i) => 10 - i);
+  const leftCol = Array.from({ length: 9 }, (_, i) => 19 - i);
+  const rightCol = Array.from({ length: 9 }, (_, i) => 31 + i);
 
   return (
-    <div className="relative inline-block w-full max-w-full" ref={boardRef}>
-      {/* Top row */}
-      <div className="flex">
-        {topRow.map(i => <SpaceCell key={i} index={i} board={board} />)}
-      </div>
-      {/* Middle rows */}
-      <div className="flex">
-        <div className="flex flex-col">
-          {leftCol.map(i => <SpaceCell key={i} index={i} board={board} />)}
+    <div className="w-full flex justify-center overflow-visible py-10 sm:py-0">
+      <div
+        className="relative inline-block w-full max-w-fit origin-center rotate-90 sm:rotate-0 transition-transform duration-300"
+        ref={boardRef}
+      >
+        <div className="flex">
+          {topRow.map(i => <SpaceCell key={i} index={i} board={board} activePlayer={board.activePlayer} />)}
         </div>
-        <div className="flex-1 flex items-center justify-center bg-surface/30 border border-border/30">
-          <div className="text-center p-2 sm:p-4">
-            <h2 className="text-sm sm:text-lg md:text-xl font-bold text-text-primary mb-0.5 sm:mb-1">Vancouver</h2>
-            <p className="text-[10px] sm:text-xs text-text-secondary">Monopoly</p>
-            <p className="text-[10px] sm:text-xs text-text-secondary mt-1 sm:mt-2">Turn {board.currentTurn}/60</p>
+
+        <div className="flex">
+          <div className="flex flex-col">
+            {leftCol.map(i => <SpaceCell key={i} index={i} board={board} activePlayer={board.activePlayer} />)}
+          </div>
+          <div className="flex-1 flex items-center justify-center bg-surface/40 border border-border/40">
+            <div className="text-center p-2 sm:p-4">
+              <h2 className="text-sm sm:text-lg md:text-xl font-bold text-text-primary mb-0.5 sm:mb-1">Vancouver</h2>
+              <p className="text-[10px] sm:text-xs text-text-secondary">Monopoly</p>
+              <p className="text-[10px] sm:text-xs text-text-secondary mt-1 sm:mt-2">Turn {board.currentTurn}/60</p>
+            </div>
+          </div>
+          <div className="flex flex-col">
+            {rightCol.map(i => <SpaceCell key={i} index={i} board={board} activePlayer={board.activePlayer} />)}
           </div>
         </div>
-        <div className="flex flex-col">
-          {rightCol.map(i => <SpaceCell key={i} index={i} board={board} />)}
-        </div>
-      </div>
-      {/* Bottom row */}
-      <div className="flex">
-        {bottomRow.map(i => <SpaceCell key={i} index={i} board={board} />)}
-      </div>
 
-      {/* Animated player pieces */}
-      <AnimatedPiece
-        player={1}
-        position={board.players[0].position}
-        colorClass="bg-player1"
-        lastMove={lastMove}
-        boardRef={boardRef}
-      />
-      <AnimatedPiece
-        player={2}
-        position={board.players[1].position}
-        colorClass="bg-player2"
-        lastMove={lastMove}
-        boardRef={boardRef}
-      />
+        <div className="flex">
+          {bottomRow.map(i => <SpaceCell key={i} index={i} board={board} activePlayer={board.activePlayer} />)}
+        </div>
+
+        <AnimatedPiece
+          player={1}
+          position={board.players[0].position}
+          colorClass="bg-player1"
+          lastMove={lastMove}
+          isActive={board.activePlayer === 1}
+          boardRef={boardRef}
+        />
+        <AnimatedPiece
+          player={2}
+          position={board.players[1].position}
+          colorClass="bg-player2"
+          lastMove={lastMove}
+          isActive={board.activePlayer === 2}
+          boardRef={boardRef}
+        />
+      </div>
     </div>
   );
 }
