@@ -62,7 +62,9 @@ export interface CombinationValidationResult {
   error?: string;
 }
 
-const NATURAL_RANK_ORDER: Exclude<ChaoticBigTwoRank, 'JK'>[] = ['3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A', '2'];
+type NaturalChaoticBigTwoRank = Exclude<ChaoticBigTwoRank, 'JK'>;
+
+const NATURAL_RANK_ORDER: NaturalChaoticBigTwoRank[] = ['3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A', '2'];
 const RANK_ORDER: ChaoticBigTwoRank[] = [...NATURAL_RANK_ORDER, 'JK'];
 const NATURAL_SUIT_ORDER: Exclude<ChaoticBigTwoSuit, 'B' | 'R'>[] = ['D', 'C', 'H', 'S'];
 const SUIT_ORDER: ChaoticBigTwoSuit[] = [...NATURAL_SUIT_ORDER, 'B', 'R'];
@@ -129,6 +131,10 @@ export function nextTurn(player: Player): Player {
 
 function playerKey(player: Player): '1' | '2' {
   return player === 1 ? '1' : '2';
+}
+
+function isNaturalRank(rank: ChaoticBigTwoRank): rank is NaturalChaoticBigTwoRank {
+  return rank !== 'JK';
 }
 
 function isJoker(card: ChaoticBigTwoCard): boolean {
@@ -336,7 +342,7 @@ function evaluateStraight(cards: ChaoticBigTwoCard[], player: Player, level: Cha
 
     let fits = true;
     for (const rank of rankGroups.keys()) {
-      if (!allowed.has(rank)) {
+      if (!isNaturalRank(rank) || !allowed.has(rank)) {
         fits = false;
         break;
       }
@@ -386,7 +392,7 @@ function evaluateConsecutiveGroupedHand(
     const allowed = new Set(ranks);
     let outside = false;
     for (const rank of rankGroups.keys()) {
-      if (!allowed.has(rank)) {
+      if (!isNaturalRank(rank) || !allowed.has(rank)) {
         outside = true;
         break;
       }
@@ -455,7 +461,7 @@ function evaluateStraightFlushBomb(
 
       let fits = true;
       for (const rank of rankGroups.keys()) {
-        if (!allowed.has(rank)) {
+        if (!isNaturalRank(rank) || !allowed.has(rank)) {
           fits = false;
           break;
         }
