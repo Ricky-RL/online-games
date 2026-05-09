@@ -13,7 +13,7 @@ interface Big2CardProps {
 }
 
 function isRed(card: BigTwoCard): boolean {
-  return card.suit === 'H' || card.suit === 'D';
+  return card.suit === 'H' || card.suit === 'D' || card.suit === 'R';
 }
 
 export function Big2Card({ card, ruleset = 'classic', selected = false, disabled = false, compact = false, onClick }: Big2CardProps) {

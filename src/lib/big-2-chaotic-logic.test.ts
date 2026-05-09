@@ -15,16 +15,33 @@ function card(id: string): ChaoticBigTwoCard {
 }
 
 describe('big-2 chaotic logic', () => {
-  it('deals 24 cards per player and burns 4 cards from a single deck', () => {
+  it('deals 25 cards per player and burns 4 cards from a 54-card deck with jokers', () => {
     const board = createChaoticBigTwoBoard(1, () => 0.31);
     const allDealt = [...board.hands['1'], ...board.hands['2'], ...board.burnedCards];
     const uniqueIds = new Set(allDealt.map((c) => c.id));
 
-    expect(board.hands['1']).toHaveLength(24);
-    expect(board.hands['2']).toHaveLength(24);
+    expect(board.hands['1']).toHaveLength(25);
+    expect(board.hands['2']).toHaveLength(25);
     expect(board.burnedCards).toHaveLength(4);
-    expect(uniqueIds.size).toBe(52);
+    expect(uniqueIds.size).toBe(54);
+    expect(allDealt.some((c) => c.id === 'JKB')).toBe(true);
+    expect(allDealt.some((c) => c.id === 'JKR')).toBe(true);
     expect(board.hands['1'].some((c) => c.rank === '3' && c.suit === 'D')).toBe(true);
+  });
+
+  it('treats jokers as top singles and wildcard helpers', () => {
+    const blackJoker = { id: 'JKB', rank: 'JK', suit: 'B' } as ChaoticBigTwoCard;
+    const redJoker = { id: 'JKR', rank: 'JK', suit: 'R' } as ChaoticBigTwoCard;
+    const twoSpades = card('2S');
+    const jokerPair = evaluateCombination([card('AD'), blackJoker], 1);
+
+    const blackSingle = evaluateCombination([blackJoker], 1);
+    const redSingle = evaluateCombination([redJoker], 1);
+    const twoSingle = evaluateCombination([twoSpades], 1);
+
+    expect(jokerPair?.type).toBe('pair');
+    expect(blackSingle && twoSingle && canBeatCombination(blackSingle, twoSingle)).toBe(true);
+    expect(redSingle && blackSingle && canBeatCombination(redSingle, blackSingle)).toBe(true);
   });
 
   it('uses level wildcard (2H) to complete combinations', () => {

@@ -1,7 +1,7 @@
 import type { Player } from './types';
 
-export type ChaoticBigTwoSuit = 'D' | 'C' | 'H' | 'S';
-export type ChaoticBigTwoRank = '3' | '4' | '5' | '6' | '7' | '8' | '9' | '10' | 'J' | 'Q' | 'K' | 'A' | '2';
+export type ChaoticBigTwoSuit = 'D' | 'C' | 'H' | 'S' | 'B' | 'R';
+export type ChaoticBigTwoRank = '3' | '4' | '5' | '6' | '7' | '8' | '9' | '10' | 'J' | 'Q' | 'K' | 'A' | '2' | 'JK';
 export type ChaoticBigTwoCombinationType =
   | 'single'
   | 'pair'
@@ -62,8 +62,10 @@ export interface CombinationValidationResult {
   error?: string;
 }
 
-const RANK_ORDER: ChaoticBigTwoRank[] = ['3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A', '2'];
-const SUIT_ORDER: ChaoticBigTwoSuit[] = ['D', 'C', 'H', 'S'];
+const NATURAL_RANK_ORDER: Exclude<ChaoticBigTwoRank, 'JK'>[] = ['3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A', '2'];
+const RANK_ORDER: ChaoticBigTwoRank[] = [...NATURAL_RANK_ORDER, 'JK'];
+const NATURAL_SUIT_ORDER: Exclude<ChaoticBigTwoSuit, 'B' | 'R'>[] = ['D', 'C', 'H', 'S'];
+const SUIT_ORDER: ChaoticBigTwoSuit[] = [...NATURAL_SUIT_ORDER, 'B', 'R'];
 const NON_BOMB_TYPE_ORDER: ChaoticBigTwoCombinationType[] = ['single', 'pair', 'triple', 'straight', 'tube', 'plate', 'full-house'];
 const STRAIGHT_SEQUENCES: ChaoticBigTwoRank[][] = [
   ['3', '4', '5', '6', '7'],
@@ -78,9 +80,9 @@ const STRAIGHT_SEQUENCES: ChaoticBigTwoRank[][] = [
   ['J', 'Q', 'K', 'A', '2'],
 ];
 const PLAYER_COUNT = 2;
-const TOTAL_CARDS = 52;
+const TOTAL_CARDS = 54;
 const BURNED_CARD_COUNT = 4;
-const HAND_SIZE = (TOTAL_CARDS - BURNED_CARD_COUNT) / PLAYER_COUNT; // 24
+const HAND_SIZE = (TOTAL_CARDS - BURNED_CARD_COUNT) / PLAYER_COUNT; // 25
 
 export const CHAOTIC_COMBINATION_DISPLAY_ORDER = [
   'single',
@@ -129,8 +131,12 @@ function playerKey(player: Player): '1' | '2' {
   return player === 1 ? '1' : '2';
 }
 
+function isJoker(card: ChaoticBigTwoCard): boolean {
+  return card.rank === 'JK' && (card.suit === 'B' || card.suit === 'R');
+}
+
 function isWildcard(card: ChaoticBigTwoCard, level: ChaoticBigTwoRank): boolean {
-  return card.rank === level && card.suit === 'H';
+  return isJoker(card) || (card.rank === level && card.suit === 'H');
 }
 
 function isOpeningCard(card: ChaoticBigTwoCard): boolean {
@@ -139,8 +145,8 @@ function isOpeningCard(card: ChaoticBigTwoCard): boolean {
 
 function makeDeck(): ChaoticBigTwoCard[] {
   const deck: ChaoticBigTwoCard[] = [];
-  for (const rank of RANK_ORDER) {
-    for (const suit of SUIT_ORDER) {
+  for (const rank of NATURAL_RANK_ORDER) {
+    for (const suit of NATURAL_SUIT_ORDER) {
       deck.push({
         id: `${rank}${suit}`,
         rank,
@@ -148,6 +154,8 @@ function makeDeck(): ChaoticBigTwoCard[] {
       });
     }
   }
+  deck.push({ id: 'JKB', rank: 'JK', suit: 'B' });
+  deck.push({ id: 'JKR', rank: 'JK', suit: 'R' });
   return deck;
 }
 
@@ -180,6 +188,17 @@ function groupByRank(cards: ChaoticBigTwoCard[]): Map<ChaoticBigTwoRank, Chaotic
 function evaluateSingle(cards: ChaoticBigTwoCard[], player: Player, level: ChaoticBigTwoRank): ChaoticBigTwoCombination | null {
   if (cards.length !== 1) return null;
   const [card] = cards;
+  if (isJoker(card)) {
+    const jokerSuitStrength = card.suit === 'R' ? 1 : 0;
+    return {
+      type: 'single',
+      cards: sortCards(cards),
+      size: 1,
+      strength: [rankValue('JK'), jokerSuitStrength],
+      playedBy: player,
+      isBomb: false,
+    };
+  }
   if (isWildcard(card, level)) {
     return {
       type: 'single',
@@ -263,10 +282,10 @@ function evaluateFullHouse(cards: ChaoticBigTwoCard[], player: Player, level: Ch
   const rankGroups = groupByRank(nonWild);
 
   let bestStrength: number[] | null = null;
-  for (let i = RANK_ORDER.length - 1; i >= 0; i--) {
-    const tripleRank = RANK_ORDER[i];
-    for (let j = RANK_ORDER.length - 1; j >= 0; j--) {
-      const pairRank = RANK_ORDER[j];
+  for (let i = NATURAL_RANK_ORDER.length - 1; i >= 0; i--) {
+    const tripleRank = NATURAL_RANK_ORDER[i];
+    for (let j = NATURAL_RANK_ORDER.length - 1; j >= 0; j--) {
+      const pairRank = NATURAL_RANK_ORDER[j];
       if (pairRank === tripleRank) continue;
 
       let outside = false;
@@ -362,8 +381,8 @@ function evaluateConsecutiveGroupedHand(
   const rankGroups = groupByRank(nonWild);
 
   let bestStrength: number[] | null = null;
-  for (let startIndex = 0; startIndex <= RANK_ORDER.length - groupCount; startIndex++) {
-    const ranks = RANK_ORDER.slice(startIndex, startIndex + groupCount);
+  for (let startIndex = 0; startIndex <= NATURAL_RANK_ORDER.length - groupCount; startIndex++) {
+    const ranks = NATURAL_RANK_ORDER.slice(startIndex, startIndex + groupCount);
     const allowed = new Set(ranks);
     let outside = false;
     for (const rank of rankGroups.keys()) {
@@ -430,8 +449,8 @@ function evaluateStraightFlushBomb(
     const rankGroups = groupByRank(suitedNaturals);
     if ([...rankGroups.values()].some((group) => group.length > 1)) continue;
 
-    for (let start = 0; start <= RANK_ORDER.length - size; start++) {
-      const sequence = RANK_ORDER.slice(start, start + size);
+    for (let start = 0; start <= NATURAL_RANK_ORDER.length - size; start++) {
+      const sequence = NATURAL_RANK_ORDER.slice(start, start + size);
       const allowed = new Set(sequence);
 
       let fits = true;
@@ -847,6 +866,9 @@ export function describeChaoticCombination(type: string): string {
 }
 
 export function getChaoticCardLabel(card: ChaoticBigTwoCard): string {
-  const suit = card.suit === 'S' ? '♠' : card.suit === 'H' ? '♥' : card.suit === 'C' ? '♣' : '♦';
+  if (isJoker(card)) {
+    return card.suit === 'R' ? 'JKR' : 'JKB';
+  }
+  const suit = card.suit;
   return `${card.rank}${suit}`;
 }

@@ -52,8 +52,10 @@ const CHAOTIC_RULEBOOK_HANDS = [
   { label: 'Wild cards', detail: 'The heart of the current level is wild and can represent any non-joker card in combinations.' },
 ];
 
-const HAND_TABLE_RANK_ORDER: BigTwoCard['rank'][] = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'];
+const HAND_TABLE_RANK_ORDER: BigTwoCard['rank'][] = ['JK', 'A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'];
 const HAND_TABLE_SUIT_COLUMNS: Array<{ suit: BigTwoCard['suit']; label: string; symbol: string }> = [
+  { suit: 'R', label: 'Red Joker', symbol: '🟥' },
+  { suit: 'B', label: 'Black Joker', symbol: '⬛' },
   { suit: 'H', label: 'Hearts', symbol: '♥' },
   { suit: 'C', label: 'Clubs', symbol: '♣' },
   { suit: 'D', label: 'Diamonds', symbol: '♦' },
@@ -464,7 +466,7 @@ export default function Big2GamePage({ params }: { params: Promise<{ gameId: str
                                   hasSuit ? 'border-border bg-surface text-text-primary' : 'border-border/50 text-text-secondary/40'
                                 }`}
                               >
-                                <span className={column.suit === 'H' || column.suit === 'D' ? 'text-red-600' : ''}>{column.symbol}</span>
+                                <span className={column.suit === 'H' || column.suit === 'D' || column.suit === 'R' ? 'text-red-600' : ''}>{column.symbol}</span>
                                 <span>{column.label[0]}</span>
                               </span>
                             );
