@@ -26,6 +26,8 @@ describe('big-2 chaotic logic', () => {
     expect(uniqueIds.size).toBe(54);
     expect(allDealt.some((c) => c.id === 'JKB')).toBe(true);
     expect(allDealt.some((c) => c.id === 'JKR')).toBe(true);
+    expect(board.hands['1'].some((c) => c.rank === 'JK')).toBe(true);
+    expect(board.hands['2'].some((c) => c.rank === 'JK')).toBe(true);
     expect(board.hands['1'].some((c) => c.rank === '3' && c.suit === 'D')).toBe(true);
   });
 

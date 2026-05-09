@@ -605,6 +605,42 @@ export function createChaoticBigTwoBoard(
     }
   }
 
+  const getSwapIndex = (cards: ChaoticBigTwoCard[], protectOpeningCard: boolean): number => {
+    if (!protectOpeningCard) return 0;
+    const safeIndex = cards.findIndex((card) => !isOpeningCard(card));
+    return safeIndex >= 0 ? safeIndex : 0;
+  };
+
+  const ensurePlayerHasJoker = (
+    targetKey: '1' | '2',
+    sourceKey: '1' | '2',
+    protectOpeningCard: boolean
+  ): void => {
+    if (hands[targetKey].some(isJoker)) return;
+
+    const targetIndex = getSwapIndex(hands[targetKey], protectOpeningCard);
+    const burnedIndex = burnedCards.findIndex(isJoker);
+    if (burnedIndex >= 0) {
+      const swap = hands[targetKey][targetIndex];
+      hands[targetKey][targetIndex] = burnedCards[burnedIndex];
+      burnedCards[burnedIndex] = swap;
+      return;
+    }
+
+    const sourceJokers = hands[sourceKey].filter(isJoker).length;
+    if (sourceJokers > 1) {
+      const sourceIndex = hands[sourceKey].findIndex(isJoker);
+      if (sourceIndex >= 0) {
+        const swap = hands[targetKey][targetIndex];
+        hands[targetKey][targetIndex] = hands[sourceKey][sourceIndex];
+        hands[sourceKey][sourceIndex] = swap;
+      }
+    }
+  };
+
+  ensurePlayerHasJoker(firstKey, otherKey, true);
+  ensurePlayerHasJoker(otherKey, firstKey, false);
+
   return {
     ruleset: 'chaotic',
     level,
@@ -873,8 +909,8 @@ export function describeChaoticCombination(type: string): string {
 
 export function getChaoticCardLabel(card: ChaoticBigTwoCard): string {
   if (isJoker(card)) {
-    return card.suit === 'R' ? 'JKR' : 'JKB';
+    return card.suit === 'R' ? 'JK🃏🔴' : 'JK🃏⚫';
   }
-  const suit = card.suit;
+  const suit = card.suit === 'S' ? '♠' : card.suit === 'H' ? '♥' : card.suit === 'C' ? '♣' : '♦';
   return `${card.rank}${suit}`;
 }

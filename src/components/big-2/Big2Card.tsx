@@ -16,9 +16,21 @@ function isRed(card: BigTwoCard): boolean {
   return card.suit === 'H' || card.suit === 'D' || card.suit === 'R';
 }
 
+function getSuitSymbol(card: BigTwoCard): string {
+  switch (card.suit) {
+    case 'S': return '♠';
+    case 'H': return '♥';
+    case 'C': return '♣';
+    case 'D': return '♦';
+    case 'R': return '🃏';
+    case 'B': return '🃏';
+    default: return card.suit;
+  }
+}
+
 export function Big2Card({ card, ruleset = 'classic', selected = false, disabled = false, compact = false, onClick }: Big2CardProps) {
   const label = getCardLabel(card, ruleset);
-  const symbol = label.replace(card.rank, '');
+  const symbol = getSuitSymbol(card);
 
   const content = (
     <motion.div
