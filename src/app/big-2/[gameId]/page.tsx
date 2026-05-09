@@ -123,11 +123,14 @@ export default function Big2GamePage({ params }: { params: Promise<{ gameId: str
   );
 
   const myHandTableRows = useMemo(() => {
-    const cardsByKey = new Map(myHand.map((card) => [`${card.rank}-${card.suit}`, card]));
-    return HAND_TABLE_RANK_ORDER.map((rank) => ({
-      rank,
-      cards: HAND_TABLE_SUIT_COLUMNS.map((column) => cardsByKey.get(`${rank}-${column.suit}`) ?? null),
-    }));
+    return HAND_TABLE_RANK_ORDER
+      .map((rank) => {
+        const cards = HAND_TABLE_SUIT_COLUMNS
+          .map((column) => myHand.find((card) => card.rank === rank && card.suit === column.suit) ?? null)
+          .filter((card): card is BigTwoCard => card !== null);
+        return { rank, cards };
+      })
+      .filter((row) => row.cards.length > 0);
   }, [myHand]);
 
   const ruleset: BigTwoRuleset = useMemo(() => resolveRuleset(game?.board), [game?.board]);
@@ -446,42 +449,37 @@ export default function Big2GamePage({ params }: { params: Promise<{ gameId: str
               </div>
 
               <div className="max-h-[70vh] overflow-auto p-4">
-                <div className="overflow-x-auto rounded-xl border border-border">
-                  <table className="w-full min-w-[34rem] table-fixed border-collapse text-sm">
-                    <thead>
-                      <tr className="bg-background/60">
-                        <th className="w-20 border-b border-border px-3 py-2 text-left font-semibold text-text-primary">Rank</th>
-                        {HAND_TABLE_SUIT_COLUMNS.map((column) => (
-                          <th key={column.suit} className="border-b border-border px-3 py-2 text-left font-semibold text-text-primary">
-                            <span className="inline-flex items-center gap-1.5">
-                              <span>{column.label}</span>
-                              <span className={column.suit === 'H' || column.suit === 'D' ? 'text-red-600' : 'text-text-primary'}>
-                                {column.symbol}
+                <div className="space-y-2">
+                  {myHandTableRows.map((row) => (
+                    <div key={row.rank} className="rounded-xl border border-border bg-background/35 px-3 py-2.5">
+                      <div className="mb-2 flex items-center justify-between gap-2">
+                        <span className="text-sm font-semibold text-text-primary">Rank {row.rank}</span>
+                        <div className="flex items-center gap-1.5 text-xs">
+                          {HAND_TABLE_SUIT_COLUMNS.map((column) => {
+                            const hasSuit = row.cards.some((card) => card.suit === column.suit);
+                            return (
+                              <span
+                                key={`${row.rank}-${column.suit}-indicator`}
+                                className={`inline-flex items-center gap-1 rounded-md border px-1.5 py-0.5 ${
+                                  hasSuit ? 'border-border bg-surface text-text-primary' : 'border-border/50 text-text-secondary/40'
+                                }`}
+                              >
+                                <span className={column.suit === 'H' || column.suit === 'D' ? 'text-red-600' : ''}>{column.symbol}</span>
+                                <span>{column.label[0]}</span>
                               </span>
-                            </span>
-                          </th>
+                            );
+                          })}
+                        </div>
+                      </div>
+                      <div className="flex flex-wrap gap-1.5">
+                        {row.cards.map((card) => (
+                          <span key={card.id} className="inline-flex rounded-md border border-border bg-surface px-2 py-1 text-xs font-medium text-text-primary">
+                            {getCardLabel(card, ruleset)}
+                          </span>
                         ))}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {myHandTableRows.map((row) => (
-                        <tr key={row.rank} className="odd:bg-background/25">
-                          <th className="border-b border-border px-3 py-2 text-left font-semibold text-text-primary">{row.rank}</th>
-                          {row.cards.map((card, index) => (
-                            <td key={`${row.rank}-${HAND_TABLE_SUIT_COLUMNS[index].suit}`} className="border-b border-border px-3 py-2 text-text-primary">
-                              {card ? (
-                                <span className="inline-flex rounded-md border border-border bg-background/60 px-2 py-1 font-medium">
-                                  {getCardLabel(card, ruleset)}
-                                </span>
-                              ) : (
-                                <span className="text-text-secondary/50">-</span>
-                              )}
-                            </td>
-                          ))}
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                      </div>
+                    </div>
+                  ))}
                 </div>
                 <p className="mt-3 text-xs text-text-secondary">Click outside this popup to close it.</p>
               </div>
