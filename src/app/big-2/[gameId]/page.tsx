@@ -52,6 +52,14 @@ const CHAOTIC_RULEBOOK_HANDS = [
   { label: 'Wild cards', detail: 'The heart of the current level is wild and can represent any non-joker card in combinations.' },
 ];
 
+const HAND_TABLE_RANK_ORDER: BigTwoCard['rank'][] = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'];
+const HAND_TABLE_SUIT_COLUMNS: Array<{ suit: BigTwoCard['suit']; label: string; symbol: string }> = [
+  { suit: 'H', label: 'Hearts', symbol: '♥' },
+  { suit: 'C', label: 'Clubs', symbol: '♣' },
+  { suit: 'D', label: 'Diamonds', symbol: '♦' },
+  { suit: 'S', label: 'Spades', symbol: '♠' },
+];
+
 export default function Big2GamePage({ params }: { params: Promise<{ gameId: string }> }) {
   const { gameId } = use(params);
   const router = useRouter();
@@ -61,10 +69,28 @@ export default function Big2GamePage({ params }: { params: Promise<{ gameId: str
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [showEndDialog, setShowEndDialog] = useState(false);
   const [showStrengthInfo, setShowStrengthInfo] = useState(false);
+  const [showAllCardsTable, setShowAllCardsTable] = useState(false);
 
   useEffect(() => {
     if (deleted) router.push('/');
   }, [deleted, router]);
+
+  useEffect(() => {
+    if (!showAllCardsTable) return;
+
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setShowAllCardsTable(false);
+    };
+
+    const previousBodyOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    document.addEventListener('keydown', closeOnEscape);
+
+    return () => {
+      document.removeEventListener('keydown', closeOnEscape);
+      document.body.style.overflow = previousBodyOverflow;
+    };
+  }, [showAllCardsTable]);
 
   const myPlayerNumber: Player | null = useMemo(() => {
     if (!game || !myName) return null;
@@ -95,6 +121,14 @@ export default function Big2GamePage({ params }: { params: Promise<{ gameId: str
     () => myHand.filter((card) => selectedIds.includes(card.id)),
     [myHand, selectedIds]
   );
+
+  const myHandTableRows = useMemo(() => {
+    const cardsByKey = new Map(myHand.map((card) => [`${card.rank}-${card.suit}`, card]));
+    return HAND_TABLE_RANK_ORDER.map((rank) => ({
+      rank,
+      cards: HAND_TABLE_SUIT_COLUMNS.map((column) => cardsByKey.get(`${rank}-${column.suit}`) ?? null),
+    }));
+  }, [myHand]);
 
   const ruleset: BigTwoRuleset = useMemo(() => resolveRuleset(game?.board), [game?.board]);
 
@@ -373,6 +407,89 @@ export default function Big2GamePage({ params }: { params: Promise<{ gameId: str
         )}
       </AnimatePresence>
 
+      <AnimatePresence>
+        {showAllCardsTable && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.18 }}
+            className="fixed inset-0 z-50 flex items-center justify-center p-4"
+            onClick={() => setShowAllCardsTable(false)}
+            role="dialog"
+            aria-modal="true"
+            aria-label="All cards in your hand"
+          >
+            <div className="absolute inset-0 bg-black/55 backdrop-blur-[1px]" />
+            <motion.div
+              initial={{ opacity: 0, y: 12, scale: 0.98 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 10, scale: 0.98 }}
+              transition={{ duration: 0.2 }}
+              className="relative w-full max-w-3xl overflow-hidden rounded-2xl border border-border bg-surface shadow-2xl"
+              onClick={(event) => event.stopPropagation()}
+            >
+              <div className="flex items-center justify-between gap-3 border-b border-border px-4 py-3">
+                <div>
+                  <h2 className="text-base font-semibold text-text-primary">Your Cards</h2>
+                  <p className="text-xs text-text-secondary">Rows are ranks. Columns are suits.</p>
+                </div>
+                <button
+                  onClick={() => setShowAllCardsTable(false)}
+                  className="rounded-lg p-1 text-text-secondary hover:bg-background hover:text-text-primary cursor-pointer"
+                  aria-label="Close all cards table"
+                >
+                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                    <path d="M4 4L12 12M12 4L4 12" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+                  </svg>
+                </button>
+              </div>
+
+              <div className="max-h-[70vh] overflow-auto p-4">
+                <div className="overflow-x-auto rounded-xl border border-border">
+                  <table className="w-full min-w-[34rem] table-fixed border-collapse text-sm">
+                    <thead>
+                      <tr className="bg-background/60">
+                        <th className="w-20 border-b border-border px-3 py-2 text-left font-semibold text-text-primary">Rank</th>
+                        {HAND_TABLE_SUIT_COLUMNS.map((column) => (
+                          <th key={column.suit} className="border-b border-border px-3 py-2 text-left font-semibold text-text-primary">
+                            <span className="inline-flex items-center gap-1.5">
+                              <span>{column.label}</span>
+                              <span className={column.suit === 'H' || column.suit === 'D' ? 'text-red-600' : 'text-text-primary'}>
+                                {column.symbol}
+                              </span>
+                            </span>
+                          </th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {myHandTableRows.map((row) => (
+                        <tr key={row.rank} className="odd:bg-background/25">
+                          <th className="border-b border-border px-3 py-2 text-left font-semibold text-text-primary">{row.rank}</th>
+                          {row.cards.map((card, index) => (
+                            <td key={`${row.rank}-${HAND_TABLE_SUIT_COLUMNS[index].suit}`} className="border-b border-border px-3 py-2 text-text-primary">
+                              {card ? (
+                                <span className="inline-flex rounded-md border border-border bg-background/60 px-2 py-1 font-medium">
+                                  {getCardLabel(card, ruleset)}
+                                </span>
+                              ) : (
+                                <span className="text-text-secondary/50">-</span>
+                              )}
+                            </td>
+                          ))}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                <p className="mt-3 text-xs text-text-secondary">Click outside this popup to close it.</p>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       <div className="flex-1 flex flex-col items-center gap-5 p-4 pt-16">
         {(!game.player1_id || !game.player2_id) && (
           <div className="rounded-xl border border-border bg-surface px-4 py-2 text-sm text-text-secondary">
@@ -387,6 +504,12 @@ export default function Big2GamePage({ params }: { params: Promise<{ gameId: str
               <p className="text-sm text-text-secondary">
                 You have {myHand.length} cards. {opponentName ?? 'Opponent'} has {opponentCardsLeft} cards.
               </p>
+              <button
+                onClick={() => setShowAllCardsTable(true)}
+                className="mt-2 rounded-lg border border-border bg-surface px-3 py-1.5 text-xs font-medium text-text-secondary hover:border-text-secondary/30 hover:text-text-primary transition-all cursor-pointer"
+              >
+                View all cards
+              </button>
             </div>
             <div className="flex items-center gap-2">
               <TurnIndicator
