@@ -10,6 +10,7 @@ import { WordleKeyboard } from '@/components/wordle/WordleKeyboard';
 import { SettingsButton } from '@/components/SettingsButton';
 import { WinCelebration } from '@/components/WinCelebration';
 import { EndGameDialog } from '@/components/EndGameDialog';
+import { usePresence } from '@/hooks/usePresence';
 import { isDraw } from '@/lib/wordle-together-logic';
 import type { LetterState, WordleGuess, KeyboardState } from '@/lib/wordle-types';
 
@@ -49,6 +50,9 @@ export default function WordleTogetherGamePage({ params }: { params: Promise<{ g
     if (!game || !myPlayerNumber) return 'Opponent';
     return myPlayerNumber === 1 ? game.player2_name : game.player1_name;
   }, [game, myPlayerNumber]);
+
+  const presentUsers = usePresence(gameId, myName);
+  const isOpponentPresent = opponentName !== 'Opponent' && opponentName !== null && presentUsers.has(opponentName);
 
   const answer = useMemo(() => {
     return game?.board.answer || '';
@@ -229,8 +233,12 @@ export default function WordleTogetherGamePage({ params }: { params: Promise<{ g
         <div className="flex flex-col items-center justify-center gap-8 w-full">
           {/* Top Board: Opponent board preview */}
           <div className="flex flex-col items-center gap-4">
-            <h2 className="text-xs font-semibold uppercase tracking-wider text-text-secondary">
+            <h2 className="text-xs font-semibold uppercase tracking-wider text-text-secondary flex items-center gap-2">
               {opponentName ? `${opponentName}'s Board` : "Opponent's Board"} {opponentFinished && !opponentGuesses.includes(answer) && ' (Failed)'}
+              <div 
+                className={`w-2 h-2 rounded-full ${isOpponentPresent ? 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)]' : 'bg-gray-400/50'}`} 
+                title={isOpponentPresent ? 'Online' : 'Offline'}
+              />
             </h2>
             <OpponentProgressBoard guesses={opponentGuesses} answer={answer} />
           </div>
