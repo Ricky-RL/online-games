@@ -202,6 +202,26 @@ function WordleIcon() {
   );
 }
 
+function WordleTogetherIcon() {
+  return (
+    <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
+      {/* Row 1 - player racing tiles */}
+      <rect x="1" y="2" width="5" height="5" rx="1" fill="#538D4E" />
+      <rect x="7.5" y="2" width="5" height="5" rx="1" fill="#B59F3B" />
+      <rect x="14" y="2" width="5" height="5" rx="1" fill="#06B6D4" opacity="0.7" />
+      <rect x="20.5" y="2" width="5" height="5" rx="1" fill="#538D4E" />
+      {/* Row 2 - opponent racing tiles */}
+      <rect x="1" y="9" width="5" height="5" rx="1" fill="#06B6D4" opacity="0.7" />
+      <rect x="7.5" y="9" width="5" height="5" rx="1" fill="#538D4E" />
+      <rect x="14" y="9" width="5" height="5" rx="1" fill="#538D4E" />
+      <rect x="20.5" y="9" width="5" height="5" rx="1" fill="#B59F3B" />
+      {/* VS separator */}
+      <line x1="1" y1="18" x2="27" y2="18" stroke="#06B6D4" strokeWidth="1" opacity="0.4" />
+      <text x="11" y="26" fontSize="5" fill="#06B6D4" fontFamily="sans-serif" fontWeight="bold" opacity="0.8">VS</text>
+    </svg>
+  );
+}
+
 function CheckersIcon() {
   return (
     <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
@@ -1006,6 +1026,7 @@ function GameSelection({ currentUser, onChangePlayer }: { currentUser: StoredUse
     'big-2': { icon: <Big2Icon />, onClick: () => router.push('/big-2') },
     'uno': { icon: <UnoIcon />, onClick: () => router.push('/uno') },
     'crazy-eights': { icon: <CrazyEightsIcon />, onClick: () => router.push('/crazy-eights') },
+    'wordle-together': { icon: <WordleTogetherIcon />, onClick: () => router.push('/wordle-together') },
   };
 
   return (

@@ -26,6 +26,13 @@ export const DEFAULT_GAME_ORDER: GameDefinition[] = [
     categories: ['cooperative', 'word'],
   },
   {
+    slug: 'wordle-together',
+    title: 'Wordle Together',
+    description: 'Race to guess the word first. Speed and strategy win.',
+    color: '#06B6D4',
+    categories: ['word'],
+  },
+  {
     slug: 'tic-tac-toe',
     title: 'Tic Tac Toe',
     description: 'X and O, three in a row. Quick rounds, pure fun.',

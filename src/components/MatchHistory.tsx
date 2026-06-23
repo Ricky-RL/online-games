@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 interface MatchResult {
   id: string;
-  game_type: 'connect-four' | 'tic-tac-toe' | 'wordle' | 'mini-golf' | 'jenga' | 'snakes-and-ladders' | 'word-search' | 'monopoly' | 'battleship' | 'memory' | 'big-2' | 'uno' | 'crazy-eights' | 'math-trivia' | 'jeopardy' | 'pool' | 'cup-pong' | 'reaction' | 'sudoku' | 'solitaire';
+  game_type: 'connect-four' | 'tic-tac-toe' | 'wordle' | 'mini-golf' | 'jenga' | 'snakes-and-ladders' | 'word-search' | 'monopoly' | 'battleship' | 'memory' | 'big-2' | 'uno' | 'crazy-eights' | 'math-trivia' | 'jeopardy' | 'pool' | 'cup-pong' | 'reaction' | 'sudoku' | 'solitaire' | 'wordle-together';
   winner_id: string | null;
   winner_name: string | null;
   loser_id: string | null;
@@ -56,6 +56,7 @@ function gameIcon(gameType: MatchResult['game_type']): string {
     case 'reaction': return '⚡';
     case 'sudoku': return '🧩';
     case 'solitaire': return '♠️';
+    case 'wordle-together': return '🔡';
   }
 }
 function gameLabel(gameType: MatchResult['game_type']): string {
@@ -80,6 +81,7 @@ function gameLabel(gameType: MatchResult['game_type']): string {
     case 'reaction': return 'Reaction';
     case 'sudoku': return 'Sudoku';
     case 'solitaire': return 'Solitaire';
+    case 'wordle-together': return 'Wordle Together';
   }
 }
 function outcomeText(result: MatchResult): string {

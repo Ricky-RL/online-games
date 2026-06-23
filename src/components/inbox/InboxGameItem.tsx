@@ -270,6 +270,23 @@ function CrazyEightsMini() {
   );
 }
 
+function WordleTogetherMini() {
+  return (
+    <div className="w-8 h-8 rounded-lg bg-[#06B6D4]/10 flex items-center justify-center">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+        <rect x="1" y="2" width="3" height="3" rx="0.5" fill="#538D4E" opacity="0.9" />
+        <rect x="5" y="2" width="3" height="3" rx="0.5" fill="#B59F3B" opacity="0.9" />
+        <rect x="9" y="2" width="3" height="3" rx="0.5" fill="#06B6D4" opacity="0.7" />
+        <rect x="13" y="2" width="3" height="3" rx="0.5" fill="#538D4E" opacity="0.9" />
+        <rect x="1" y="7" width="3" height="3" rx="0.5" fill="#06B6D4" opacity="0.7" />
+        <rect x="5" y="7" width="3" height="3" rx="0.5" fill="#538D4E" opacity="0.9" />
+        <rect x="9" y="7" width="3" height="3" rx="0.5" fill="#538D4E" opacity="0.9" />
+        <rect x="13" y="7" width="3" height="3" rx="0.5" fill="#B59F3B" opacity="0.9" />
+      </svg>
+    </div>
+  );
+}
+
 function GameIcon({ gameType }: { gameType: InboxGameType }) {
   switch (gameType) {
     case 'connect-four': return <ConnectFourMini />;
@@ -293,6 +310,7 @@ function GameIcon({ gameType }: { gameType: InboxGameType }) {
     case 'daily-wordle': return <DailyWordleMini />;
     case 'cup-pong': return <CupPongMini />;
     case 'sudoku': return <SudokuMini />;
+    case 'wordle-together': return <WordleTogetherMini />;
   }
 }
 
@@ -319,6 +337,7 @@ function gameLabel(gameType: InboxGameType): string {
     case 'daily-wordle': return 'Daily Wordle';
     case 'cup-pong': return 'Cup Pong';
     case 'sudoku': return 'Sudoku';
+    case 'wordle-together': return 'Wordle Together';
   }
 }
 

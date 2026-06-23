@@ -24,6 +24,7 @@ const GAME_LABELS: Record<string, string> = {
   "big-2": "Big 2",
   uno: "UNO",
   "crazy-eights": "Crazy Eights",
+  "wordle-together": "Wordle Together",
 };
 
 interface TurnPayload {
