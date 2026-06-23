@@ -225,9 +225,17 @@ export default function WordleTogetherGamePage({ params }: { params: Promise<{ g
           )}
         </div>
 
-        {/* Side by side boards layout */}
-        <div className="flex flex-col md:flex-row items-center md:items-start justify-center gap-8 w-full">
-          {/* Left Column: Your board */}
+        {/* Boards layout */}
+        <div className="flex flex-col items-center justify-center gap-8 w-full">
+          {/* Top Board: Opponent board preview */}
+          <div className="flex flex-col items-center gap-4">
+            <h2 className="text-xs font-semibold uppercase tracking-wider text-text-secondary">
+              {opponentName ? `${opponentName}'s Board` : "Opponent's Board"} {opponentFinished && !opponentGuesses.includes(answer) && ' (Failed)'}
+            </h2>
+            <OpponentProgressBoard guesses={opponentGuesses} answer={answer} />
+          </div>
+
+          {/* Bottom Board: Your board */}
           <div className="flex flex-col items-center gap-4">
             <h2 className="text-xs font-semibold uppercase tracking-wider text-text-secondary">
               Your Board {myFinished && !myGuesses.includes(answer) && ' (Failed)'}
@@ -241,14 +249,6 @@ export default function WordleTogetherGamePage({ params }: { params: Promise<{ g
               gameOver={isGameOver || myFinished}
               shakeRow={shakeRow}
             />
-          </div>
-
-          {/* Right Column: Opponent board preview */}
-          <div className="flex flex-col items-center gap-4 md:pt-0">
-            <h2 className="text-xs font-semibold uppercase tracking-wider text-text-secondary">
-              {opponentName ? `${opponentName}'s Board` : "Opponent's Board"} {opponentFinished && !opponentGuesses.includes(answer) && ' (Failed)'}
-            </h2>
-            <OpponentProgressBoard guesses={opponentGuesses} answer={answer} />
           </div>
         </div>
 
