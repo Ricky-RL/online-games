@@ -279,13 +279,20 @@ export default function WordleTogetherGamePage({ params }: { params: Promise<{ g
         ) : (
           <div className="text-center mt-4">
             {isGameOver && game.winner !== null && (
-              <WinCelebration
-                winner={game.winner}
-                winnerName={winnerName}
-                isMe={isMyWin}
-                onPlayAgain={handleReset}
-                onHome={() => router.push('/')}
-              />
+              <>
+                <WinCelebration
+                  winner={game.winner}
+                  winnerName={winnerName}
+                  isMe={isMyWin}
+                  onPlayAgain={handleReset}
+                  onHome={() => router.push('/')}
+                />
+                {!myGuesses.includes(answer) && !opponentGuesses.includes(answer) && (
+                  <p className="mt-4 text-sm text-text-secondary">
+                    The word was <span className="font-bold text-text-primary">{answer}</span>
+                  </p>
+                )}
+              </>
             )}
             {isGameOver && isDraw(game.board) && (
               <div className="flex flex-col items-center gap-6">
