@@ -261,7 +261,9 @@ export default function WordleTogetherGamePage({ params }: { params: Promise<{ g
         </div>
 
         {/* Error notifications */}
-        {error && <p className="text-sm text-player1 animate-pulse">{error}</p>}
+        <div className="h-5 flex items-center justify-center -my-2">
+          {error && <p className="text-sm text-player1 animate-pulse">{error}</p>}
+        </div>
 
         {/* Keyboard section (only show if not game over and not finished) */}
         {!isGameOver && !myFinished ? (
